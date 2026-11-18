@@ -15,6 +15,14 @@ const paramsOf = (path) => new URLSearchParams(path.split("?")[1] || "");
 const clubIdOf = (path) => Number(path.match(/^\/clubs\/(\d+)/)?.[1] || 0);
 const page = (rows, params, size = 20) => { const current = Math.max(1, Number(params.get("page") || 1)); const total = rows.length; const from = (current - 1) * size; return { data: rows.slice(from, from + size), meta: { current_page: current, last_page: Math.max(1, Math.ceil(total / size)), total } }; };
 const hashValue = async (value) => { const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value))); return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join(""); };
+export function dashboardMetrics({ players = [], managerMemberships = [], teamsCount = 0 }) {
+  return {
+    members_count: players.length,
+    active_members_count: players.filter((player) => player.status === "active").length,
+    teams_count: Number(teamsCount) || 0,
+    managers_count: managerMemberships.filter((membership) => membership.status === "active" && membership.role !== "member").length,
+  };
+}
 const viteEnv = import.meta.env || {};
 let supabaseClient;
 const supabaseGlobalKey = "__fcms_supabase_client__";
@@ -38,11 +46,29 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
   }
   async function clubs() { const current = await user(); const rows = check(await supabase.from("club_members").select("role,title,club:clubs(*)").eq("user_id", current.id).eq("status", "active")) || []; return { data: await Promise.all(rows.filter((x) => x.club && !x.club.deleted_at).map((x) => resource(x, current.id))) }; }
   async function teams(clubId) {
-    const rows = check(await supabase.from("teams").select("*").eq("club_id", clubId).order("name")) || [];
-    const managers = check(await supabase.from("team_managers").select("team_id,membership_id").eq("club_id", clubId)) || [];
-    const membershipRows = check(await supabase.from("club_members").select("id,role,title,user_id,profile:profiles(name,email)").eq("club_id", clubId).eq("status", "active")) || [];
-    const captainIds = rows.map((team) => team.captain_id).filter(Boolean); const captains = captainIds.length ? check(await supabase.from("player_profiles").select("id,full_name").eq("club_id", clubId).in("id", captainIds)) || [] : [];
-    return { data: rows.map((team) => ({ ...team, captain_name: captains.find((player) => player.id === team.captain_id)?.full_name || null, managers: managers.filter((x) => x.team_id === team.id).map((x) => { const m = membershipRows.find((candidate) => candidate.id === x.membership_id); return m ? { id: m.id, role: m.role, title: m.title, name: m.profile?.name, email: m.profile?.email } : null; }).filter(Boolean) })) };
+    const [teamResult, managerResult, membershipResult, playerResult] = await Promise.all([
+      supabase.from("teams").select("*").eq("club_id", clubId).order("name"),
+      supabase.from("team_managers").select("team_id,membership_id").eq("club_id", clubId),
+      supabase.from("club_members").select("id,role,title,user_id,profile:profiles(name,email)").eq("club_id", clubId).eq("status", "active"),
+      supabase.from("team_players").select("team_id,player_id").eq("club_id", clubId),
+    ]);
+    const rows = check(teamResult) || [];
+    const managers = check(managerResult) || [];
+    const membershipRows = check(membershipResult) || [];
+    const playerRows = check(playerResult) || [];
+    const captainIds = rows.map((team) => team.captain_id).filter(Boolean);
+    const captains = captainIds.length ? check(await supabase.from("player_profiles").select("id,full_name").eq("club_id", clubId).in("id", captainIds)) || [] : [];
+    return {
+      data: rows.map((team) => ({
+        ...team,
+        members_count: playerRows.filter((player) => player.team_id === team.id).length,
+        captain_name: captains.find((player) => player.id === team.captain_id)?.full_name || null,
+        managers: managers.filter((manager) => manager.team_id === team.id).map((manager) => {
+          const membership = membershipRows.find((candidate) => candidate.id === manager.membership_id);
+          return membership ? { id: membership.id, role: membership.role, title: membership.title, name: membership.profile?.name, email: membership.profile?.email } : null;
+        }).filter(Boolean),
+      })),
+    };
   }
   async function rowsFor(table, clubId, params, size = 20, order = "created_at") {
     const result = await supabase.from(table).select("*").eq("club_id", clubId).order(order, { ascending: false });
@@ -59,7 +85,17 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
   }
   async function finance(clubId, params) { let b = supabase.from("finance_transactions").select("*").eq("club_id", clubId).eq("status", "posted").order("occurred_on", { ascending: false }); if (params.get("from")) b = b.gte("occurred_on", params.get("from")); if (params.get("to")) b = b.lte("occurred_on", params.get("to")); const rows = check(await b) || []; const data = await Promise.all(rows.map(async (row) => { if (!row.receipt_path) return { ...row, has_receipt: false }; const signedUrl = await supabase.storage.from("fcms-private").createSignedUrl(row.receipt_path, 900); return { ...row, has_receipt: !signedUrl.error, receipt_url: signedUrl.data?.signedUrl || null }; })); const income = rows.filter((x) => x.type === "income").reduce((s, x) => s + Number(x.amount), 0), expense = rows.filter((x) => x.type === "expense").reduce((s, x) => s + Number(x.amount), 0); return { data, summary: { income, expense, balance: income - expense, remaining: income - expense }, meta: { current_page: 1, last_page: 1, total: rows.length }, chart: [], adjustments: { data: [], meta: {} } }; }
   async function inventory(clubId, params) { let b = supabase.from("inventory_items").select("*").eq("club_id", clubId).order("name"); if (!truthy(params.get("archived"))) b = b.eq("archived", false); if (params.get("search")) b = b.ilike("name", `%${params.get("search")}%`); let rows = check(await b) || []; if (truthy(params.get("low_stock"))) rows = rows.filter((x) => x.quantity <= x.low_stock_threshold); return { ...page(rows, params), total: rows.length }; }
-  async function dashboard(clubId) { const [m, p, t, managers] = await Promise.all([supabase.from("club_members").select("id", { count: "exact", head: true }).eq("club_id", clubId).eq("status", "active"), supabase.from("player_profiles").select("status").eq("club_id", clubId), supabase.from("teams").select("id", { count: "exact", head: true }).eq("club_id", clubId), supabase.from("team_managers").select("id", { count: "exact", head: true }).eq("club_id", clubId)]); check(m); check(t); check(managers); const players = check(p) || []; return { data: { members_count: m.count || 0, active_members_count: players.filter((x) => x.status === "active").length, teams_count: t.count || 0, managers_count: managers.count || 0 } }; }
+  async function dashboard(clubId) {
+    const [playersResult, teamsResult, membershipsResult] = await Promise.all([
+      supabase.from("player_profiles").select("status").eq("club_id", clubId),
+      supabase.from("teams").select("id", { count: "exact", head: true }).eq("club_id", clubId),
+      supabase.from("club_members").select("role,status").eq("club_id", clubId).eq("status", "active"),
+    ]);
+    const players = check(playersResult) || [];
+    const memberships = check(membershipsResult) || [];
+    check(teamsResult);
+    return { data: dashboardMetrics({ players, managerMemberships: memberships, teamsCount: teamsResult.count || 0 }) };
+  }
 
   async function request(path, { method = "GET", body, silentUnauthorized = false } = {}) {
     const clean = path.split("?")[0], params = paramsOf(path), data = bodyOf(body), authWithoutSession = ["/auth/register", "/auth/login", "/auth/forgot-password", "/auth/reset-password"].includes(clean), current = await user(!authWithoutSession && !silentUnauthorized);
