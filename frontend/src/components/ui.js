@@ -92,17 +92,37 @@ export function dialog(
   );
   el.querySelector("form").onsubmit = async (event) => {
     event.preventDefault();
-    for (const input of event.currentTarget.querySelectorAll('[data-date-input]')) {
+    const form = event.currentTarget;
+    if (form.dataset.submitting === "true") return;
+    for (const input of form.querySelectorAll('[data-date-input]')) {
       const value = input.value.trim();
       const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
       const iso = match ? `${match[3]}-${match[2]}-${match[1]}` : '';
       if ((value && (!iso || !validDate(iso))) || (!value && input.dataset.dateRequired)) {
-        showErrors(event.currentTarget, { [input.dataset.dateInput]: 'Nhập ngày hợp lệ theo định dạng dd/mm/yyyy.' }, 'Vui lòng kiểm tra ngày đã nhập.');
+        showErrors(form, { [input.dataset.dateInput]: 'Nhập ngày hợp lệ theo định dạng dd/mm/yyyy.' }, 'Vui lòng kiểm tra ngày đã nhập.');
         input.setAttribute('aria-invalid', 'true'); input.focus(); return;
       }
-      event.currentTarget.elements.namedItem(input.dataset.dateInput).value = iso;
+      form.elements.namedItem(input.dataset.dateInput).value = iso;
     }
-    if (await onSubmit(event.currentTarget)) el.close();
+    const submitButton = form.querySelector('[type="submit"]');
+    const originalHtml = submitButton?.innerHTML;
+    form.dataset.submitting = "true";
+    form.setAttribute("aria-busy", "true");
+    if (submitButton && submitLabel !== "Đóng") {
+      submitButton.setAttribute("aria-busy", "true");
+      submitButton.textContent = "Đang lưu…";
+    }
+    let saved = false;
+    try {
+      saved = await onSubmit(form);
+      if (saved) el.close();
+    } catch (error) {
+      if (form.isConnected) showErrors(form, error.errors || {}, error.message || "Không thể lưu dữ liệu.");
+    } finally {
+      if (submitButton?.isConnected && submitButton.textContent === "Đang lưu…") submitButton.innerHTML = originalHtml;
+      if (submitButton?.isConnected) submitButton.removeAttribute("aria-busy");
+      if (form.isConnected) { form.removeAttribute("aria-busy"); delete form.dataset.submitting; }
+    }
   };
   el.showModal();
   return el;

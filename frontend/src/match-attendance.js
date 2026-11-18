@@ -24,12 +24,15 @@ export async function openMatchAttendance({ match, api, base }) {
   });
   modal.querySelectorAll('[data-save]').forEach((button) => button.addEventListener('click', async () => {
     const row = button.closest('tr');
+    const originalLabel = button.textContent;
     button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.textContent = 'Đang lưu…';
     try {
       await api.request(url, { method: 'PUT', body: { player_id: Number(row.dataset.player), rsvp: row.querySelector('[data-rsvp]').value, attendance: row.querySelector('[data-attendance]').value } });
       toast('Đã lưu đăng ký và điểm danh.');
     } catch (error) { toast(error.message, true); }
-    finally { if (button.isConnected) button.disabled = false; }
+    finally { if (button.isConnected) { button.disabled = false; button.removeAttribute('aria-busy'); if (button.textContent === 'Đang lưu…') button.textContent = originalLabel; } }
   }));
   return modal;
 }

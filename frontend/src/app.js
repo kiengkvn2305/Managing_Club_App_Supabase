@@ -286,7 +286,9 @@ async function submit(form, kind, handler) {
   if (Object.keys(errors).length) return false;
   const btn = form.querySelector('[type="submit"]');
   if (btn?.disabled) return false;
+  const originalButtonHtml = btn?.innerHTML;
   if (btn) btn.disabled = true;
+  if (btn) { btn.setAttribute("aria-busy", "true"); btn.textContent = "Đang lưu…"; }
   form.setAttribute("aria-busy", "true");
   try {
     await handler(data);
@@ -296,6 +298,7 @@ async function submit(form, kind, handler) {
     return false;
   } finally {
     if (btn?.isConnected) btn.disabled = false;
+    if (btn?.isConnected) { if (btn.textContent === "Đang lưu…") btn.innerHTML = originalButtonHtml; btn.removeAttribute("aria-busy"); }
     form.removeAttribute("aria-busy");
   }
 }

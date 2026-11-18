@@ -41,7 +41,10 @@ export async function openPlayerMatchStats({ match, api, base }) {
     const row = button.closest('tr');
     const body = { player_id: Number(row.dataset.player) };
     for (const element of row.querySelectorAll('[data-stat]')) body[element.dataset.stat] = element.value === '' ? null : Number(element.value);
+    const originalLabel = button.textContent;
     button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.textContent = 'Đang lưu…';
     try {
       await api.request(url, { method: 'PUT', body });
       row.querySelector('[data-status]').textContent = 'Đã ghi';
@@ -49,7 +52,7 @@ export async function openPlayerMatchStats({ match, api, base }) {
       remove.hidden = false;
       toast('Đã lưu thống kê cầu thủ.');
     } catch (error) { toast(error.message, true); }
-    finally { if (button.isConnected) button.disabled = false; }
+    finally { if (button.isConnected) { button.disabled = false; button.removeAttribute('aria-busy'); if (button.textContent === 'Đang lưu…') button.textContent = originalLabel; } }
     });
   });
   return modal;
