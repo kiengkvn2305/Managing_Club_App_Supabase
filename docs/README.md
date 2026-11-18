@@ -2,6 +2,7 @@
 
 - [Kiến trúc](./ARCHITECTURE.md)
 - [Database](./DATABASE.md)
+- [Ma trận quyền database](./DATABASE_PERMISSIONS.md)
 - [Quy tắc nghiệp vụ](./BUSINESS_RULES.md)
 - [Phân quyền](./PERMISSIONS.md)
 - [Hợp đồng dữ liệu](./API.md)

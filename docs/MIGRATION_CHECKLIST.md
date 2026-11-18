@@ -2,6 +2,7 @@
 
 ## Database và bảo mật
 
+- [ ] Đọc và đối chiếu [ma trận quyền database](./DATABASE_PERMISSIONS.md) với remote.
 - [ ] Migrations chạy sạch trên staging.
 - [ ] `npx supabase db lint` không có lỗi.
 - [ ] `npx supabase test db` đạt.

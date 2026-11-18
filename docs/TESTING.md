@@ -15,8 +15,8 @@ npm run build
 ## Kết quả gần nhất
 
 - Frontend unit tests: 30 PASS.
-- Supabase static tests: 4 PASS.
-- PostgreSQL pgTAP tests: 33/33 PASS trên 2 file, gồm tenant/schema và financial workflow runtime.
+- Supabase static tests: 6 PASS.
+- PostgreSQL pgTAP tests: 47/47 PASS trên 3 file, gồm tenant/schema, financial workflow và permission catalog.
 - PostgreSQL lint: không có schema errors.
 - Vite production build: PASS.
 - Browser smoke local: Auth, tạo CLB, tạo đội và đọc dữ liệu thật: PASS.

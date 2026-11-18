@@ -6,6 +6,7 @@ import { join } from 'node:path';
 const root = new URL('..', import.meta.url).pathname.replace(/^\//, '').replaceAll('/', '\\');
 const sql = readFileSync(join(root, 'supabase', 'migrations', '20261119000000_fcms_supabase.sql'), 'utf8');
 const financeWorkflow = readFileSync(join(root, 'supabase', 'migrations', '20261119000002_finance_workflows.sql'), 'utf8');
+const permissions = readFileSync(join(root, 'supabase', 'migrations', '20261119000003_permissions_hardening.sql'), 'utf8');
 const frontend = readFileSync(join(root, 'frontend', 'src', 'supabase-api.js'), 'utf8');
 const app = readFileSync(join(root, 'frontend', 'src', 'app.js'), 'utf8');
 const vite = readFileSync(join(root, 'frontend', 'vite.config.js'), 'utf8');
@@ -85,4 +86,16 @@ test('Cloudflare frontend uses public Supabase config and never service-role cre
   assert.match(sw, /url\.pathname\.startsWith\("\/api"\)/);
   assert.match(sw, /url\.pathname\.startsWith\("\/auth"\)/);
   assert.match(redirects, /\/\* \/index\.html 200/);
+});
+
+test('permission hardening uses explicit grants without weakening RLS', () => {
+  assert.match(permissions, /revoke all privileges on all tables in schema public from anon, authenticated/);
+  assert.doesNotMatch(permissions, /grant all on all tables/i);
+  assert.match(permissions, /grant select on public\.club_public_settings to anon/);
+  assert.match(permissions, /create policy profiles_visible_select/);
+  assert.match(permissions, /create policy club_polls_select/);
+  assert.match(permissions, /revoke all on function public\.can_view_profile\(uuid\) from anon/);
+  assert.match(permissions, /record_finance_transaction\(bigint,public\.finance_type,numeric,date,text/);
+  assert.doesNotMatch(permissions, /grant (insert|update|delete).*public\.finance_transactions/i);
+  assert.doesNotMatch(permissions, /grant (insert|update|delete).*public\.audit_logs/i);
 });

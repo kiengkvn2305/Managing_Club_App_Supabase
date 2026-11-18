@@ -10,6 +10,8 @@ Ngày cập nhật: 2026-11-19
 - Dashboard, CLB, đội bóng, hồ sơ cầu thủ, thành viên ban chủ nhiệm và lời mời.
 - Thu chi, đóng quỹ, khoản chi dự kiến, kho, cấp phát/thu hồi, lịch trận, đội hình, điểm danh và thống kê cơ bản.
 - Financial workflow RPC đã bổ sung kỳ mở/khóa, approval, reversal, partial payment allocation và summary server-side.
+- Đã audit và sửa remote project `dandxiwdedbwxtvokeag`: 54/54 bảng public có RLS; table grants/RPC privileges đã được harden bằng migrations `20261119000003` và `20261119000004`.
+- Đã tạo ma trận quyền 54 bảng tại [docs/DATABASE_PERMISSIONS.md](docs/DATABASE_PERMISSIONS.md), gồm table grants, column grants, RPC allow-list, anon và sequence policy.
 - Biểu quyết, tuyển dụng nội bộ, hoạt động CLB, ảnh riêng tư và Excel import/export nền tảng.
 - Cấu hình Cloudflare Pages, SPA fallback, service worker và manifest PWA.
 - Backend legacy đã được loại khỏi Project 2; runtime chỉ còn frontend và Supabase.
@@ -19,9 +21,10 @@ Ngày cập nhật: 2026-11-19
 - Docker daemon đang chạy.
 - Supabase local stack đã khởi động và áp dụng migrations.
 - Database lint: không có schema errors.
-- Database tests: 33/33 PASS trên 2 file pgTAP.
+- Database tests: 47/47 PASS trên 3 file pgTAP.
+- Permission catalog: anon chỉ đọc `club_public_settings`; bảng tài chính/audit không có DML trực tiếp.
 - Frontend tests: 30 PASS.
-- Supabase static tests: 4 PASS.
+- Supabase static tests: 6 PASS.
 - Vite production build: PASS.
 - Browser smoke: đăng ký/đăng nhập, tạo CLB, tạo đội bóng và đọc lại dữ liệu thật từ PostgreSQL.
 
@@ -33,6 +36,7 @@ Ngày cập nhật: 2026-11-19
 - Một số nghiệp vụ kho nâng cao, mùa giải, thông báo, sự kiện, tuyển dụng công khai, tài trợ và website CLB công khai còn thiếu parity UI.
 - Chưa kiểm thử cài PWA trực tiếp trên Android, iPhone và Windows.
 - Chưa deploy Cloudflare Pages production.
+- Đã được phép và đã chạy `npx supabase db push`; remote đã nhận migration `20261119000004`.
 - Edge Function hiện là điểm mở rộng tùy chọn và chưa có nghiệp vụ cụ thể.
 
 ## Lệnh kiểm chứng
