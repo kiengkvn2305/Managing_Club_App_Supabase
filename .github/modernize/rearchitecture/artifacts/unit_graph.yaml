@@ -1,0 +1,302 @@
+units:
+  - name: auth
+    trigger: api
+    trigger_detail: "POST/GET/PATCH /api/v1/auth/*"
+    source_anchors:
+      - path: backend/app/Http/Controllers/AuthController.php
+        line: 13
+      - path: backend/app/Http/Controllers/PasswordResetController.php
+        line: 22
+    exported_signature:
+      - method: "JSON AuthController.register/login/user/profile/logout/changePassword/verification"
+        source_loc: "backend/app/Http/Controllers/AuthController.php:13"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: []
+    shared_refs:
+      - module: frontend-api-client
+        used_fields: [request, auth_session, error_contract]
+  - name: club-access
+    trigger: api
+    trigger_detail: "GET/POST /api/v1/clubs and invitation acceptance"
+    source_anchors:
+      - path: backend/app/Http/Middleware/EnsureClubAccess.php
+        line: 8
+      - path: backend/app/Http/Controllers/InvitationController.php
+        line: 12
+    exported_signature:
+      - method: "EnsureClubAccess resolves active club membership from route club id"
+        source_loc: "backend/app/Http/Middleware/EnsureClubAccess.php:8"
+        stability: frozen
+    dynamic_entrypoints: []
+    depends_on: [auth]
+    shared_refs: []
+  - name: clubs
+    trigger: api
+    trigger_detail: "GET/POST/PATCH/DELETE /api/v1/clubs/{club}, teams and dashboard"
+    source_anchors:
+      - path: backend/app/Http/Controllers/ClubController.php
+        line: 19
+      - path: backend/app/Policies/ClubPolicy.php
+        line: 24
+    exported_signature:
+      - method: "JSON ClubController.index/store/update/destroy/dashboard/teams"
+        source_loc: "backend/app/Http/Controllers/ClubController.php:19"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [auth, club-access]
+    shared_refs:
+      - module: club-authorization
+        used_fields: [club_role, status, title]
+  - name: membership
+    trigger: api
+    trigger_detail: "GET/PATCH /api/v1/clubs/{club}/club-memberships"
+    source_anchors:
+      - path: backend/app/Http/Controllers/ClubMembershipController.php
+        line: 11
+    exported_signature:
+      - method: "JSON membership list and title update"
+        source_loc: "backend/app/Http/Controllers/ClubMembershipController.php:11"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [club-access]
+    shared_refs: [ { module: club-authorization, used_fields: [club_role, title] } ]
+  - name: board
+    trigger: api
+    trigger_detail: "GET/POST/PATCH/DELETE /api/v1/clubs/{club}/board-members and board dues"
+    source_anchors:
+      - path: backend/app/Http/Controllers/ClubBoardController.php
+        line: 11
+    exported_signature:
+      - method: "JSON board member/rate/task operations"
+        source_loc: "backend/app/Http/Controllers/ClubBoardController.php:11"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [club-access, dues]
+    shared_refs: [ { module: club-authorization, used_fields: [club_role, status] } ]
+  - name: roster
+    trigger: api
+    trigger_detail: "GET/POST/PATCH/DELETE /api/v1/clubs/{club}/members"
+    source_anchors:
+      - path: backend/app/Http/Controllers/PlayerController.php
+        line: 20
+      - path: backend/app/Http/Requests/PlayerRequest.php
+        line: 20
+    exported_signature:
+      - method: "JSON player profile CRUD, claimMine and mine"
+        source_loc: "backend/app/Http/Controllers/PlayerController.php:20"
+        stability: frozen
+    dynamic_entrypoints: []
+    depends_on: [club-access, dues]
+    shared_refs: [ { module: club-authorization, used_fields: [club_role, status] } ]
+  - name: finance
+    trigger: api
+    trigger_detail: "GET/POST /api/v1/clubs/{club}/finance and planned expenses"
+    source_anchors:
+      - path: backend/app/Http/Controllers/FinanceController.php
+        line: 14
+      - path: backend/app/Http/Controllers/PlannedExpenseController.php
+        line: 15
+    exported_signature:
+      - method: "FinanceController.index/store/receipt"
+        source_loc: "backend/app/Http/Controllers/FinanceController.php:14"
+        stability: frozen
+    dynamic_entrypoints: []
+    depends_on: [club-access]
+    shared_refs: [ { module: finance-rpc, used_fields: [record_finance_transaction, idempotency_key, tx_boundary] } ]
+  - name: dues
+    trigger: api
+    trigger_detail: "GET/POST/PATCH /api/v1/clubs/{club}/dues and team dues rates"
+    source_anchors:
+      - path: backend/app/Http/Controllers/TeamDuesController.php
+        line: 15
+      - path: backend/app/Services/TeamDuesService.php
+        line: 7
+    exported_signature:
+      - method: "TeamDuesController.index/store/correct/rate"
+        source_loc: "backend/app/Http/Controllers/TeamDuesController.php:15"
+        stability: frozen
+    dynamic_entrypoints: []
+    depends_on: [finance, roster]
+    shared_refs: [ { module: finance-rpc, used_fields: [record_finance_transaction, tx_boundary] } ]
+  - name: activities
+    trigger: api
+    trigger_detail: "GET/POST/PATCH/DELETE /api/v1/clubs/{club}/activities"
+    source_anchors:
+      - path: backend/app/Http/Controllers/ActivityController.php
+        line: 10
+    exported_signature:
+      - method: "JSON activity, training attendance and award operations"
+        source_loc: "backend/app/Http/Controllers/ActivityController.php:10"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [club-access, roster]
+    shared_refs: [ { module: club-authorization, used_fields: [club_role, title, approval_status] } ]
+  - name: discovery
+    trigger: api
+    trigger_detail: "GET /api/v1/discover/clubs and friendlies"
+    source_anchors:
+      - path: backend/app/Http/Controllers/ClubDiscoveryController.php
+        line: 8
+      - path: backend/app/Http/Controllers/FriendlyInvitationController.php
+        line: 10
+    exported_signature:
+      - method: "JSON public discoverable club list and friendly invitation lifecycle"
+        source_loc: "backend/app/Http/Controllers/ClubDiscoveryController.php:8"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [auth, club-access]
+    shared_refs: []
+  - name: matches
+    trigger: api
+    trigger_detail: "GET/POST/PATCH /api/v1/clubs/{club}/matches"
+    source_anchors:
+      - path: backend/app/Http/Controllers/ClubMatchController.php
+        line: 12
+    exported_signature:
+      - method: "ClubMatchController.calendar/index/save"
+        source_loc: "backend/app/Http/Controllers/ClubMatchController.php:12"
+        stability: frozen
+    dynamic_entrypoints: []
+    depends_on: [club-access, roster, discovery]
+    shared_refs: [ { module: finance-rpc, used_fields: [tx_boundary] } ]
+  - name: lineups
+    trigger: api
+    trigger_detail: "GET/POST/PATCH /api/v1/clubs/{club}/lineups"
+    source_anchors:
+      - path: backend/app/Http/Controllers/LineupController.php
+        line: 11
+    exported_signature:
+      - method: "LineupController.index/forMatch/save/captain"
+        source_loc: "backend/app/Http/Controllers/LineupController.php:11"
+        stability: frozen
+    dynamic_entrypoints: []
+    depends_on: [matches, roster]
+    shared_refs: []
+  - name: attendance-stats
+    trigger: api
+    trigger_detail: "PUT/GET/DELETE match attendance, player stats and match costs"
+    source_anchors:
+      - path: backend/app/Http/Controllers/MatchAttendanceController.php
+        line: 9
+      - path: backend/app/Http/Controllers/PlayerStatsController.php
+        line: 12
+      - path: backend/app/Http/Controllers/MatchCostController.php
+        line: 10
+    exported_signature:
+      - method: "JSON attendance/statistics/cost split operations"
+        source_loc: "backend/app/Http/Controllers/MatchAttendanceController.php:9"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [matches, roster, finance]
+    shared_refs: [ { module: finance-rpc, used_fields: [tx_boundary] } ]
+  - name: inventory
+    trigger: api
+    trigger_detail: "GET/POST/PATCH/DELETE /api/v1/clubs/{club}/inventory"
+    source_anchors:
+      - path: backend/app/Http/Controllers/InventoryController.php
+        line: 10
+    exported_signature:
+      - method: "InventoryController.index/store/update/destroy/move/assign/return"
+        source_loc: "backend/app/Http/Controllers/InventoryController.php:10"
+        stability: frozen
+    dynamic_entrypoints: []
+    depends_on: [club-access, roster]
+    shared_refs: [ { module: inventory-rpc, used_fields: [record_inventory_movement, row_lock, balance_after] } ]
+  - name: polls
+    trigger: api
+    trigger_detail: "GET/POST /api/v1/clubs/{club}/polls and vote"
+    source_anchors:
+      - path: backend/app/Http/Controllers/PollController.php
+        line: 11
+    exported_signature:
+      - method: "PollController.index/store/vote"
+        source_loc: "backend/app/Http/Controllers/PollController.php:11"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [club-access]
+    shared_refs: []
+  - name: recruitment
+    trigger: api
+    trigger_detail: "GET/POST/PATCH recruitment posts and applications"
+    source_anchors:
+      - path: backend/app/Http/Controllers/RecruitmentController.php
+        line: 10
+    exported_signature:
+      - method: "RecruitmentController post/application operations"
+        source_loc: "backend/app/Http/Controllers/RecruitmentController.php:10"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [club-access, roster]
+    shared_refs: []
+  - name: sponsorship
+    trigger: api
+    trigger_detail: "GET/POST/PATCH/DELETE sponsors, sponsorships and receipts"
+    source_anchors:
+      - path: backend/app/Http/Controllers/SponsorshipController.php
+        line: 10
+    exported_signature:
+      - method: "SponsorshipController sponsors/agreements/receipts/report"
+        source_loc: "backend/app/Http/Controllers/SponsorshipController.php:10"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [club-access, finance]
+    shared_refs: []
+  - name: discipline
+    trigger: api
+    trigger_detail: "GET/POST/PATCH discipline cases and history"
+    source_anchors:
+      - path: backend/app/Http/Controllers/DisciplineController.php
+        line: 10
+    exported_signature:
+      - method: "DisciplineController.index/store/update/history"
+        source_loc: "backend/app/Http/Controllers/DisciplineController.php:10"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [club-access, roster]
+    shared_refs: []
+  - name: profile-images
+    trigger: api
+    trigger_detail: "GET/POST/DELETE account, club and player images"
+    source_anchors:
+      - path: backend/app/Http/Controllers/ProfileImageController.php
+        line: 9
+    exported_signature:
+      - method: "ProfileImageController account/club/player storage operations"
+        source_loc: "backend/app/Http/Controllers/ProfileImageController.php:9"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [auth, club-access]
+    shared_refs: []
+  - name: excel
+    trigger: page
+    trigger_detail: "Member import preview/commit and member/finance XLSX export"
+    source_anchors:
+      - path: backend/app/Http/Controllers/MemberImportController.php
+        line: 10
+      - path: frontend/src/spreadsheets.js
+        line: 1
+    exported_signature:
+      - method: "parseMembers/buildMembersWorkbook/exportFinance/exportMembers"
+        source_loc: "frontend/src/spreadsheets.js:1"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [roster, finance]
+    shared_refs: []
+  - name: pwa
+    trigger: page
+    trigger_detail: "Vite browser shell, service worker and Capacitor lifecycle"
+    source_anchors:
+      - path: frontend/src/main.js
+        line: 1
+      - path: frontend/public/sw.js
+        line: 1
+      - path: frontend/public/manifest.webmanifest
+        line: 1
+    exported_signature:
+      - method: "Vite build output and installable PWA shell"
+        source_loc: "frontend/index.html:1"
+        stability: must_preserve
+    dynamic_entrypoints: []
+    depends_on: [auth]
+    shared_refs: [ { module: frontend-api-client, used_fields: [auth_session, error_contract] } ]

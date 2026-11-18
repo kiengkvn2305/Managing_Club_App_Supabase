@@ -1,0 +1,4 @@
+unit: board
+bindings:
+  - { type: route-declaration, name: "board-members", source_loc: "backend/routes/web.php:97", target: "board tables with owner RLS", must_appear_in_target: true, notes: "Board dues affect dues calculation but not arbitrary finance writes." }
+runtime_config: []

@@ -1,0 +1,5 @@
+unit: clubs
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/ClubController.php:19-249", drivers: [concern_split, data_ownership_split], rationale: "Club lifecycle, dashboard, teams and team-player mutations have different row ownership and validation rules.", source_slice: { file: "backend/app/Http/Controllers/ClubController.php", lines: [19, 249] } }
+

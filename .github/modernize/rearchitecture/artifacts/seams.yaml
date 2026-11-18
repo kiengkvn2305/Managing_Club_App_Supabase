@@ -1,0 +1,21 @@
+seams:
+  - id: frontend/src/api.js:1
+    description: "The Vanilla JS UI keeps its request/error shape while the backend protocol moves from Laravel endpoints to Supabase Auth/PostgREST/RPC."
+    source: declared
+    cut_between:
+      migrated_side: auth
+      frozen_side: laravel-baseline
+    protocol_shift: { from: "Laravel JSON + Sanctum cookie/CSRF", to: "Supabase Auth JWT + PostgREST/RPC" }
+    frozen_side_rule: "backend/ MUST NOT be refactored or deleted during this frontend/Supabase phase; use it as the behavior baseline."
+    bridge_points:
+      - at: "frontend/src/api.js:118"
+        from_form: "api.get/post/patch/delete('/api/v1/...') response with Laravel data/meta/errors"
+        to_form: "Supabase Auth, from(table), rpc(function) calls"
+        mapping_rule: "Preserve the existing method names and response envelopes: data rows remain under data; pagination remains data+meta; Supabase errors become ApiError(status, errors). Authentication maps register/login/logout/profile/password to supabase.auth operations; finance/dues/inventory writes map to SECURITY DEFINER RPCs."
+        edge_cases:
+          - "Missing public Vite variables is a configuration error, never a fallback to a secret or service-role key."
+          - "RLS 42501 becomes HTTP-like 403; validation/database errors remain visible to the existing form error renderer."
+          - "No private API or financial response is cached by the service worker."
+        idempotency_retry: "Finance RPC accepts an optional idempotency_key and returns the existing ledger row on replay; other writes are not retried automatically."
+        fallback: "If a route is not yet mapped, return an explicit 501 ApiError; do not fabricate records or call the frozen Laravel backend in production."
+        must_preserve: true

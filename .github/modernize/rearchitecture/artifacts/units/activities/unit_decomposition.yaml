@@ -1,0 +1,5 @@
+unit: activities
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/ActivityController.php:10-145", drivers: [concern_split], rationale: "Celebrations, trainings, attendance and awards have different validation and approval transitions.", source_slice: { file: "backend/app/Http/Controllers/ActivityController.php", lines: [10, 145] } }
+

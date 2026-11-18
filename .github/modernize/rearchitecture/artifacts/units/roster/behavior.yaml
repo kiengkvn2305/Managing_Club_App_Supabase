@@ -1,0 +1,8 @@
+unit: roster
+side_effects:
+  - { source_loc: "backend/app/Services/ClubService.php:31", effect: "Saves player profile, team assignment history and audit atomically.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/PlayerController.php:54", condition: "roster manager role", behavior: "allow private roster view and mutation", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Requests/PlayerRequest.php:20", trigger: "cross-club team, duplicate email/jersey or invalid position", outcome: "reject without changing roster", contract: "422/404 tenant-safe response", must_preserve: true }
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Services/ClubService.php:31", scope: "club lock, player save, team membership periods and audit", isolation: "row lock", must_preserve: true } }

@@ -1,0 +1,7 @@
+unit: discovery
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/FriendlyInvitationController.php:20", effect: "Creates or responds to a cross-club friendly invitation.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/ClubDiscoveryController.php:12", condition: "club is active/discoverable and user is not active member", behavior: "show public discovery row", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/FriendlyInvitationController.php:20", scope: "pair invitation update and response", isolation: "database transaction", must_preserve: true } }

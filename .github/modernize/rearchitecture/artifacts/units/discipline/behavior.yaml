@@ -1,0 +1,7 @@
+unit: discipline
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/DisciplineController.php:27", effect: "Creates/updates a discipline case and immutable snapshot history.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/DisciplineController.php:15", condition: "discipline manager role", behavior: "allow case management; otherwise read according to policy", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/DisciplineController.php:27", scope: "case lock, snapshot and audit", isolation: "row lock", must_preserve: true } }

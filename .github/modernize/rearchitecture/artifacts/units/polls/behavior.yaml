@@ -1,0 +1,7 @@
+unit: polls
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/PollController.php:27", effect: "Creates poll/options/electors; vote inserts one vote per elector.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/PollController.php:44", condition: "deadline open, eligible and not voted", behavior: "accept exactly one option vote", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/PollController.php:44", scope: "eligibility check and vote insert", isolation: "unique constraint", must_preserve: true } }

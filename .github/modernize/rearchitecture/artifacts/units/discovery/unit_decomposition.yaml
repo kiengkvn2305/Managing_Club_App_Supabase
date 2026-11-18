@@ -1,0 +1,5 @@
+unit: discovery
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/FriendlyInvitationController.php:20-80", drivers: [protocol_split], rationale: "Public discovery and authenticated cross-club invitation responses use different tenant visibility rules.", source_slice: { file: "backend/app/Http/Controllers/FriendlyInvitationController.php", lines: [20, 80] } }
+

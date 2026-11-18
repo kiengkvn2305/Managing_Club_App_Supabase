@@ -1,0 +1,6 @@
+unit: auth
+bindings:
+  - { type: route-declaration, name: "/api/v1/auth/*", source_loc: "backend/routes/web.php:24", target: "Supabase Auth adapter", must_appear_in_target: true, notes: "JWT session replaces Sanctum cookie/CSRF." }
+runtime_config:
+  - { key: "VITE_SUPABASE_URL", source_loc: "frontend/src/supabase-api.js:22", source: env, default_value: null, must_appear_in_target: true, notes: "Public project URL." }
+  - { key: "VITE_SUPABASE_ANON_KEY", source_loc: "frontend/src/supabase-api.js:22", source: env, default_value: null, must_appear_in_target: true, notes: "Public anon key only." }

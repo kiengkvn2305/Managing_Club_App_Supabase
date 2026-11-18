@@ -1,0 +1,4 @@
+unit: pwa
+bindings:
+  - { type: route-declaration, name: "Vite index.html/service worker/manifest", source_loc: "frontend/index.html:1", target: "Cloudflare Pages static output", must_appear_in_target: true, notes: "SPA fallback must serve index.html." }
+runtime_config: []

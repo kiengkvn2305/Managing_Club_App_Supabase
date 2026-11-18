@@ -1,0 +1,4 @@
+unit: roster
+bindings:
+  - { type: route-declaration, name: "members", source_loc: "backend/routes/web.php:124", target: "player_profiles/team_players RLS", must_appear_in_target: true, notes: "Private profile fields require roster role." }
+runtime_config: []

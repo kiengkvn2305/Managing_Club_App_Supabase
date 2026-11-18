@@ -1,0 +1,4 @@
+unit: clubs
+bindings:
+  - { type: route-declaration, name: "/api/v1/clubs/{club}", source_loc: "backend/routes/web.php:39", target: "Supabase PostgREST/RPC", must_appear_in_target: true, notes: "RLS filters every club-owned row." }
+runtime_config: []

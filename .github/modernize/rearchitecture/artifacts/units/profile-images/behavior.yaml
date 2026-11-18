@@ -1,0 +1,8 @@
+unit: profile-images
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/ProfileImageController.php:14", effect: "Stores/deletes image path and serves private image response.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/ProfileImageController.php:19", condition: "kind is avatar/background and actor has target access", behavior: "allow storage operation", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Controllers/ProfileImageController.php:14", trigger: "invalid image or missing stored object", outcome: "validation/not-found response", contract: "422/404", must_preserve: true }
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/ProfileImageController.php:14", scope: "path update and object storage cleanup", isolation: "database/storage operation", must_preserve: true } }

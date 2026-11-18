@@ -1,0 +1,5 @@
+unit: finance
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/FinanceController.php:14-111", drivers: [concern_split, nfr_split], rationale: "Read-only reporting, ledger mutation and private receipt delivery have different security and transaction boundaries.", source_slice: { file: "backend/app/Http/Controllers/FinanceController.php", lines: [14, 111] } }
+

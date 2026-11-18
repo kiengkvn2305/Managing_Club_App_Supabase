@@ -1,0 +1,9 @@
+unit: inventory
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/InventoryController.php:139", effect: "Locks item, calculates next quantity, updates item and appends movement atomically.", must_preserve: true }
+  - { source_loc: "backend/app/Http/Controllers/InventoryController.php:205", effect: "Asset assignment/return changes stock and history atomically.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/InventoryController.php:74", condition: "quantity is zero and no outstanding assignment", behavior: "allow archive", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Controllers/InventoryController.php:149", trigger: "movement would make stock negative or exceed limit", outcome: "reject without mutation", contract: "422 validation response", must_preserve: true }
+concurrency: { model: sync, tx_boundary: { source_loc: "supabase/migrations/20261119000000_fcms_supabase.sql:1", scope: "permission, item row lock, balance update and movement insert", isolation: "PostgreSQL transaction", must_preserve: true } }

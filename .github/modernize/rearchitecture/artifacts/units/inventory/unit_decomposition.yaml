@@ -1,0 +1,4 @@
+unit: inventory
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/InventoryController.php:139-259", drivers: [concern_split, execution_model_split], rationale: "Simple stock movements and asset loan lifecycle both mutate inventory but have different row locks and invariants.", source_slice: { file: "backend/app/Http/Controllers/InventoryController.php", lines: [139, 259] } }

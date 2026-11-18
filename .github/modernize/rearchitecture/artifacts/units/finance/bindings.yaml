@@ -1,0 +1,4 @@
+unit: finance
+bindings:
+  - { type: route-declaration, name: "finance", source_loc: "backend/routes/web.php:77", target: "record_finance_transaction RPC", must_appear_in_target: true, notes: "Frontend never updates a balance column." }
+runtime_config: []

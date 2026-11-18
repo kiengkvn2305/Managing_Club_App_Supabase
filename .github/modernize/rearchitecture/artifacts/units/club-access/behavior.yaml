@@ -1,0 +1,8 @@
+unit: club-access
+side_effects:
+  - { source_loc: "backend/app/Services/ClubService.php:47", effect: "Accepts an invitation once and records membership/audit state.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Services/ClubService.php:53", condition: "token, email, expiry and club status all match", behavior: "creates active membership; otherwise rejects", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Middleware/EnsureClubAccess.php:12", trigger: "user is not active member", outcome: "tenant route is not accessible", contract: "404/403 tenant isolation response", must_preserve: true }
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Services/ClubService.php:44", scope: "club lock, invitation lock, membership insert and audit", isolation: "row lock", must_preserve: true } }

@@ -1,0 +1,4 @@
+unit: recruitment
+bindings:
+  - { type: route-declaration, name: "recruitment/posts", source_loc: "backend/routes/web.php:50", target: "recruitment tables with club RLS", must_appear_in_target: true, notes: "Public/application fields and manager-only status updates are distinct." }
+runtime_config: []

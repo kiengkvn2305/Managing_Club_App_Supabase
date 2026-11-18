@@ -1,0 +1,5 @@
+unit: excel
+commit: false
+candidate_splits:
+  - { id: "frontend/src/spreadsheets.js:31-105", drivers: [concern_split], rationale: "Member parsing/validation and finance/member export have separate data contracts and can be tested independently.", source_slice: { file: "frontend/src/spreadsheets.js", lines: [31, 105] } }
+

@@ -1,0 +1,1 @@
+-- Intentionally empty. FCMS PRO never seeds production accounts or sample financial data.

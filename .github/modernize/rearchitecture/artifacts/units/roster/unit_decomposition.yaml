@@ -1,0 +1,5 @@
+unit: roster
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/PlayerController.php:54-168", drivers: [concern_split, data_ownership_split], rationale: "Public club member list, linked-account claim and roster CRUD expose different privacy and write rules.", source_slice: { file: "backend/app/Http/Controllers/PlayerController.php", lines: [54, 168] } }
+

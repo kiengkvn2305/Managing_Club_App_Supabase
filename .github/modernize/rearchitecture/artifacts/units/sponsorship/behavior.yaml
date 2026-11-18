@@ -1,0 +1,7 @@
+unit: sponsorship
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/SponsorshipController.php:85", effect: "Records sponsor receipt metadata without creating finance or inventory entries.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/SponsorshipController.php:85", condition: "manager permission", behavior: "allow receipt record; otherwise read only", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/SponsorshipController.php:85", scope: "receipt insert and audit", isolation: "database transaction", must_preserve: true } }

@@ -1,0 +1,4 @@
+unit: lineups
+bindings:
+  - { type: route-declaration, name: "lineups", source_loc: "backend/routes/web.php:118", target: "match_lineups RLS", must_appear_in_target: true, notes: "Players must belong to selected team and club." }
+runtime_config: []

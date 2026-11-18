@@ -1,0 +1,4 @@
+unit: discovery
+bindings:
+  - { type: route-declaration, name: "discover/clubs", source_loc: "backend/routes/web.php:34", target: "public discoverable clubs RLS", must_appear_in_target: true, notes: "Only public club metadata is exposed." }
+runtime_config: []

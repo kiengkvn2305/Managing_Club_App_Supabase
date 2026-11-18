@@ -1,0 +1,7 @@
+unit: membership
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/ClubMembershipController.php:28", effect: "Updates a membership title and writes an audit record.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/ClubMembershipController.php:14", condition: "actor role is owner", behavior: "allow membership management", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/ClubMembershipController.php:28", scope: "title update and audit", isolation: "database transaction", must_preserve: true } }

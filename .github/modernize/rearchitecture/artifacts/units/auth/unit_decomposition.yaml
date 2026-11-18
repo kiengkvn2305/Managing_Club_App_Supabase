@@ -1,0 +1,5 @@
+unit: auth
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/AuthController.php:13", drivers: [concern_split], rationale: "Account profile, password lifecycle and email verification have separate Supabase Auth operations and failure contracts.", source_slice: { file: "backend/app/Http/Controllers/AuthController.php", lines: [13, 90] } }
+

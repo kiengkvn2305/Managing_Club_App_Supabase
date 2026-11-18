@@ -4,6 +4,7 @@
 **/vendor/
 **/dist/
 **/.env
+**/.env.local
 !**/.env.example
 **/*.sqlite*
 **/coverage/

@@ -1,0 +1,8 @@
+unit: excel
+side_effects:
+  - { source_loc: "frontend/src/spreadsheets.js:1", effect: "Reads/writes XLSX in the browser; import preview precedes commit.", must_preserve: true }
+branches:
+  - { source_loc: "frontend/src/spreadsheets.js:31", condition: "headers, formulas, dates and row limits are valid", behavior: "return normalized rows; otherwise reject file", must_preserve: true }
+error_paths:
+  - { source_loc: "frontend/src/spreadsheets.js:31", trigger: "formula, numeric phone or invalid date", outcome: "localized import error with row/column context", contract: "client validation error", must_preserve: true }
+concurrency: { model: async, tx_boundary: { source_loc: "backend/app/Http/Controllers/MemberImportController.php:30", scope: "preview/commit roster batch", isolation: "database transaction", must_preserve: true } }

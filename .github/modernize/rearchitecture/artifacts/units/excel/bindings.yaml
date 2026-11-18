@@ -1,0 +1,4 @@
+unit: excel
+bindings:
+  - { type: convention, name: "ExcelJS browser import/export", source_loc: "frontend/src/spreadsheets.js:1", target: "same Vanilla JS module", must_appear_in_target: true, notes: "No TypeScript or framework conversion." }
+runtime_config: []

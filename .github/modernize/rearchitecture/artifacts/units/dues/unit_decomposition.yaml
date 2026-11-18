@@ -1,0 +1,4 @@
+unit: dues
+commit: false
+candidate_splits:
+  - { id: "backend/app/Services/TeamDuesService.php:7-82", drivers: [concern_split, data_ownership_split], rationale: "Rate eligibility and roster summary calculation are separate reads used by different pages and corrections.", source_slice: { file: "backend/app/Services/TeamDuesService.php", lines: [7, 82] } }

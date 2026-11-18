@@ -1,0 +1,4 @@
+unit: membership
+bindings:
+  - { type: route-declaration, name: "club-memberships", source_loc: "backend/routes/web.php:94", target: "club_members RLS", must_appear_in_target: true, notes: "Owner-only write semantics." }
+runtime_config: []

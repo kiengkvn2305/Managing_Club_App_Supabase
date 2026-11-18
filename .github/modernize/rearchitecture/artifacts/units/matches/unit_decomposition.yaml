@@ -1,0 +1,5 @@
+unit: matches
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/ClubMatchController.php:12-115", drivers: [concern_split, lifecycle_split], rationale: "Calendar reads, paginated list reads and match writes have distinct validation and locking requirements.", source_slice: { file: "backend/app/Http/Controllers/ClubMatchController.php", lines: [12, 115] } }
+

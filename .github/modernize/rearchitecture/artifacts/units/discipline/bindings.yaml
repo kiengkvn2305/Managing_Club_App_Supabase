@@ -1,0 +1,4 @@
+unit: discipline
+bindings:
+  - { type: route-declaration, name: "discipline", source_loc: "backend/routes/web.php:39", target: "discipline tables with club RLS", must_appear_in_target: true, notes: "Fine is informational only in the source behavior." }
+runtime_config: []

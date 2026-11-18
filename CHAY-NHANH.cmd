@@ -8,7 +8,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-node "scripts\start.mjs"
+node "scripts\start-frontend.mjs"
 if errorlevel 1 (
   echo.
   echo Khoi dong chua thanh cong. Xem thong bao ben tren.

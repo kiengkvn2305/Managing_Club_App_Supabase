@@ -1,0 +1,4 @@
+unit: profile-images
+bindings:
+  - { type: route-declaration, name: "images/{kind}", source_loc: "backend/routes/web.php:64", target: "Supabase Storage private bucket + metadata", must_appear_in_target: true, notes: "Storage policies must use the same club membership helper." }
+runtime_config: []

@@ -1,0 +1,8 @@
+unit: attendance-stats
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/MatchAttendanceController.php:32", effect: "Upserts RSVP/attendance rows for players in the match team.", must_preserve: true }
+  - { source_loc: "backend/app/Http/Controllers/PlayerStatsController.php:32", effect: "Upserts or deletes real player match statistics.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/PlayerStatsController.php:32", condition: "match completed and player belongs to match team", behavior: "allow stat update", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/MatchAttendanceController.php:32", scope: "match/team validation and attendance/stat writes", isolation: "database transaction", must_preserve: true } }

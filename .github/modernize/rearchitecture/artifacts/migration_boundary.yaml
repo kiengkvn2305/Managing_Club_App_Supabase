@@ -1,0 +1,44 @@
+user_intent:
+  raw_request: "Move FCMS PRO from Laravel/MySQL/Sanctum to Supabase/PostgreSQL/Auth and deploy the existing Vanilla JS/Vite frontend on Cloudflare Pages; keep Laravel source unchanged."
+  inferred_acceptance:
+    - "Supabase database, Auth and tenant RLS are deployable without importing or deleting data."
+    - "The existing HTML/CSS/Vanilla JS/Vite frontend can use Supabase Auth and database APIs."
+    - "Finance, dues and inventory balance mutations execute atomically in database functions."
+    - "Laravel source remains available as the behavior baseline."
+  cleanup_required: false
+strategy: phased
+runtime_reachable:
+  - frontend/index.html
+  - frontend/src/main.js
+  - frontend/src/app.js
+  - frontend/src/api.js
+  - frontend/src/supabase-api.js
+  - frontend/src/state.js
+  - frontend/public/manifest.webmanifest
+  - frontend/public/sw.js
+must_rewrite:
+  - path: frontend/src/api.js
+    reason: "Preserve the existing testable API seam while selecting Supabase for the production browser runtime."
+  - path: frontend/src/supabase-api.js
+    reason: "New Supabase Auth/PostgREST/RPC adapter required by the target runtime."
+  - path: frontend/vite.config.js
+    reason: "Cloudflare Pages build must not depend on the Laravel `/api` or `/sanctum` proxy."
+  - path: frontend/package.json
+    reason: "Browser Supabase client dependency is required by the target runtime."
+  - path: frontend/.env.example
+    reason: "Document public Vite Supabase configuration without secrets."
+  - path: supabase/migrations/20261119000000_fcms_supabase.sql
+    reason: "Target PostgreSQL schema, RLS, Auth profile trigger and transactional RPCs."
+copy_as_is:
+  - frontend/src/styles.css
+  - frontend/src/pages.js
+  - frontend/src/components/ui.js
+  - frontend/src/spreadsheets.js
+  - frontend/public/manifest.webmanifest
+  - frontend/public/sw.js
+legacy_allowed_to_remain: []
+defer_cleanup:
+  - "Keep Laravel/MySQL migration evidence only in Git history and docs; no legacy runtime files remain in Project 2."
+full_rewrite_reason: null
+implementation_rule: >
+  Implementation scope is the must_rewrite list. Source anchors prove behavior exists but are not blanket rewrite targets; the Laravel source is frozen by the declared seam.

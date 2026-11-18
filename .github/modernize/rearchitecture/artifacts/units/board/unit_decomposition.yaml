@@ -1,0 +1,5 @@
+unit: board
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/ClubBoardController.php:30-165", drivers: [concern_split], rationale: "Board people, tasks and dues rates have separate lifecycle and authorization concerns.", source_slice: { file: "backend/app/Http/Controllers/ClubBoardController.php", lines: [30, 165] } }
+

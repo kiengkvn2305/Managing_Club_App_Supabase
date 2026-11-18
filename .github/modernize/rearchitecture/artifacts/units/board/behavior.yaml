@@ -1,0 +1,7 @@
+unit: board
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/ClubBoardController.php:30", effect: "Creates/archives board membership and dues periods.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/ClubBoardController.php:15", condition: "actor is owner", behavior: "allow board changes", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/ClubBoardController.php:30", scope: "club lock, board row and membership period", isolation: "row lock", must_preserve: true } }

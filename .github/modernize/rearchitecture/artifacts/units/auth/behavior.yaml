@@ -1,0 +1,8 @@
+unit: auth
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/AuthController.php:15", effect: "Creates/updates authenticated account and verification state.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/AuthController.php:25", condition: "active account credentials are valid", behavior: "creates authenticated session; invalid credentials return validation error", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Requests/AuthRequest.php:20", trigger: "invalid email/password or password confirmation", outcome: "form receives field errors", contract: "422 validation response", must_preserve: true }
+concurrency: { model: async, tx_boundary: { source_loc: "backend/app/Http/Controllers/AuthController.php:55", scope: "password update and session revocation", isolation: "database default", must_preserve: true } }

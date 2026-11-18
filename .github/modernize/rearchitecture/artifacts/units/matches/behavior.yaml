@@ -1,0 +1,8 @@
+unit: matches
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/ClubMatchController.php:37", effect: "Creates/updates a club match and synchronizes linked lineup metadata.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/ClubMatchController.php:28", condition: "completed status", behavior: "both scores required; score cannot undercut player statistics", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Controllers/ClubMatchController.php:21", trigger: "calendar window exceeds 42 days or has >500 rows", outcome: "validation error", contract: "422 validation response", must_preserve: true }
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/ClubMatchController.php:37", scope: "club lock, match lock, linked lineup update and audit", isolation: "row lock", must_preserve: true } }

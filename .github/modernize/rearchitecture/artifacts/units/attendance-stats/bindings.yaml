@@ -1,0 +1,4 @@
+unit: attendance-stats
+bindings:
+  - { type: route-declaration, name: "matches/{match}/attendance|player-stats", source_loc: "backend/routes/web.php:107", target: "attendance/stat tables with composite FKs", must_appear_in_target: true, notes: "Cross-club IDs are rejected by composite ownership." }
+runtime_config: []

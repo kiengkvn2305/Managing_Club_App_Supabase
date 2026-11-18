@@ -1,0 +1,4 @@
+unit: matches
+bindings:
+  - { type: route-declaration, name: "matches", source_loc: "backend/routes/web.php:105", target: "club_matches RLS and transactional writes", must_appear_in_target: true, notes: "Team and friendly invitation must share club_id." }
+runtime_config: []

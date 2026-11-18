@@ -1,0 +1,31 @@
+flows:
+  - name: authenticated-user-to-club-context
+    medium: jwt-claim
+    key: "auth.uid() -> club_members.user_id"
+    writer: { unit: auth, source_loc: "frontend/src/supabase-api.js:24" }
+    reader: { unit: club-access, source_loc: "supabase/migrations/20261119000000_fcms_supabase.sql:1" }
+    pairing: matched
+    must_preserve: true
+    must_confirm: null
+    verification_hint: "Authenticated client can list only active club_members rows for auth.uid()."
+    notes: "Supabase Auth session replaces Laravel Sanctum/session cookies."
+  - name: selected-club-to-all-tenant-queries
+    medium: database
+    key: "club_id"
+    writer: { unit: clubs, source_loc: "frontend/src/state.js:13" }
+    reader: { unit: finance, source_loc: "frontend/src/supabase-api.js:58" }
+    pairing: matched
+    must_preserve: true
+    must_confirm: null
+    verification_hint: "Switching clubId changes every query and RLS rejects a foreign club."
+    notes: "RLS is the authority; club_id from the browser is never sufficient for access."
+  - name: legacy-session-to-supabase-session
+    medium: framework-context
+    key: "Sanctum cookie -> Supabase JWT"
+    writer: { unit: auth, source_loc: "backend/routes/web.php:31" }
+    reader: { unit: pwa, source_loc: "frontend/src/supabase-api.js:18" }
+    pairing: unmatched-reader
+    must_preserve: true
+    must_confirm: runtime
+    verification_hint: "Refresh browser and reopen PWA; session remains valid without /sanctum/csrf-cookie."
+    notes: "The Laravel side is frozen and remains only as a baseline during the phased cutover."

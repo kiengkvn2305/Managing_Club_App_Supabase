@@ -1,0 +1,4 @@
+unit: activities
+bindings:
+  - { type: route-declaration, name: "activities", source_loc: "backend/routes/web.php:66", target: "activity tables with approval RLS", must_appear_in_target: true, notes: "Attendance only accepts scheduled approved training." }
+runtime_config: []

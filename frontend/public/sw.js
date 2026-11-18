@@ -35,7 +35,7 @@ self.addEventListener("fetch", (event) => {
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
     url.pathname.startsWith("/api") ||
-    url.pathname.startsWith("/sanctum")
+    url.pathname.startsWith("/auth")
   )
     return;
   if (request.mode === "navigate") {

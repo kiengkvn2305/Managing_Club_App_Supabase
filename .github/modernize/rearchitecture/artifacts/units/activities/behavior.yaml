@@ -1,0 +1,7 @@
+unit: activities
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/ActivityController.php:36", effect: "Creates training/award records with approval status and attendance JSON.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/ActivityController.php:15", condition: "owner versus deputy submitter", behavior: "approved or pending activity", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/ActivityController.php:36", scope: "club lock, team/player validation and insert", isolation: "row lock", must_preserve: true } }

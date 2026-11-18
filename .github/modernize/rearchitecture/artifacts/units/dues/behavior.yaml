@@ -1,0 +1,9 @@
+unit: dues
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/TeamDuesController.php:98", effect: "Creates dues entries and one aggregate income transaction for paid dues.", must_preserve: true }
+  - { source_loc: "backend/app/Http/Controllers/TeamDuesController.php:15", effect: "Corrects dues and finance transaction atomically with adjustment history.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Services/TeamDuesService.php:7", condition: "membership period and effective rate make a month eligible", behavior: "calculate debt/rate; otherwise omit or mark none", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Controllers/TeamDuesController.php:29", trigger: "expected status differs or no amount exists", outcome: "reject stale correction without mutation", contract: "422 validation response", must_preserve: true }
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/TeamDuesController.php:15", scope: "club lock, entry lock, source transaction adjustment and history", isolation: "row lock", must_preserve: true } }

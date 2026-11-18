@@ -1,0 +1,50 @@
+modules:
+  - name: frontend-api-client
+    kind: config
+    source_loc: "frontend/src/api.js:1"
+    used_by_units: [auth, clubs, roster, finance, dues, inventory, matches, pwa]
+    fields:
+      - { name: request, type: "function(path, options)" }
+      - { name: auth_session, type: "Supabase Auth session" }
+      - { name: error_contract, type: "ApiError(status, errors)" }
+    god_class: false
+    split_candidate: false
+    migration_strategy: wrap
+    notes: "The compatibility seam preserves existing UI call sites while switching the default implementation to Supabase."
+  - name: club-authorization
+    kind: utility
+    source_loc: "backend/app/Policies/ClubPolicy.php:8"
+    used_by_units: [clubs, membership, board, roster, activities]
+    fields:
+      - { name: club_role, type: "ClubRole" }
+      - { name: status, type: "active|archived" }
+      - { name: title, type: "string|null" }
+      - { name: approval_status, type: "approved|pending" }
+    god_class: false
+    split_candidate: false
+    migration_strategy: copy
+    notes: "Role/title semantics are moved into database security-definer helpers and RLS policies."
+  - name: finance-rpc
+    kind: utility
+    source_loc: "backend/app/Http/Controllers/FinanceController.php:56"
+    used_by_units: [finance, dues, matches, attendance-stats]
+    fields:
+      - { name: record_finance_transaction, type: "PostgreSQL RPC" }
+      - { name: idempotency_key, type: "uuid|null" }
+      - { name: tx_boundary, type: "database transaction" }
+    god_class: false
+    split_candidate: false
+    migration_strategy: wrap
+    notes: "No frontend balance mutation is allowed; ledger writes go through RPCs."
+  - name: inventory-rpc
+    kind: utility
+    source_loc: "backend/app/Http/Controllers/InventoryController.php:139"
+    used_by_units: [inventory]
+    fields:
+      - { name: record_inventory_movement, type: "PostgreSQL RPC" }
+      - { name: row_lock, type: "FOR UPDATE" }
+      - { name: balance_after, type: "integer" }
+    god_class: false
+    split_candidate: false
+    migration_strategy: wrap
+    notes: "Inventory quantity and movement history are written atomically."

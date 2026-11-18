@@ -1,0 +1,5 @@
+unit: recruitment
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/RecruitmentController.php:10-89", drivers: [concern_split], rationale: "Post lifecycle and applicant lifecycle can evolve independently and have separate privacy rules.", source_slice: { file: "backend/app/Http/Controllers/RecruitmentController.php", lines: [10, 89] } }
+

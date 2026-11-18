@@ -1,0 +1,8 @@
+unit: finance
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/FinanceController.php:56", effect: "Creates a ledger transaction and audit row; receipt storage is cleaned up on failure.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Policies/ClubPolicy.php:8", condition: "owner, finance title or treasurer", behavior: "view finance; owner/treasurer may write", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Controllers/FinanceController.php:56", trigger: "invalid amount or receipt", outcome: "no ledger row is committed", contract: "422 validation response", must_preserve: true }
+concurrency: { model: sync, tx_boundary: { source_loc: "supabase/migrations/20261119000000_fcms_supabase.sql:1", scope: "permission check, club row lock, ledger insert and audit", isolation: "PostgreSQL transaction", must_preserve: true } }

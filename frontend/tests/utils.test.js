@@ -52,7 +52,7 @@ test("dates use real calendar validation and jersey number zero is valid", () =>
     {},
   );
 });
-test("pagination understands Laravel resources", () =>
+test("pagination understands the shared response envelope", () =>
   assert.equal(
     unpackList({ data: [{ id: 1 }], meta: { total: 1 } }).meta.total,
     1,

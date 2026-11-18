@@ -1,0 +1,8 @@
+unit: pwa
+side_effects:
+  - { source_loc: "frontend/public/sw.js:9", effect: "Caches static shell assets and serves an offline navigation fallback.", must_preserve: true }
+branches:
+  - { source_loc: "frontend/public/sw.js:34", condition: "private API, auth, write or cross-origin request", behavior: "do not intercept/cache", must_preserve: true }
+error_paths:
+  - { source_loc: "frontend/public/sw.js:39", trigger: "navigation network failure", outcome: "serve offline.html", contract: "offline navigation fallback", must_preserve: true }
+concurrency: { model: event-loop, tx_boundary: { source_loc: "frontend/public/sw.js:1", scope: "cache population only; no application writes", isolation: "browser cache", must_preserve: true } }

@@ -1,0 +1,5 @@
+unit: attendance-stats
+commit: false
+candidate_splits:
+  - { id: "backend/app/Http/Controllers/PlayerStatsController.php:12-114", drivers: [concern_split], rationale: "Match-level stat editing and aggregate player summary have different query shape and authorization surfaces.", source_slice: { file: "backend/app/Http/Controllers/PlayerStatsController.php", lines: [12, 114] } }
+

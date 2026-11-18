@@ -1,18 +1,15 @@
 # Phân quyền
 
-Đúng ba actor cấp cao: **System Admin, Club Manager, Club Member**. Các role dưới đây là chức danh theo CLB, không tạo thêm actor. `users.is_system_admin` không cấp quyền tenant. API admin toàn hệ thống còn PLANNED.
+RLS là authority cuối cùng; frontend chỉ ẩn/hiện nút để hỗ trợ UX.
 
-| Role membership active | Thông tin CLB/đội/counts | Đọc/sửa nhân sự, tạo đội | Sửa CLB/lưu trữ | Tạo lời mời |
-| --- | --- | --- | --- | --- |
-| owner | Có | Có | Có | Mọi role trừ owner |
-| co_owner | Có | Có | Có | Trừ owner/co_owner |
-| general_manager | Có | Có | Có | Chỉ member |
-| hr_manager | Có | Có | Không | Chỉ member |
-| sporting_manager | Có | Có | Không | Không |
-| treasurer | Có | Không | Không | Không |
-| equipment_manager | Có | Không | Không | Không |
-| member | Có | Không | Không | Không |
+- `club_members`: một user nhiều CLB; một CLB nhiều managers.
+- `is_active_member`: tenant visibility.
+- `can_manage_club`: owner/co-owner/general manager.
+- `can_manage_roster`: owner/co-owner/general manager/HR/sporting.
+- `can_view_finance`: owner hoặc title finance được phép.
+- `can_manage_finance`: owner hoặc Thủ quỹ.
+- `can_view/manage_inventory`: role equipment phù hợp.
+- `can_manage_people`: owner/co-owner/general manager/HR.
+- Finance, dues, inventory, match-cost và import writes dùng RPC có kiểm tra quyền trong database.
 
-CLB archived vẫn đọc được theo quyền, chặn ghi roster/đội/lời mời; người có quyền sửa CLB có thể kích hoạt lại. Roster là thông tin riêng; member thường chưa có endpoint hồ sơ cầu thủ cá nhân trong lát cắt này. Roles finance/inventory chỉ có hiệu lực khi module tương ứng triển khai.
-
-Mọi user chỉ sửa account của mình; nhận invite cần email đã xác minh đúng đích. Ngoài tenant nhận 404; membership hợp lệ nhưng thiếu quyền nhận 403; chưa login nhận 401. Route guards và ẩn nút chỉ hỗ trợ UX; backend Policy quyết định cuối cùng.
+Không có policy “mọi authenticated user được xem/sửa mọi CLB”.

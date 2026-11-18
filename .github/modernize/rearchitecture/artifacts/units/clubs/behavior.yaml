@@ -1,0 +1,9 @@
+unit: clubs
+side_effects:
+  - { source_loc: "backend/app/Services/ClubService.php:19", effect: "Creates a club, owner membership and audit row atomically.", must_preserve: true }
+  - { source_loc: "backend/app/Http/Controllers/ClubController.php:164", effect: "Soft archives a club while retaining tenant data.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Policies/ClubPolicy.php:24", condition: "role manages club", behavior: "allow club update; otherwise deny", must_preserve: true }
+error_paths:
+  - { source_loc: "backend/app/Http/Requests/ClubRequest.php:19", trigger: "invalid format/status/name", outcome: "validation errors", contract: "422 validation response", must_preserve: true }
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Services/ClubService.php:19", scope: "club and owner membership creation", isolation: "database transaction", must_preserve: true } }

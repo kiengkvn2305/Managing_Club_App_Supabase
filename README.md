@@ -1,41 +1,47 @@
-# FCMS PRO
+# FCMS PRO — Supabase Edition
 
-Laravel 12 + Sanctum; HTML/CSS/Vanilla JavaScript + Vite; MySQL 8.4 là đích triển khai. SQLite phục vụ development/kiểm thử local.
+FCMS PRO dùng Supabase Auth, PostgreSQL/RLS/RPC/Storage, Vanilla JavaScript + Vite và Cloudflare Pages.
 
-**Hiện là lát cắt core chạy được, chưa phải toàn bộ sản phẩm.** Account/session/email verification, nhiều CLB/role theo CLB, đội, nhân sự CRUD/tìm kiếm/lọc/phân trang, lời mời và dashboard dùng dữ liệu thật. Không seed account hoặc số liệu minh họa. Excel/tài chính/bóng đá/kho/advanced chưa triển khai.
-
-**Chạy nhanh trên Windows:** bấm đúp [CHAY-NHANH.cmd](CHAY-NHANH.cmd). Script tự chuẩn bị database SQLite riêng, khởi động backend/frontend/queue và mở trình duyệt khi sẵn sàng. Giữ cửa sổ mở; nhấn Ctrl+C để dừng. Không cần bật Apache/MySQL hoặc import SQL. Máy hiện tại đã có PHP của XAMPP và Node.js.
-
-Hoặc từ terminal:
+## Chạy nhanh
 
 ```powershell
+cd D:\Managing_Club_App_Supabase
+npm run setup
 npm start
 ```
 
-Dữ liệu chế độ chạy nhanh được lưu ở `.tools/local/fcms.sqlite`, giữ lại qua các lần chạy. Đây là database **riêng**, không tự lấy tài khoản/dữ liệu MySQL. Cấu hình backend env và database đang có được giữ nguyên. Chưa có tài khoản thì tự đăng ký. Lần đầu thiếu dependencies sẽ tự cài từ lock, cần Internet; các lần sau không cài lại. Máy mới vẫn cần Node 22.12+ và PHP 8.2+ có PDO SQLite.
+Mở http://127.0.0.1:5173.
 
-Muốn dùng database đã cấu hình trong [backend/.env](backend/.env), bật server database tương ứng rồi chạy:
+Để đăng nhập và dùng dữ liệu thật, chạy migration [supabase/migrations/20261119000000_fcms_supabase.sql](supabase/migrations/20261119000000_fcms_supabase.sql), sau đó tạo `frontend/.env.local`:
+
+```env
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<publishable-or-anon-key>
+```
+
+Không đưa `service_role`, database password hoặc JWT secret vào frontend.
+
+## Lệnh phát triển
 
 ```powershell
 npm run dev
-```
-
-Mở http://127.0.0.1:5173 và tự đăng ký tài khoản. API http://127.0.0.1:8000. Script tìm PHP trong PATH hoặc XAMPP; có thể đặt PHP_BIN. Ctrl+C dừng server và queue worker. Database dùng thực tế không chứa dữ liệu QA từ kiểm thử launcher.
-
-Checkout mới cần Node 22.12+ (khuyến nghị 24 LTS), PHP 8.2+ và các extensions Laravel/PDO/XML/zip/mbstring/bcmath:
-
-```powershell
-node scripts/setup.mjs --sqlite
-npm run dev
-```
-
-Setup giữ env/key đã có; chỉ chọn SQLite nếu tạo env mới. Composer portable được tải từ nguồn chính thức và kiểm tra SHA-256. MySQL/Docker xem [INSTALLATION](docs/INSTALLATION.md).
-
-Nếu muốn import database bằng phpMyAdmin/MySQL CLI, dùng [fcms_pro_mysql.sql](backend/database/sql/fcms_pro_mysql.sql) trên database **trống**. File gồm 15 bảng của core hiện tại, sinh từ Laravel migrations; xem [hướng dẫn import](docs/DATABASE.md#import-sql-cho-mysql-84). Không chứa tài khoản hay dữ liệu mẫu.
-
-```powershell
-npm test
+npm run test:frontend
+npm run test:supabase
 npm run build
 ```
 
-[PROGRESS](PROGRESS.md) và [NEXT_STEPS](NEXT_STEPS.md) ghi kết quả/phần thiếu; [TESTING](docs/TESTING.md) ghi bằng chứng và giới hạn. [Tài liệu](docs/README.md) gồm toàn bộ yêu cầu/ERD/API/roadmap. Chưa deploy/publish hoặc build APK/IPA.
+`npm start`/`npm run dev` chỉ chạy Vite frontend; dữ liệu và authentication đi qua Supabase.
+
+## Tài liệu
+
+- [Thiết lập Supabase](docs/SUPABASE_SETUP.md)
+- [Deploy Cloudflare Pages](docs/CLOUDFLARE_DEPLOY.md)
+- [Cài PWA](docs/PWA_INSTALL.md)
+- [Migration checklist](docs/MIGRATION_CHECKLIST.md)
+- [Backup/restore](docs/BACKUP_RESTORE.md)
+- [Tiến độ](PROGRESS.md)
+- [Bước tiếp theo](NEXT_STEPS.md)
+
+## Trạng thái xác minh
+
+Kết quả gần nhất: 30 frontend tests, 4 Supabase static tests, database test 10/10, database lint sạch và Vite build PASS trên Supabase local. Cần chạy thêm staging integration và device smoke test trước khi phát hành. Xem [docs/TESTING.md](docs/TESTING.md).

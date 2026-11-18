@@ -1,0 +1,4 @@
+unit: club-access
+bindings:
+  - { type: middleware, name: EnsureClubAccess, source_loc: "backend/routes/web.php:39", target: "RLS is_active_member helper", must_appear_in_target: true, notes: "Tenant is derived from membership, not frontend role." }
+runtime_config: []

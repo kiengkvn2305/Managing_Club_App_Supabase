@@ -16,8 +16,8 @@ test("service worker never intercepts private API, auth, writes or cross-origin 
     URL,
   });
   for (const [path, method] of [
-    ["/api/v1/clubs", "GET"],
-    ["/sanctum/csrf-cookie", "GET"],
+    ["/rest/v1/clubs", "GET"],
+    ["/auth/recovery", "GET"],
     ["/icons/crest.svg", "POST"],
     ["https://other.test/assets/x.js", "GET"],
     ["/private/photo.jpg", "GET"],

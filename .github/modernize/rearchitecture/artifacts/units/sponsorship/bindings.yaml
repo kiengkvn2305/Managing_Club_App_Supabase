@@ -1,0 +1,4 @@
+unit: sponsorship
+bindings:
+  - { type: route-declaration, name: "sponsors/sponsorships", source_loc: "backend/routes/web.php:39", target: "sponsor tables with club RLS", must_appear_in_target: true, notes: "Receipt is informational and must not mutate finance automatically." }
+runtime_config: []

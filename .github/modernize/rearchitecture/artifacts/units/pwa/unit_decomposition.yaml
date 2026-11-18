@@ -1,0 +1,4 @@
+unit: pwa
+commit: false
+candidate_splits:
+  - { id: "frontend/src/main.js:1-15", drivers: [platform_split], rationale: "Browser PWA lifecycle and native Capacitor lifecycle are related but have different runtime APIs.", source_slice: { file: "frontend/src/main.js", lines: [1, 15] } }

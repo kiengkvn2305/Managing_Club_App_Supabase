@@ -1,0 +1,4 @@
+unit: polls
+bindings:
+  - { type: route-declaration, name: "polls/{poll}/vote", source_loc: "backend/routes/web.php:49", target: "club_poll_votes RLS/unique vote", must_appear_in_target: true, notes: "Vote option and elector share club/poll composite keys." }
+runtime_config: []

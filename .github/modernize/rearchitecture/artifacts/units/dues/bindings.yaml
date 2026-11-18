@@ -1,0 +1,4 @@
+unit: dues
+bindings:
+  - { type: route-declaration, name: "dues", source_loc: "backend/routes/web.php:70", target: "dues RPCs and RLS", must_appear_in_target: true, notes: "Paid dues create linked ledger income in the same transaction." }
+runtime_config: []

@@ -1,4 +1,4 @@
-import { createApiClient } from "./api.js";
+import { createApiClient } from "./api-supabase.js";
 import { state as s, currentClub } from "./state.js";
 import { page, authPage, titles } from "./pages.js";
 import { openLineup, openCaptain } from "./lineups.js";
@@ -6,7 +6,7 @@ import { downloadMemberTemplate, parseMembers, exportFinance, exportMembers } fr
 import { reviewImport } from "./import-review.js";
 import { activityAction } from "./activities.js";
 import { openAttendanceReport } from './attendance-report.js';
-import { avatar, imageUrl } from './images.js';
+import { avatar, imageUrl, primeImageUrls } from './images.js';
 import { setupImageCropper } from './image-crop.js';
 import { openMatch } from './matches.js';
 import { calendarRange } from './matches-page.js';
@@ -133,7 +133,17 @@ function clearData() {
   s.error = "";
 }
 function readRoute() {
-  const [route, query = ""] = location.hash.slice(1).split("?");
+  const rawHash = location.hash.slice(1);
+  const recoveryText = rawHash.includes("access_token=") ? rawHash : location.search.slice(1);
+  const recovery = new URLSearchParams(recoveryText);
+  if (recovery.get("type") === "recovery" || recovery.get("code")) {
+    s.authMode = "reset";
+    s.resetToken = recovery.get("access_token") || recovery.get("code") || "";
+    s.resetEmail = "";
+    s.route = "dashboard";
+    return;
+  }
+  const [route, query = ""] = rawHash.split("?");
   if (route === 'reset-password') {
     const params = new URLSearchParams(query); s.resetToken = params.get('token') || ''; s.resetEmail = params.get('email') || ''; s.authMode = 'reset'; s.route = 'dashboard';
     history.replaceState(null, '', location.pathname + location.search); return;
@@ -157,6 +167,7 @@ async function loadApp() {
     if (seq !== sequence || !s.user) return;
     s.clubs = unpackList(result).rows;
     if (!currentClub()) s.clubId = s.clubs[0]?.id || null;
+    await primeImageUrls([{ kind: 'account', id: s.user.id, version: s.user.avatar_version }, ...s.clubs.flatMap((club) => [{ kind: 'club', id: club.id, version: club.avatar_version, clubId: club.id }, { kind: 'background', id: club.id, version: club.background_version, clubId: club.id }])]);
     await loadView();
   } catch (error) {
     if (seq !== sequence || !s.user) return;
@@ -246,6 +257,7 @@ async function loadView() {
         s.members = route === "dashboard" ? rows.map((m) => ({ ...m, team: { name: (m.teams || []).map((t) => t.name).join(", ") || "Chưa xếp đội" }, jersey_number: null })) : rows;
         s.meta = meta;
       }
+      await primeImageUrls([{ kind: 'account', id: s.user.id, version: s.user.avatar_version }, { kind: 'club', id: tenant, version: currentClub()?.avatar_version, clubId: tenant }, { kind: 'background', id: tenant, version: currentClub()?.background_version, clubId: tenant }, ...(s.members || []).map((member) => ({ kind: 'player', id: member.id, version: member.avatar_version, clubId: tenant })), ...(s.myPlayer ? [{ kind: 'player', id: s.myPlayer.id, version: s.myPlayer.avatar_version, clubId: tenant }] : [])]);
     }
     if (signal.aborted || !s.user) return;
     s.loading = false;

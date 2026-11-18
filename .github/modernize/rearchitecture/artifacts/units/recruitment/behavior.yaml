@@ -1,0 +1,7 @@
+unit: recruitment
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/RecruitmentController.php:22", effect: "Creates/updates recruitment posts and applications inside club scope.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/RecruitmentController.php:59", condition: "application belongs to post and club", behavior: "allow status update", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/RecruitmentController.php:59", scope: "post/application ownership and update", isolation: "database transaction", must_preserve: true } }

@@ -1,0 +1,5 @@
+unit: club-access
+commit: false
+candidate_splits:
+  - { id: "backend/app/Services/ClubService.php:44-77", drivers: [lifecycle_split], rationale: "Invitation issue and invitation acceptance have separate actors, token lifecycles and transaction locks.", source_slice: { file: "backend/app/Services/ClubService.php", lines: [44, 77] } }
+

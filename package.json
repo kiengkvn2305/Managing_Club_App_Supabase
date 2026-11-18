@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node scripts/start.mjs",
+    "start": "node scripts/start-frontend.mjs",
     "test": "node scripts/test.mjs",
-    "setup": "node scripts/setup.mjs",
-    "dev": "node scripts/dev.mjs",
+    "setup": "npm --prefix frontend ci",
+    "dev": "npm --prefix frontend run dev",
     "test:frontend": "npm --prefix frontend test",
-    "test:launcher": "node --test scripts/start.test.mjs",
+    "test:supabase": "node --test scripts/supabase.test.mjs",
     "build": "npm --prefix frontend run build"
   }
 }

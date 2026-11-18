@@ -1,6 +1,10 @@
 {
   "name": "fcms-pro-frontend",
-  "overrides": { "exceljs": { "uuid": "^11.1.1" } },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
+  },
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -18,6 +22,7 @@
     "@capacitor/core": "^8.0.0",
     "@capacitor/network": "^8.0.0",
     "@capacitor/splash-screen": "^8.0.0",
+    "@supabase/supabase-js": "^2.119.1",
     "exceljs": "^4.4.0"
   },
   "devDependencies": {

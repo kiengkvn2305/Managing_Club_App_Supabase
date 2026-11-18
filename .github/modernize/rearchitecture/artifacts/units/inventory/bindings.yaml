@@ -1,0 +1,4 @@
+unit: inventory
+bindings:
+  - { type: route-declaration, name: "inventory movements", source_loc: "backend/routes/web.php:53", target: "record_inventory_movement RPC", must_appear_in_target: true, notes: "Direct quantity updates are not a supported browser operation." }
+runtime_config: []

@@ -1,0 +1,7 @@
+unit: lineups
+side_effects:
+  - { source_loc: "backend/app/Http/Controllers/LineupController.php:39", effect: "Stores lineup JSON and links it to a match when supplied.", must_preserve: true }
+branches:
+  - { source_loc: "backend/app/Http/Controllers/LineupController.php:39", condition: "lineup exists", behavior: "update; otherwise create", must_preserve: true }
+error_paths: []
+concurrency: { model: sync, tx_boundary: { source_loc: "backend/app/Http/Controllers/LineupController.php:39", scope: "lineup validation and save", isolation: "database transaction", must_preserve: true } }

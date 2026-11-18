@@ -1,0 +1,57 @@
+contracts:
+  - name: auth-session
+    unit: auth
+    type: rest
+    stability: frozen
+    source_loc: "backend/routes/web.php:24"
+    contract: { method: "POST/GET/PATCH", path: "/api/v1/auth/*", request: "email/password/profile fields", response: "JSON data user", error: "422 validation, 401 unauthenticated", auth: "Sanctum session cookie" }
+    target_contract: { method: "supabase.auth.signUp/signInWithPassword/getUser/updateUser/signOut", notes: "Return the existing data envelope to the UI; JWT is managed by Supabase Auth." }
+    semantic_divergence: [ { field: "session", issue: "Sanctum cookie/CSRF becomes persisted Supabase JWT; service worker must not cache auth requests.", source_loc: "frontend/src/api.js:23" } ]
+  - name: club-list
+    unit: clubs
+    type: rest
+    stability: must_preserve
+    source_loc: "backend/routes/web.php:36"
+    contract: { method: "GET", path: "/api/v1/clubs", request: "authenticated user", response: "data[] with membership_role and capability flags", error: "401", auth: "active user" }
+    target_contract: { method: "supabase.from('club_members').select('club:clubs(*)')", notes: "RLS returns only active memberships; flags are derived from database role/title." }
+    semantic_divergence: [ { field: "club_id", issue: "Frontend selection is a filter only; RLS remains the authority.", source_loc: "backend/app/Http/Middleware/EnsureClubAccess.php:8" } ]
+  - name: roster
+    unit: roster
+    type: rest
+    stability: frozen
+    source_loc: "backend/routes/web.php:124"
+    contract: { method: "GET/POST/PATCH/DELETE", path: "/api/v1/clubs/{club}/members", request: "validated player profile", response: "resource with teams[]", error: "403/404/422", auth: "club roster capability" }
+    target_contract: { method: "PostgREST player_profiles/team_players with RLS", notes: "Preserve teams[] response shape for existing renderers; composite FK prevents cross-club links." }
+    semantic_divergence: [ { field: "teams", issue: "Laravel resource nesting is reconstructed from PostgREST relations.", source_loc: "backend/app/Http/Resources/PlayerResource.php:8" } ]
+  - name: finance-ledger
+    unit: finance
+    type: rest
+    stability: frozen
+    source_loc: "backend/routes/web.php:77"
+    contract: { method: "GET/POST", path: "/api/v1/clubs/{club}/finance", request: "income/expense amount/date/description/receipt", response: "ledger rows, summary, chart, adjustments", error: "403/422", auth: "finance capability" }
+    target_contract: { method: "rpc('record_finance_transaction') + PostgREST read", notes: "RPC locks club row, checks role/title, inserts ledger and audit atomically; optional idempotency key makes replay safe." }
+    semantic_divergence: [ { field: "amount", issue: "MySQL unsigned bigint is PostgreSQL bigint with amount > 0 check; no floating point is accepted.", source_loc: "backend/database/migrations/2026_11_18_000007_club_finance_team_positions.php:10" } ]
+  - name: dues
+    unit: dues
+    type: rest
+    stability: frozen
+    source_loc: "backend/routes/web.php:70"
+    contract: { method: "GET/POST/PATCH", path: "/api/v1/clubs/{club}/dues", request: "month/player/status/expected_status", response: "dues rows or no content", error: "403/422 stale correction", auth: "finance capability" }
+    target_contract: { method: "PostgreSQL dues RPCs", notes: "Dues entry and any income transaction/correction history must commit or roll back together." }
+    semantic_divergence: [ { field: "month", issue: "UI uses YYYY-MM; storage uses first day of month date.", source_loc: "backend/app/Http/Controllers/TeamDuesController.php:35" } ]
+  - name: inventory-movement
+    unit: inventory
+    type: rest
+    stability: frozen
+    source_loc: "backend/routes/web.php:58"
+    contract: { method: "POST", path: "/api/v1/clubs/{club}/inventory/{item}/movements", request: "type/quantity/reason", response: "movement id and next quantity", error: "403/422 insufficient stock", auth: "inventory manager" }
+    target_contract: { method: "rpc('record_inventory_movement')", notes: "Row lock and balance update happen in one database function; frontend never writes quantity directly." }
+    semantic_divergence: [ { field: "change", issue: "Adjustment is converted to a signed delta inside the transaction.", source_loc: "backend/app/Http/Controllers/InventoryController.php:145" } ]
+  - name: pwa-shell
+    unit: pwa
+    type: sdk
+    stability: must_preserve
+    source_loc: "frontend/index.html:1"
+    contract: { method: "GET", path: "/", request: "browser navigation", response: "Vite SPA shell/manifest/service worker", error: "offline.html for failed navigation", auth: "none" }
+    target_contract: { method: "Cloudflare Pages static build", notes: "Build command npm run build; output frontend/dist; configure SPA fallback to index.html." }
+    semantic_divergence: [ { field: "cache", issue: "Only static same-origin shell/assets may be cached; API/Auth/private resources are excluded.", source_loc: "frontend/public/sw.js:29" } ]
