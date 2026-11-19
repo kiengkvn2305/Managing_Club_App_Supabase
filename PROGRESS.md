@@ -19,24 +19,27 @@ Ngày cập nhật: 2026-11-19
 ## Đã kiểm chứng local & remote
 
 - Docker daemon và Supabase local stack đang chạy ổn định.
-- Remote project `dandxiwdedbwxtvokeag` đã nhận đầy đủ 8 migrations (từ `20261119000000` đến `20261119000007`).
+- Remote project `dandxiwdedbwxtvokeag` đã nhận đầy đủ 10 migrations (từ `20261119000000` đến `20261119000009`).
 - Database lint (`npx supabase db lint`): sạch, 0 lỗi schema.
-- Database tests (`npx supabase test db`): 53/53 PASS trên 4 file pgTAP (`finance_workflows`, `permissions_catalog`, `schema_rls_finance`, `team_manager_workflow`).
-- Integration tests (`scripts/qa-integration.mjs`): 49/49 PASS với 5 tài khoản và 2 CLB thực tế, bao gồm:
+- Database tests (`npx supabase test db`): 72/72 PASS trên 6 file pgTAP (`board_dues_precedence`, `finance_workflows`, `operational_deletes`, `permissions_catalog`, `schema_rls_finance`, `team_manager_workflow`).
+- Integration tests (`scripts/qa-integration.mjs`): 57/57 PASS với 5 tài khoản và 2 CLB thực tế, bao gồm:
   - Auth, profile, multi-club isolation, team & manager assignment, roster.
   - Concurrency 6 requests ghi trùng lặp (replay protection), idempotency check, reversal.
+  - Ưu tiên mức quỹ BCN, xóa lịch sử mức ưu đãi BCN và bỏ thành viên khỏi BCN (`BOARD-01` đến `BOARD-04`).
+  - Xóa đội an toàn (`delete_team`), xóa cầu thủ khỏi đội (`remove_team_player`), xóa hoạt động, nhà tài trợ, công việc BCN (`OP-TEAM`, `OP-ACT`, `OP-SPON`, `OP-TASK`).
+  - Cài đặt và đọc trang web công khai của CLB (`OP-PUB`).
   - Kỳ kế toán đóng/mở và khóa sổ ledger (`FIN-LOCK`).
   - Storage bucket `fcms-private` và signed URLs.
   - Các quyền bảo mật chống leo quyền (`SEC-ADMIN`, `SEC-OWNER`, `SEC-FIN`, `SEC-LINK`, `SEC-ANON`).
-- Frontend unit tests: 34 PASS.
+- Frontend unit tests: 36 PASS.
 - Supabase static tests: 7 PASS.
 - Vite production build: PASS.
-- Cloudflare Pages (`https://managing-club-app-supabase.pages.dev`): Deploy thành công commit `cc85bb8` (entry `index-CXt-9o6N.js`). HTTP probing xác nhận headers chuẩn (`no-cache` cho HTML và Service Worker, asset 404 không bị fallback HTML gây hỏng cache Service Worker, MIME type chính xác).
+- Cloudflare Pages (`https://managing-club-app-supabase.pages.dev`): Deploy thành công; HTTP probing xác nhận headers chuẩn (`no-cache` cho HTML và Service Worker, asset 404 không bị fallback HTML gây hỏng cache Service Worker, MIME type chính xác).
 
 ## Chưa đủ điều kiện tuyên bố release hoàn chỉnh
 
-- Một số nghiệp vụ nâng cao (mùa giải, website CLB công khai) còn tiếp tục hoàn thiện parity UI.
 - Chưa kiểm thử cài đặt PWA trực tiếp trên thiết bị di động thật (Android / iPhone).
+- Không làm mùa giải theo yêu cầu của người dùng.
 
 ## Lệnh kiểm chứng
 

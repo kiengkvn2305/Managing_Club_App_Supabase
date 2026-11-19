@@ -519,6 +519,22 @@ async function action(el) {
   if (a === "retry") return loadApp();
   if (a === "new-club") return editClub();
   if (a === "edit-club" && canManageClub(currentRole())) return editClub(true);
+  if (a === "edit-public-settings" && canManageClub(currentRole())) {
+    const res = await api.get(base('/public-settings'));
+    const ps = res.data || {};
+    const fields = field("public_slug", "Đường dẫn trang công khai (slug)", ps.public_slug || "", "text") +
+      field("headline", "Tiêu đề giới thiệu nổi bật", ps.headline || "", "text") +
+      `<div class="field"><label class="checkbox"><input type="checkbox" name="is_published" value="true" ${ps.is_published ? "checked" : ""}> Xuất bản trang web công khai</label><small>Khi bật, người ngoài có thể xem thông tin câu lạc bộ qua đường dẫn công khai mà không cần đăng nhập.</small></div>`;
+    return dialog("Trang web công khai", "Thiết lập nhận diện và cổng thông tin mở của câu lạc bộ.", fields, (form) => submit(form, "public-settings", async (data) => {
+      await api.post(base('/public-settings'), {
+        public_slug: data.public_slug?.trim() || null,
+        headline: data.headline?.trim() || null,
+        is_published: data.is_published === "true",
+      });
+      await loadView();
+      toast("Đã lưu cài đặt trang công khai.");
+    }), "Lưu cài đặt");
+  }
   if (a === "delete-club" && currentRole() === "owner") {
     const club = currentClub();
     return dialog("Xóa câu lạc bộ?", `Xóa ${e(club.name)} sẽ ẩn câu lạc bộ với tất cả thành viên. Dữ liệu được giữ trong hệ thống; hiện chưa có chức năng tự khôi phục trên giao diện.`, "", (form) => submit(form, "delete", async () => {

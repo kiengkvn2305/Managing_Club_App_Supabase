@@ -96,7 +96,32 @@ try {
  await run('POLL-01','Voting','Create poll, member votes, duplicate denied',async()=>{const p=(await a.api.post(base+'/polls',{title:'QA poll',deadline:new Date(Date.now()+86400000).toISOString(),options:['A','B']})).data;const poll=(await member.api.get(base+'/polls')).data.find(v=>v.id===p.id);await member.api.post(base+`/polls/${p.id}/vote`,{option_id:poll.options[0].id});await assert.rejects(member.api.post(base+`/polls/${p.id}/vote`,{option_id:poll.options[0].id}));});
  await run('REC-01','Recruitment','Create post and applicant, edit and reload',async()=>{const p=(await a.api.post(base+'/recruitment/posts',{title:'QA keeper',status:'open'})).data;const app=(await a.api.post(base+`/recruitment/posts/${p.id}/applications`,{full_name:'QA Candidate'})).data;await a.api.patch(base+`/recruitment/posts/${p.id}/applications/${app.id}`,{status:'reviewing'});assert.equal((await a.api.get(base+`/recruitment/posts/${p.id}/applications`)).data[0].status,'reviewing');});
  await run('DISC-01','Discipline','Create case, check history',async()=>{const d=(await a.api.post(base+'/discipline',{player_id:player,incident_date:today,title:'QA case',description:'QA',status:'open',fine_amount:''})).data;assert.equal((await a.api.get(base+`/discipline/${d.id}/history`)).data.length,1);});
- await run('SPON-01','Sponsorship','Create sponsor, agreement, receipt and read total',async()=>{const s=(await a.api.post(base+'/sponsors',{name:'QA sponsor'})).data;const p=(await a.api.post(base+'/sponsorships',{sponsor_id:s.id,title:'QA agreement',type:'cash',value:100,starts_on:today,ends_on:today})).data;await a.api.post(base+`/sponsorships/${p.id}/receipts`,{value:30,received_on:today});assert.equal((await a.api.get(base+'/sponsorships')).data[0].received_value,30);});
+ let sponsorId;
+ await run('SPON-01','Sponsorship','Create sponsor, agreement, receipt and read total',async()=>{const s=(await a.api.post(base+'/sponsors',{name:'QA sponsor'})).data;sponsorId=s.id;const p=(await a.api.post(base+'/sponsorships',{sponsor_id:s.id,title:'QA agreement',type:'cash',value:100,starts_on:today,ends_on:today})).data;await a.api.post(base+`/sponsorships/${p.id}/receipts`,{value:30,received_on:today});assert.equal((await a.api.get(base+'/sponsorships')).data[0].received_value,30);});
+ await run('OP-SPON','Sponsor delete','Delete sponsor without agreements',async()=>{
+  const s=(await a.api.post(base+'/sponsors',{name:'QA To Delete'})).data;
+  await a.api.delete(base+`/sponsors/${s.id}`);
+  assert.ok(!(await a.api.get(base+'/sponsors')).data.some(x=>x.id===s.id));
+ });
+ await run('OP-ACT','Activity delete','Create and delete celebration',async()=>{const cel=(await a.api.post(base+'/activities/celebrations',{title:'To delete',event_date:today})).data;await a.api.delete(base+`/activities/celebrations/${cel.id}`);assert.ok(!(await a.api.get(base+'/activities')).data.celebrations.some(c=>c.id===cel.id));});
+ await run('OP-TASK','Board task delete','Create, update and delete board task',async()=>{
+  const p=(await a.api.post(base+'/members',{full_name:'QA Task Board Member',email:`qa-task-${runId}@example.test`,status:'active'})).data.id;
+  const bm=(await a.api.post(base+'/board-members',{player_id:p,title:'Task Member'})).data;
+  const task=(await a.api.post(base+'/board-tasks',{board_member_id:bm.id,title:'Task to delete',progress:10})).data;
+  await a.api.delete(base+`/board-tasks/${task.id}`);
+ });
+ await run('OP-PUB','Public settings','Save and reload public website settings',async()=>{
+  await a.api.post(base+'/public-settings',{public_slug:`slug-${runId}`,headline:'QA Public Headline',is_published:true});
+  const ps=(await a.api.get(base+'/public-settings')).data;
+  assert.equal(ps.public_slug,`slug-${runId}`);
+  assert.equal(ps.headline,'QA Public Headline');
+  assert.equal(ps.is_published,true);
+ });
+ await run('OP-TEAM','Team delete','Create and delete an empty team',async()=>{
+  const emptyTeam=(await a.api.post(base+'/teams',{name:`QA Delete Team ${runId}`,format:'7'})).data.id;
+  await a.api.delete(base+`/teams/${emptyTeam}`);
+  assert.ok(!(await a.api.get(base+'/teams')).data.some(t=>t.id===emptyTeam));
+ });
  await run('IMPORT-01','Excel commit','Preview then commit real rows',async()=>{const players=[{full_name:'QA imported',status:'active'}];assert.equal((await a.api.post(base+'/members/import/preview',{players})).data.length,1);assert.equal((await a.api.post(base+'/members/import/commit',{players,decisions:[{action:'create'}]})).data.created,1);});
  for(const [label,u] of [['ownerB',b],['outsider',outsider]]){
   await run(`SEC-${label}-READ`,'Isolation','Read private A roster from unauthorized account',async()=>assert.equal(checked(await u.c.from('player_profiles').select('id').eq('club_id',clubA)).length,0));
