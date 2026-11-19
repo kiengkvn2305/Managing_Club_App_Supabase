@@ -337,7 +337,13 @@ function clearData() {
   s.boardMembers = [];
   s.boardSharedRates = [];
   s.boardTasks = [];
-  s.activities = { celebrations: [], birthdays: [], trainings: [], awards: [] };
+  s.activities = {
+    celebrations: [],
+    birthdays: [],
+    trainings: [],
+    awards: [],
+    players: [],
+  };
   s.finance = { data: [], summary: {}, meta: {} };
   s.plannedExpenses = [];
   s.discovery = { data: [], meta: {} };

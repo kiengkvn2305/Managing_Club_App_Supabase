@@ -1,19 +1,36 @@
-import { check } from './service-helpers.js';
+import { check, SupabaseApiError } from './service-helpers.js';
 
 export function createActivityService({ supabase }) {
   async function handleActivityRequest(clean, method, data, params, clubId, current) {
     if (!clubId) return null;
 
     if (clean.endsWith('/activities') && method === 'GET') {
-      const [a, t, w, b] = await Promise.all([
-        supabase.from('club_celebrations').select('*').eq('club_id', clubId),
-        supabase.from('team_trainings').select('*').eq('club_id', clubId),
-        supabase.from('club_awards').select('*').eq('club_id', clubId),
+      const [a, t, w, b, p] = await Promise.all([
+        supabase
+          .from('club_celebrations')
+          .select('*')
+          .eq('club_id', clubId)
+          .order('event_date', { ascending: false }),
+        supabase
+          .from('team_trainings')
+          .select('*')
+          .eq('club_id', clubId)
+          .order('training_date', { ascending: false }),
+        supabase
+          .from('club_awards')
+          .select('*')
+          .eq('club_id', clubId)
+          .order('award_year', { ascending: false }),
         supabase
           .from('player_profiles')
           .select('id,full_name,date_of_birth')
           .eq('club_id', clubId)
           .not('date_of_birth', 'is', null),
+        supabase
+          .from('player_profiles')
+          .select('id,full_name,status')
+          .eq('club_id', clubId)
+          .order('full_name', { ascending: true }),
       ]);
 
       return {
@@ -26,20 +43,26 @@ export function createActivityService({ supabase }) {
             name: x.full_name,
             date_of_birth: x.date_of_birth,
           })),
+          players: (check(p) || []).map((x) => ({
+            id: x.id,
+            full_name: x.full_name,
+            status: x.status,
+          })),
         },
       };
     }
 
     const activity = clean.match(/\/activities\/(celebrations|trainings|awards)$/);
     if (activity && method === 'POST') {
+      const type = activity[1];
       const table = {
         celebrations: 'club_celebrations',
         trainings: 'team_trainings',
         awards: 'club_awards',
-      }[activity[1]];
+      }[type];
 
-      const payload = { ...data, club_id: clubId, submitted_by: current.id };
-      if (activity[1] === 'trainings') {
+      const payload = { ...data, club_id: clubId, submitted_by: current?.id || null };
+      if (type === 'trainings') {
         const team = check(
           await supabase
             .from('teams')
@@ -52,18 +75,30 @@ export function createActivityService({ supabase }) {
         payload.team_name = team.name;
         payload.attendance = [];
       }
-      if (activity[1] === 'awards') {
+      if (type === 'awards') {
+        const playerId = Number(data.player_id);
+        const awardYear = Number(data.award_year);
+        const title = String(data.title || '').trim();
+        if (!playerId) {
+          throw new SupabaseApiError('Vui lòng chọn thành viên được khen thưởng.', 422);
+        }
+        if (!title) {
+          throw new SupabaseApiError('Vui lòng nhập danh hiệu khen thưởng.', 422);
+        }
         const player = check(
           await supabase
             .from('player_profiles')
             .select('full_name')
             .eq('club_id', clubId)
-            .eq('id', Number(data.player_id))
+            .eq('id', playerId)
             .single()
         );
-        payload.player_id = Number(data.player_id);
+        payload.player_id = playerId;
         payload.player_name = player.full_name;
-        payload.award_year = Number(data.award_year);
+        payload.award_year = awardYear || new Date().getFullYear();
+        payload.title = title;
+        payload.gift = String(data.gift || '').trim() || null;
+        payload.notes = String(data.notes || '').trim() || null;
       }
 
       return {
@@ -77,16 +112,40 @@ export function createActivityService({ supabase }) {
       /\/activities\/(celebrations|trainings|awards)\/(\d+)$/
     );
     if (activityItem && method === 'PATCH') {
+      const type = activityItem[1];
       const table = {
         celebrations: 'club_celebrations',
         trainings: 'team_trainings',
         awards: 'club_awards',
-      }[activityItem[1]];
+      }[type];
+
+      let updatePayload = { ...data };
+      if (type === 'awards') {
+        updatePayload = {};
+        if (data.title != null) updatePayload.title = String(data.title).trim();
+        if (data.award_year != null) updatePayload.award_year = Number(data.award_year);
+        if (data.gift !== undefined) updatePayload.gift = String(data.gift || '').trim() || null;
+        if (data.notes !== undefined) updatePayload.notes = String(data.notes || '').trim() || null;
+        if (data.player_id) {
+          const playerId = Number(data.player_id);
+          const player = check(
+            await supabase
+              .from('player_profiles')
+              .select('full_name')
+              .eq('club_id', clubId)
+              .eq('id', playerId)
+              .single()
+          );
+          updatePayload.player_id = playerId;
+          updatePayload.player_name = player.full_name;
+        }
+      }
+
       return {
         data: check(
           await supabase
             .from(table)
-            .update(data)
+            .update(updatePayload)
             .eq('club_id', clubId)
             .eq('id', Number(activityItem[2]))
             .select()

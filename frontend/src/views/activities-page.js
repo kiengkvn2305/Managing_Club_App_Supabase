@@ -56,8 +56,13 @@ export function activitiesPage() {
     </label>
   `;
 
+  const canManage =
+    owner ||
+    currentClub()?.is_system_admin ||
+    currentClub()?.can_manage_activities;
+
   const controls = (kind, x) =>
-    owner
+    canManage
       ? `<span class="team-actions">${x.approval_status === 'pending' ? `<button class="text-button" data-action="approve-activity" data-id="${kind}:${x.id}">Duyệt</button>` : ''}<button class="text-button" data-action="edit-activity" data-id="${kind}:${x.id}">Sửa</button><button class="text-button danger" data-action="delete-activity" data-id="${kind}:${x.id}">Xóa</button></span>`
       : '';
 
@@ -160,8 +165,11 @@ export function activitiesPage() {
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Khen thưởng & phần quà</h2>
-          ${button('new-award', 'Thêm khen thưởng')}
+          <div>
+            <h2>Khen thưởng & phần quà</h2>
+            <p>Ghi nhận danh hiệu cá nhân, thành tích và phần quà khen thưởng.</p>
+          </div>
+          ${canManage ? button('new-award', 'Thêm khen thưởng') : ''}
         </div>
         ${
           awards.length
@@ -169,13 +177,13 @@ export function activitiesPage() {
                 .map((a) =>
                   row(
                     `${a.award_year} · ${a.player_name}`,
-                    `${a.title}${a.gift ? ` · Quà: ${a.gift}` : ''}${a.notes ? ` · ${a.notes}` : ''}`,
+                    `${a.title}${a.gift ? ` · 🎁 Quà: ${a.gift}` : ''}${a.notes ? ` · 📝 ${a.notes}` : ''}`,
                     controls('awards', a),
                     a.approval_status === 'pending'
                   )
                 )
                 .join('')
-            : empty('Chưa có khen thưởng', 'Ghi nhận cá nhân xuất sắc và phần quà.')
+            : empty('Chưa có khen thưởng', 'Ghi nhận cá nhân xuất sắc và phần quà khen thưởng.')
         }
       </section>
     </div>

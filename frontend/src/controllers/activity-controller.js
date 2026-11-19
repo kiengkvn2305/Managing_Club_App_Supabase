@@ -12,9 +12,16 @@ export function createActivityController(ctx) {
         'edit-activity',
         'delete-activity',
         'approve-activity',
-      ].includes(a) &&
-      ctx.currentClub()?.can_manage_activities
+      ].includes(a)
     ) {
+      if (
+        !ctx.requirePermission(
+          ctx.currentClub()?.can_manage_activities,
+          'quản lý hoạt động và khen thưởng'
+        )
+      ) {
+        return true;
+      }
       return activityAction(a, el.dataset.id, {
         state: ctx.state,
         api: ctx.api,

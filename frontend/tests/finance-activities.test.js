@@ -20,3 +20,39 @@ test('birthdays show only the current month and paginate three at a time', () =>
   const selected = page(); assert.match(selected, /KhacThang/); assert.doesNotMatch(selected, />Dung</); assert.match(selected, /data-birthday-month/);
   state.birthdayMonth = '';
 });
+
+test('awards render recipient, year, title, gift and management controls', () => {
+  Object.assign(state, {
+    loading: false,
+    error: '',
+    route: 'activities',
+    clubs: [{ id: 1, membership_role: 'owner', can_manage_activities: true }],
+    clubId: 1,
+    activities: {
+      celebrations: [],
+      trainings: [],
+      birthdays: [],
+      awards: [
+        {
+          id: 10,
+          award_year: 2026,
+          player_name: 'Nguyễn Văn An',
+          title: 'Cầu thủ xuất sắc nhất',
+          gift: 'Cúp vàng và 1.000.000đ',
+          notes: 'Đóng góp nhiều bàn thắng',
+          approval_status: 'approved',
+        },
+      ],
+      players: [{ id: 1, full_name: 'Nguyễn Văn An' }],
+    },
+  });
+
+  const html = page();
+  assert.match(html, /Khen thưởng & phần quà/);
+  assert.match(html, /2026 · Nguyễn Văn An/);
+  assert.match(html, /Cầu thủ xuất sắc nhất/);
+  assert.match(html, /Quà: Cúp vàng và 1.000.000đ/);
+  assert.match(html, /Đóng góp nhiều bàn thắng/);
+  assert.match(html, /data-action="edit-activity"/);
+  assert.match(html, /data-action="delete-activity"/);
+});

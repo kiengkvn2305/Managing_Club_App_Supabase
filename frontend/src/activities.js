@@ -32,8 +32,33 @@ export async function activityAction(action, id, { state: s, api, base, reload }
     let fields;
     if (kind === 'celebrations') fields = field('title', 'Tên dịp lễ', item.title, 'text', true) + field('event_date', 'Ngày', item.event_date, 'date', true) + field('message', 'Lời chúc', item.message || '', 'textarea');
     if (kind === 'trainings') fields = (item.team_id ? select('team_id', 'Đội bóng', s.teams.map((t) => [t.id, t.name]), item.team_id) : '') + field('training_date', 'Ngày tập', item.training_date, 'date', true) + field('training_time', 'Giờ tập', item.training_time, 'time', true) + field('location', 'Địa điểm', item.location, 'text', true) + select('training_status', 'Trạng thái', [['scheduled', 'Theo kế hoạch'], ['cancelled', 'Không tập'], ['postponed', 'Hoãn']], item.training_status) + field('notes', 'Ghi chú', item.notes || '', 'textarea');
-    if (kind === 'awards') fields = (item.player_id ? select('player_id', 'Thành viên', (s.activities.players || []).map((p) => [p.id, p.full_name]), item.player_id) : '') + field('award_year', 'Năm', item.award_year, 'number', true).replace('min="0" max="999"', 'min="1900" max="2100"') + field('title', 'Danh hiệu', item.title, 'text', true) + field('gift', 'Phần quà', item.gift || '') + field('notes', 'Ghi chú', item.notes || '', 'textarea');
-    return saveDialog('Chỉnh sửa hoạt động', 'Cập nhật thông tin hoạt động.', fields, async (form) => { await api.patch(base(path), Object.fromEntries(new FormData(form))); await reload(); toast('Đã cập nhật hoạt động.'); });
+    if (kind === 'awards') {
+      let players = (s.activities.players && s.activities.players.length) ? s.activities.players : (s.members || []);
+      if (!players.length) {
+        players = await allPlayers(api, base);
+        s.activities.players = players;
+      }
+      const sortedPlayers = [...players].sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+      fields =
+        select('player_id', 'Thành viên nhận thưởng', sortedPlayers.map((p) => [p.id, p.full_name]), item.player_id) +
+        field('award_year', 'Năm khen thưởng', item.award_year, 'number', true).replace('min="0" max="999"', 'min="1900" max="2100"') +
+        field('title', 'Danh hiệu / Thành tích', item.title, 'text', true) +
+        field('gift', 'Phần quà (tiền thưởng / hiện vật)', item.gift || '') +
+        field('notes', 'Ghi chú', item.notes || '', 'textarea');
+    }
+    return saveDialog('Chỉnh sửa hoạt động', 'Cập nhật thông tin hoạt động.', fields, async (form) => {
+      const payload = Object.fromEntries(new FormData(form));
+      if (kind === 'awards') {
+        payload.player_id = Number(payload.player_id);
+        payload.award_year = Number(payload.award_year);
+        payload.title = (payload.title || '').trim();
+        payload.gift = (payload.gift || '').trim() || null;
+        payload.notes = (payload.notes || '').trim() || null;
+      }
+      await api.patch(base(path), payload);
+      await reload();
+      toast('Đã cập nhật hoạt động.');
+    });
   }
   if (action === 'new-celebration') return saveDialog('Thêm dịp lễ', 'Lưu ngày và lời chúc để CLB theo dõi.', field('title', 'Tên dịp lễ', '', 'text', true) + field('event_date', 'Ngày', '', 'date', true) + field('message', 'Lời chúc', '', 'textarea'), async (form) => {
     await post('/activities/celebrations', { title: form.elements.title.value.trim(), event_date: form.elements.event_date.value, message: form.elements.message.value.trim() || null });
@@ -45,11 +70,43 @@ export async function activityAction(action, id, { state: s, api, base, reload }
     });
   }
   if (action === 'new-award') {
-    const players = s.activities.players || [];
-    if (!players.length) { toast('Hãy tạo thành viên CLB trước.', true); return; }
-    return saveDialog('Khen thưởng cá nhân', 'Lưu danh hiệu và phần quà theo năm.', select('player_id', 'Thành viên', players.map((p) => [p.id, p.full_name])) + field('award_year', 'Năm', new Date().getFullYear(), 'number', true).replace('min="0" max="999"', 'min="1900" max="2100"') + field('title', 'Danh hiệu', '', 'text', true) + field('gift', 'Phần quà', '') + field('notes', 'Ghi chú', '', 'textarea'), async (form) => {
-      await post('/activities/awards', { player_id: Number(form.elements.player_id.value), award_year: form.elements.award_year.value, title: form.elements.title.value.trim(), gift: form.elements.gift.value.trim() || null, notes: form.elements.notes.value.trim() || null });
-    });
+    let players = (s.activities.players && s.activities.players.length) ? s.activities.players : (s.members || []);
+    if (!players.length) {
+      players = await allPlayers(api, base);
+      s.activities.players = players;
+    }
+    if (!players.length) {
+      toast('Câu lạc bộ chưa có thành viên nào. Hãy thêm thành viên trước.', true);
+      return;
+    }
+    const sortedPlayers = [...players].sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+    return saveDialog(
+      'Khen thưởng cá nhân',
+      'Lưu danh hiệu và phần quà theo năm cho thành viên CLB.',
+      select('player_id', 'Thành viên nhận thưởng', sortedPlayers.map((p) => [p.id, p.full_name])) +
+        field('award_year', 'Năm khen thưởng', new Date().getFullYear(), 'number', true).replace('min="0" max="999"', 'min="1900" max="2100"') +
+        field('title', 'Danh hiệu / Thành tích', '', 'text', true) +
+        field('gift', 'Phần quà (tiền thưởng / hiện vật)', '') +
+        field('notes', 'Ghi chú', '', 'textarea'),
+      async (form) => {
+        const playerId = Number(form.elements.player_id.value);
+        const awardYear = Number(form.elements.award_year.value);
+        const title = form.elements.title.value.trim();
+        const gift = form.elements.gift.value.trim() || null;
+        const notes = form.elements.notes.value.trim() || null;
+
+        if (!playerId) throw new Error('Vui lòng chọn thành viên.');
+        if (!title) throw new Error('Vui lòng nhập danh hiệu.');
+
+        await post('/activities/awards', {
+          player_id: playerId,
+          award_year: awardYear,
+          title,
+          gift,
+          notes,
+        });
+      }
+    );
   }
   if (action === 'attendance') {
     const training = s.activities.trainings.find((x) => String(x.id) === id);
