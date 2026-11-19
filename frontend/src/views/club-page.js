@@ -20,8 +20,9 @@ export function clubPage() {
         button('edit-club-background', 'Ảnh nền', 'edit', 'secondary') +
         button('edit-public-settings', 'Trang công khai', 'globe', 'secondary')
       : '') +
-    (c.membership_role === 'owner'
-      ? button('delete-club', 'Xóa CLB', 'trash', 'secondary')
+    (c.membership_role === 'owner' || c.is_system_admin
+      ? button('transfer-ownership', 'Chuyển quyền Chủ nhiệm', 'user', 'secondary') +
+        button('delete-club', 'Xóa CLB', 'trash', 'secondary')
       : '');
 
   return `

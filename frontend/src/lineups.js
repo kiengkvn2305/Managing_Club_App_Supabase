@@ -4,7 +4,25 @@ import { escapeHtml as e, compareVietnameseNames } from "./utils.js";
 export function openCaptain({ team, players, api, base, reload }) {
   if (!team) return;
   const candidates = players.filter((p) => (p.teams || []).some((t) => String(t.id) === String(team.id)));
-  const modal = dialog("Chọn đội trưởng", `Đội ${e(team.name)}`, field('captain_search', 'Tìm tên hoặc ghi chú', '', 'search') + `<label>Sắp xếp <select data-captain-sort><option value="asc">Tên A–Z</option><option value="desc">Tên Z–A</option></select></label>` + select("captain_id", "Đội trưởng", [["", "Chưa chọn"]], ""), async (form) => {
+  let selected = String(team.captain_id || '');
+
+  // Pre-selected captain at top on open
+  const selectedCandidates = candidates.filter((p) => String(p.id) === selected);
+  const unselectedCandidates = candidates.filter((p) => String(p.id) !== selected);
+  selectedCandidates.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+  unselectedCandidates.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+  const ordered = [...selectedCandidates, ...unselectedCandidates];
+
+  const sortHtml = `<label>Sắp xếp <select data-captain-sort>
+    <option value="asc">Tên A–Z</option>
+    <option value="desc">Tên Z–A</option>
+    <option value="notes">Theo ghi chú</option>
+    <option value="foot">Theo chân thuận</option>
+    <option value="jersey">Theo số áo</option>
+    <option value="position">Theo vị trí</option>
+  </select></label>`;
+
+  const modal = dialog("Chọn đội trưởng", `Đội ${e(team.name)}`, field('captain_search', 'Tìm tên hoặc ghi chú', '', 'search') + sortHtml + select("captain_id", "Đội trưởng", [["", "Chưa chọn"]], ""), async (form) => {
     try {
       await api.patch(base(`/teams/${team.id}/captain`), { captain_id: form.elements.captain_id.value ? Number(form.elements.captain_id.value) : null });
       await reload();
@@ -12,16 +30,34 @@ export function openCaptain({ team, players, api, base, reload }) {
       return true;
     } catch (error) { showErrors(form, error.errors, error.message); return false; }
   });
+
   const search = modal.querySelector('[name="captain_search"]'), picker = modal.querySelector('[name="captain_id"]'), sort = modal.querySelector('[data-captain-sort]');
-  let selected = String(team.captain_id || '');
   picker.addEventListener('change', () => { selected = picker.value; });
-  const refresh = () => {
-    const query = search.value.trim().toLocaleLowerCase('vi'), direction = sort.value === 'desc' ? -1 : 1;
-    const filtered = candidates.filter((p) => String(p.id) === selected || [p.full_name, p.notes].some((v) => String(v || '').toLocaleLowerCase('vi').includes(query))).sort((a,b) => direction * compareVietnameseNames(a.full_name, b.full_name));
-    picker.innerHTML = '<option value="">Chưa chọn</option>' + filtered.map((p) => `<option value="${e(p.id)}">${e(p.full_name)}${p.teams.find((t) => String(t.id) === String(team.id))?.jersey_number == null ? '' : ` #${e(p.teams.find((t) => String(t.id) === String(team.id)).jersey_number)}`}</option>`).join('');
+
+  const getJersey = (p) => p.teams?.find((t) => String(t.id) === String(team.id))?.jersey_number ?? 9999;
+  const getPos = (p) => p.teams?.find((t) => String(t.id) === String(team.id))?.position || p.position || '';
+
+  const refresh = (shouldSort = false) => {
+    const query = search.value.trim().toLocaleLowerCase('vi');
+    const sortVal = sort.value;
+    let filtered = ordered.filter((p) => String(p.id) === selected || [p.full_name, p.notes, p.preferred_foot, p.email].some((v) => String(v || '').toLocaleLowerCase('vi').includes(query)));
+    if (shouldSort) {
+      filtered.sort((a, b) => {
+        if (sortVal === 'asc') return compareVietnameseNames(a.full_name, b.full_name);
+        if (sortVal === 'desc') return -1 * compareVietnameseNames(a.full_name, b.full_name);
+        if (sortVal === 'notes') return (b.notes ? 1 : 0) - (a.notes ? 1 : 0) || compareVietnameseNames(a.full_name, b.full_name);
+        if (sortVal === 'foot') return (a.preferred_foot || '').localeCompare(b.preferred_foot || '') || compareVietnameseNames(a.full_name, b.full_name);
+        if (sortVal === 'jersey') return Number(getJersey(a)) - Number(getJersey(b));
+        if (sortVal === 'position') return getPos(a).localeCompare(getPos(b)) || compareVietnameseNames(a.full_name, b.full_name);
+        return 0;
+      });
+    }
+    picker.innerHTML = '<option value="">Chưa chọn</option>' + filtered.map((p) => `<option value="${e(p.id)}">${e(p.full_name)}${p.teams.find((t) => String(t.id) === String(team.id))?.jersey_number == null ? '' : ` #${e(p.teams.find((t) => String(t.id) === String(team.id)).jersey_number)}`}${p.preferred_foot ? ` (${p.preferred_foot === 'right' ? 'Chân phải' : p.preferred_foot === 'left' ? 'Chân trái' : 'Hai chân'})` : ''}</option>`).join('');
     picker.value = selected;
   };
-  search.addEventListener('input', refresh); sort.addEventListener('change', refresh); refresh();
+  search.addEventListener('input', () => refresh(false));
+  sort.addEventListener('change', () => refresh(true));
+  refresh(false);
 }
 
 export function openLineup({ teams, players, lineup, linkedMatch, api, base, reload }) {
@@ -53,23 +89,47 @@ export function openLineup({ teams, players, lineup, linkedMatch, api, base, rel
   const roster = () => players.filter((p) => (p.teams || []).some((t) => String(t.id) === selectedTeam));
   const numberForTeam = (p) => (p.teams || []).find((t) => String(t.id) === selectedTeam)?.jersey_number;
   const positionForTeam = (p) => (p.teams || []).find((t) => String(t.id) === selectedTeam)?.position;
+
+  const drawPitch = () => {
+    const team = teams.find((t) => String(t.id) === selectedTeam);
+    const current = roster();
+    const countEl = editor.querySelector("[data-starter-count]");
+    if (countEl) {
+      countEl.textContent = `Đá chính: ${[...saved.values()].filter((p) => p.role === "starter").length}/${e(team.format)} · Dự bị không giới hạn`;
+    }
+    const pitch = editor.querySelector("[data-pitch]");
+    if (pitch) {
+      pitch.innerHTML = current.map((p) => {
+        const entry = saved.get(String(p.id));
+        if (entry?.role !== "starter") return "";
+        return `<div class="lineup-marker" draggable="true" data-player="${p.id}" style="left:${Number(entry.x)}%;top:${Number(entry.y)}%"><span>${e(numberForTeam(p) ?? "●")} ${e(p.full_name)}${String(team.captain_id) === String(p.id) ? " (C)" : ""}</span><div><button type="button" data-move="left" aria-label="Di chuyển ${e(p.full_name)} sang trái">←</button><button type="button" data-move="up" aria-label="Di chuyển ${e(p.full_name)} lên trên">↑</button><button type="button" data-move="down" aria-label="Di chuyển ${e(p.full_name)} xuống dưới">↓</button><button type="button" data-move="right" aria-label="Di chuyển ${e(p.full_name)} sang phải">→</button></div></div>`;
+      }).join("");
+    }
+  };
+
   const draw = () => {
     const team = teams.find((t) => String(t.id) === selectedTeam);
     const current = roster();
     const missing = [...saved.keys()].filter((id) => !current.some((p) => String(p.id) === id));
-    editor.innerHTML = `${missing.length ? `<p class="notice">Có ${missing.length} cầu thủ đã xóa hoặc chuyển đội. Hãy bỏ họ khỏi đội hình trước khi lưu. <button type="button" class="text-button" data-remove-missing>Bỏ cầu thủ không còn trong đội</button></p>` : ""}<p>Đá chính: ${[...saved.values()].filter((p) => p.role === "starter").length}/${e(team.format)} · Dự bị không giới hạn</p><div class="lineup-pitch" data-pitch aria-label="Sân bóng">${current.map((p) => {
-      const entry = saved.get(String(p.id));
-      if (entry?.role !== "starter") return "";
-      return `<div class="lineup-marker" draggable="true" data-player="${p.id}" style="left:${Number(entry.x)}%;top:${Number(entry.y)}%"><span>${e(numberForTeam(p) ?? "●")} ${e(p.full_name)}${String(team.captain_id) === String(p.id) ? " (C)" : ""}</span><div><button type="button" data-move="left" aria-label="Di chuyển ${e(p.full_name)} sang trái">←</button><button type="button" data-move="up" aria-label="Di chuyển ${e(p.full_name)} lên trên">↑</button><button type="button" data-move="down" aria-label="Di chuyển ${e(p.full_name)} xuống dưới">↓</button><button type="button" data-move="right" aria-label="Di chuyển ${e(p.full_name)} sang phải">→</button></div></div>`;
-    }).join("")}</div><div class="lineup-roster">${current.length ? current.map((p) => `<label><span>${e(p.full_name)} ${numberForTeam(p) == null ? "" : `#${e(numberForTeam(p))}`} · ${e(positionForTeam(p) || "Chưa có vị trí")} · ${e(p.status)}${String(team.captain_id) === String(p.id) ? " · Đội trưởng" : ""}</span><select data-role-player="${p.id}" aria-label="Vai trò của ${e(p.full_name)}"><option value="">Không chọn</option><option value="starter" ${saved.get(String(p.id))?.role === "starter" ? "selected" : ""}>Đá chính</option><option value="substitute" ${saved.get(String(p.id))?.role === "substitute" ? "selected" : ""}>Dự bị</option></select></label>`).join("") : "<p>Chưa có cầu thủ trong đội. Hãy thêm thành viên và xếp vào đội trước.</p>"}</div>`;
+
+    // Partition on initial open: players currently selected in lineup placed at top!
+    const selectedPlayers = current.filter((p) => saved.has(String(p.id)));
+    const unselectedPlayers = current.filter((p) => !saved.has(String(p.id)));
+    selectedPlayers.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+    unselectedPlayers.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+    const ordered = [...selectedPlayers, ...unselectedPlayers];
+
+    editor.innerHTML = `${missing.length ? `<p class="notice">Có ${missing.length} cầu thủ đã xóa hoặc chuyển đội. Hãy bỏ họ khỏi đội hình trước khi lưu. <button type="button" class="text-button" data-remove-missing>Bỏ cầu thủ không còn trong đội</button></p>` : ""}<p data-starter-count>Đá chính: ${[...saved.values()].filter((p) => p.role === "starter").length}/${e(team.format)} · Dự bị không giới hạn</p><div class="lineup-pitch" data-pitch aria-label="Sân bóng"></div><div class="lineup-roster">${ordered.length ? ordered.map((p) => `<label><span>${e(p.full_name)} ${numberForTeam(p) == null ? "" : `#${e(numberForTeam(p))}`} · ${e(positionForTeam(p) || "Chưa có vị trí")} · ${e(p.status)}${String(team.captain_id) === String(p.id) ? " · Đội trưởng" : ""}</span><select data-role-player="${p.id}" aria-label="Vai trò của ${e(p.full_name)}"><option value="">Không chọn</option><option value="starter" ${saved.get(String(p.id))?.role === "starter" ? "selected" : ""}>Đá chính</option><option value="substitute" ${saved.get(String(p.id))?.role === "substitute" ? "selected" : ""}>Dự bị</option></select></label>`).join("") : "<p>Chưa có cầu thủ trong đội. Hãy thêm thành viên và xếp vào đội trước.</p>"}</div>`;
+    drawPitch();
   };
+
   modal.querySelector('[name="team_id"]').addEventListener("change", (event) => { selectedTeam = event.target.value; saved.clear(); draw(); });
   editor.addEventListener("change", (event) => {
     const id = event.target.dataset.rolePlayer;
     if (!id) return;
     if (!event.target.value) saved.delete(id);
     else saved.set(id, { player_id: Number(id), role: event.target.value, x: saved.get(id)?.x ?? 50, y: saved.get(id)?.y ?? 50 });
-    draw();
+    drawPitch();
   });
   editor.addEventListener("click", (event) => {
     if (event.target.closest("[data-remove-missing]")) { for (const id of saved.keys()) if (!roster().some((p) => String(p.id) === id)) saved.delete(id); draw(); return; }
@@ -79,7 +139,7 @@ export function openLineup({ teams, players, lineup, linkedMatch, api, base, rel
     const delta = { left: [-5, 0], right: [5, 0], up: [0, -5], down: [0, 5] }[button.dataset.move];
     entry.x = Math.max(0, Math.min(100, Number(entry.x) + delta[0]));
     entry.y = Math.max(0, Math.min(100, Number(entry.y) + delta[1]));
-    draw();
+    drawPitch();
   });
   editor.addEventListener("dragstart", (event) => { const marker = event.target.closest("[data-player]"); if (marker) event.dataTransfer.setData("text/plain", marker.dataset.player); });
   editor.addEventListener("dragover", (event) => { if (event.target.closest("[data-pitch]")) event.preventDefault(); });
@@ -92,7 +152,7 @@ export function openLineup({ teams, players, lineup, linkedMatch, api, base, rel
     const rect = pitch.getBoundingClientRect();
     entry.x = Math.max(0, Math.min(100, Math.round((event.clientX - rect.left) / rect.width * 100)));
     entry.y = Math.max(0, Math.min(100, Math.round((event.clientY - rect.top) / rect.height * 100)));
-    draw();
+    drawPitch();
   });
   draw();
 }

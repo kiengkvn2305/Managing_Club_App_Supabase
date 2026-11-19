@@ -76,8 +76,11 @@ export function createBoardController(ctx) {
         return true;
       }
 
+      const footLabel = (f) =>
+        ({ right: 'Chân phải', left: 'Chân trái', both: 'Hai chân' })[f] || (f ? String(f) : '');
+
       const fields =
-        `<div class="member-picker">${ctx.field('board_search', 'Tìm theo tên hoặc ghi chú', '', 'search')}<label>Sắp xếp <select data-board-sort><option value="asc">Tên A–Z</option><option value="desc">Tên Z–A</option></select></label><div class="member-picker-list" data-board-list>${available.map((p) => `<label data-board-row data-full-name="${ctx.e(p.full_name)}" data-search="${ctx.e([p.full_name, p.notes].filter(Boolean).join(' ').toLocaleLowerCase('vi'))}"><input type="radio" name="player_id" value="${ctx.e(p.id)}"><span><strong>${ctx.e(p.full_name)}</strong><small>${ctx.e([ctx.formatDate(p.date_of_birth), p.email, p.notes].filter(Boolean).join(' · ') || 'Chưa có thông tin bổ sung')}</small></span></label>`).join('')}</div><p data-board-empty hidden>Không tìm thấy thành viên.</p></div>` +
+        `<div class="member-picker">${ctx.field('board_search', 'Tìm theo tên hoặc ghi chú', '', 'search')}<label>Sắp xếp <select data-board-sort><option value="asc">Tên A–Z</option><option value="desc">Tên Z–A</option><option value="notes">Theo ghi chú</option><option value="foot">Theo chân thuận</option></select></label><div class="member-picker-list" data-board-list>${available.map((p) => `<label data-board-row data-full-name="${ctx.e(p.full_name)}" data-notes="${ctx.e(p.notes || '')}" data-foot="${ctx.e(p.preferred_foot || '')}" data-search="${ctx.e([p.full_name, p.notes, p.preferred_foot].filter(Boolean).join(' ').toLocaleLowerCase('vi'))}"><input type="radio" name="player_id" value="${ctx.e(p.id)}"><span><strong>${ctx.e(p.full_name)}</strong><small>${ctx.e([p.preferred_foot ? footLabel(p.preferred_foot) : '', ctx.formatDate(p.date_of_birth), p.email, p.notes].filter(Boolean).join(' · ') || 'Chưa có thông tin bổ sung')}</small></span></label>`).join('')}</div><p data-board-empty hidden>Không tìm thấy thành viên.</p></div>` +
         boardTitleFields();
 
       const modal = ctx.dialog(
@@ -109,20 +112,20 @@ export function createBoardController(ctx) {
         let visible = 0;
         const list = modal.querySelector('[data-board-list]');
         const rows = [...list.querySelectorAll('[data-board-row]')];
-        const direction =
-          modal.querySelector('[data-board-sort]').value === 'desc' ? -1 : 1;
+        const sortVal = modal.querySelector('[data-board-sort]').value;
 
         rows.forEach((row) => {
           row.hidden = !row.dataset.search.includes(query);
           if (!row.hidden) visible++;
-          else row.querySelector('input').checked = false;
         });
 
-        rows.sort(
-          (a, b) =>
-            direction *
-            ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName)
-        );
+        rows.sort((a, b) => {
+          if (sortVal === 'asc') return ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          if (sortVal === 'desc') return -1 * ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          if (sortVal === 'notes') return (b.dataset.notes ? 1 : 0) - (a.dataset.notes ? 1 : 0) || ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          if (sortVal === 'foot') return (a.dataset.foot || '').localeCompare(b.dataset.foot || '') || ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          return 0;
+        });
         rows.forEach((row) => list.append(row));
         modal.querySelector('[data-board-empty]').hidden = visible > 0;
       };

@@ -141,18 +141,22 @@ export function createClubController(ctx) {
   async function handleAction(a, el) {
     if (a === 'new-club') return editClub();
 
-    if (a === 'edit-club' && ctx.canManageClub(ctx.currentRole())) {
+    if (a === 'edit-club') {
+      if (!ctx.requirePermission(ctx.canManageClub(), 'Chỉnh sửa CLB')) return true;
       return editClub(true);
     }
 
     if (a === 'edit-account-avatar') return editImage('account');
-    if (a === 'edit-club-avatar' && ctx.canManageClub(ctx.currentRole())) {
+    if (a === 'edit-club-avatar') {
+      if (!ctx.requirePermission(ctx.canManageClub(), 'Đổi ảnh đại diện CLB')) return true;
       return editImage('club');
     }
-    if (a === 'edit-club-background' && ctx.canManageClub(ctx.currentRole())) {
+    if (a === 'edit-club-background') {
+      if (!ctx.requirePermission(ctx.canManageClub(), 'Đổi ảnh nền CLB')) return true;
       return editImage('background');
     }
-    if (a === 'edit-player-avatar' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'edit-player-avatar') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Đổi ảnh cầu thủ')) return true;
       const member = ctx.state.members.find(
         (x) => String(x.id) === el.dataset.id
       );
@@ -160,6 +164,57 @@ export function createClubController(ctx) {
     }
     if (a === 'edit-my-player-avatar' && ctx.state.myPlayer) {
       return editImage('player', ctx.state.myPlayer);
+    }
+
+    if (a === 'transfer-ownership') {
+      const isOwner = ctx.currentRole() === 'owner' || ctx.currentClub()?.is_system_admin;
+      if (!ctx.requirePermission(isOwner, 'Chuyển giao quyền Chủ nhiệm')) return true;
+      const candidates = ctx.unpackList(
+        await ctx.api.get(ctx.base('/club-memberships'))
+      ).rows.filter((m) => m.role !== 'owner');
+
+      if (!candidates.length) {
+        ctx.toast('Chưa có thành viên nào khác trong CLB để chuyển quyền.', true);
+        return true;
+      }
+
+      const warningNotice = `
+        <div class="lineup-editor" style="grid-column:1/-1;">
+          <p class="notice" style="background:#ffe8e8;color:#a32323;border-left:4px solid #a32323;padding:12px;border-radius:4px;margin-bottom:12px;">
+            <strong>CẢNH BÁO NGUY HIỂM:</strong> Khi bạn chuyển giao quyền Chủ nhiệm, bạn sẽ trở thành thành viên thông thường và <strong>MẤT TOÀN BỘ QUYỀN HẠN CỦA CHỦ NHIỆM CLB</strong>. Quyền lực tối cao sẽ được chuyển giao hoàn toàn cho người được chọn.
+          </p>
+          ${ctx.select(
+            'target_user_id',
+            'Chọn thành viên nhận quyền Chủ nhiệm',
+            candidates.map((m) => [m.user_id, `${m.name || m.email} (${m.email})`]),
+            candidates[0].user_id
+          )}
+          <div class="field" style="margin-top:12px;">
+            <label for="f-confirm-transfer">Nhập chữ <strong>XÁC NHẬN</strong> để đồng ý chuyển giao quyền:</label>
+            <input id="f-confirm-transfer" name="confirm_text" type="text" required placeholder="XÁC NHẬN" autocomplete="off">
+          </div>
+        </div>
+      `;
+
+      return ctx.dialog(
+        'Chuyển giao quyền Chủ nhiệm CLB',
+        'Trao lại toàn bộ quyền hành của Chủ nhiệm CLB cho một thành viên khác.',
+        warningNotice,
+        (form) =>
+          ctx.submit(form, 'transfer-ownership', async (data) => {
+            if (data.confirm_text !== 'XÁC NHẬN') {
+              throw new Error('Vui lòng nhập chính xác chữ "XÁC NHẬN" để xác nhận thao tác.');
+            }
+            await ctx.api.post(ctx.base('/transfer-ownership'), {
+              new_owner_user_id: data.target_user_id,
+              my_new_role: 'member',
+            });
+            await ctx.loadApp();
+            await ctx.loadView();
+            ctx.toast('Đã chuyển giao quyền Chủ nhiệm CLB thành công. Bạn hiện là thành viên thường.');
+          }),
+        'Xác nhận chuyển quyền'
+      );
     }
 
     if (a === 'change-password') {

@@ -1,4 +1,4 @@
-import { escapeHtml as e, formatDate, validDate } from "../utils.js";
+import { escapeHtml as e, formatDate, validDate, compareVietnameseNames } from "../utils.js";
 export const icons = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
   users:
@@ -126,4 +126,173 @@ export function dialog(
   };
   el.showModal();
   return el;
+}
+
+export function openMemberPickerModal({
+  title = "Chọn thành viên",
+  description = "",
+  items = [],
+  initialSelectedIds = [],
+  multi = true,
+  name = "selected_ids",
+  extraFields = "",
+  onSubmit,
+  submitLabel = "Lưu thay đổi",
+}) {
+  const selectedSet = new Set(initialSelectedIds.map(String));
+
+  const footLabel = (f) =>
+    ({ right: "Chân phải", left: "Chân trái", both: "Hai chân" })[f] || (f ? String(f) : "");
+
+  // 1. Initial partition: selected items on top, unselected items below
+  const selectedItems = items.filter((x) => selectedSet.has(String(x.id)));
+  const unselectedItems = items.filter((x) => !selectedSet.has(String(x.id)));
+
+  const sortByName = (a, b) =>
+    compareVietnameseNames(a.full_name || a.name || "", b.full_name || b.name || "");
+
+  selectedItems.sort(sortByName);
+  unselectedItems.sort(sortByName);
+
+  const orderedItems = [...selectedItems, ...unselectedItems];
+
+  const sortOptions = [
+    ["name_asc", "Tên A–Z"],
+    ["name_desc", "Tên Z–A"],
+    ["notes", "Theo ghi chú"],
+    ["foot", "Theo chân thuận"],
+    ["position", "Theo vị trí"],
+    ["jersey", "Theo số áo"],
+  ];
+
+  const filterBar = `
+    <div class="filters" style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px;">
+      <label style="margin:0;">
+        <input type="search" data-picker-search placeholder="Tìm theo tên, ghi chú, email…" aria-label="Tìm kiếm">
+      </label>
+      <label style="margin:0;">
+        <select data-picker-sort aria-label="Sắp xếp">
+          ${sortOptions.map(([val, text]) => `<option value="${val}">${text}</option>`).join("")}
+        </select>
+      </label>
+    </div>
+  `;
+
+  const renderRow = (x) => {
+    const isChecked = selectedSet.has(String(x.id));
+    const displayName = x.full_name || x.name || `Thành viên #${x.id}`;
+    const details = [
+      x.jersey_number != null ? `#${x.jersey_number}` : "",
+      x.position ? `Vị trí: ${x.position}` : "",
+      x.preferred_foot ? footLabel(x.preferred_foot) : "",
+      x.title ? `Chức danh: ${x.title}` : "",
+      x.email || "",
+      x.phone || "",
+      x.notes ? `Ghi chú: ${x.notes}` : "",
+    ].filter(Boolean).join(" · ");
+
+    const searchBlob = [
+      displayName,
+      x.email,
+      x.phone,
+      x.notes,
+      x.position,
+      x.preferred_foot,
+      x.title,
+    ].filter(Boolean).join(" ").toLocaleLowerCase("vi");
+
+    return `
+      <label data-picker-row
+        data-id="${e(x.id)}"
+        data-full-name="${e(displayName)}"
+        data-notes="${e(x.notes || "")}"
+        data-foot="${e(x.preferred_foot || "")}"
+        data-pos="${e(x.position || "")}"
+        data-jersey="${e(x.jersey_number ?? 9999)}"
+        data-search="${e(searchBlob)}"
+        style="cursor:pointer;"
+      >
+        <input type="${multi ? "checkbox" : "radio"}" name="${name}" value="${e(x.id)}" ${isChecked ? "checked" : ""}>
+        <span style="flex:1;min-width:0;">
+          <strong>${e(displayName)}</strong>
+          <small style="display:block;color:var(--muted);">${e(details || "Chưa có thông tin bổ sung")}</small>
+        </span>
+      </label>
+    `;
+  };
+
+  const listHtml = `
+    <div class="member-picker" style="grid-column:1/-1;">
+      ${filterBar}
+      <div class="member-picker-list" data-picker-list style="max-height:50dvh;overflow-y:auto;display:grid;gap:6px;">
+        ${orderedItems.map(renderRow).join("")}
+      </div>
+      <p data-picker-empty hidden style="text-align:center;color:var(--muted);padding:12px;">Không tìm thấy kết quả phù hợp.</p>
+    </div>
+  `;
+
+  const fields = extraFields ? extraFields + listHtml : listHtml;
+
+  const modal = dialog(
+    title,
+    description,
+    fields,
+    async (form) => {
+      const selectedIds = [...selectedSet];
+      return await onSubmit(selectedIds, form);
+    },
+    submitLabel
+  );
+
+  modal.classList.add("member-picker-dialog");
+
+  const listEl = modal.querySelector("[data-picker-list]");
+  const searchInput = modal.querySelector("[data-picker-search]");
+  const sortSelect = modal.querySelector("[data-picker-sort]");
+  const emptyEl = modal.querySelector("[data-picker-empty]");
+
+  listEl.addEventListener("change", (event) => {
+    const input = event.target.closest(`input[name="${name}"]`);
+    if (!input) return;
+    if (multi) {
+      if (input.checked) selectedSet.add(String(input.value));
+      else selectedSet.delete(String(input.value));
+    } else {
+      selectedSet.clear();
+      if (input.checked) selectedSet.add(String(input.value));
+    }
+  });
+
+  const applyFilterAndSort = (shouldSort = false) => {
+    const query = (searchInput.value || "").trim().toLocaleLowerCase("vi");
+    const sortVal = sortSelect.value;
+    const rows = [...listEl.querySelectorAll("[data-picker-row]")];
+
+    let visibleCount = 0;
+    rows.forEach((row) => {
+      const match = !query || row.dataset.search.includes(query);
+      row.hidden = !match;
+      if (match) visibleCount++;
+    });
+
+    if (emptyEl) emptyEl.hidden = visibleCount > 0;
+
+    if (shouldSort) {
+      rows.sort((a, b) => {
+        if (sortVal === "name_asc") return compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "name_desc") return -1 * compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "notes") return (b.dataset.notes ? 1 : 0) - (a.dataset.notes ? 1 : 0) || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "foot") return (a.dataset.foot || "").localeCompare(b.dataset.foot || "") || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "position") return (a.dataset.pos || "").localeCompare(b.dataset.pos || "") || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "jersey") return Number(a.dataset.jersey) - Number(b.dataset.jersey);
+        return 0;
+      });
+      rows.forEach((r) => listEl.append(r));
+    }
+  };
+
+  searchInput.addEventListener("input", () => applyFilterAndSort(false));
+  sortSelect.addEventListener("change", () => applyFilterAndSort(true));
+
+  return modal;
 }

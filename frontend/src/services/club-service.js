@@ -31,20 +31,28 @@ export function createClubService({ supabase, authService }) {
 
   async function resource(row, userId) {
     const club = row.club || row;
-    const membership = row.role
-      ? row
-      : check(
-          await supabase
-            .from('club_members')
-            .select('role,title')
-            .eq('club_id', club.id)
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .maybeSingle()
-        ) || {};
+    const currentUser = await authService.user().catch(() => null);
+    const isSystemAdmin = currentUser?.is_system_admin === true;
 
-    const role = membership.role || 'member';
-    const title = (membership.title || '').trim();
+    let membership = row.role
+      ? row
+      : null;
+
+    if (!membership) {
+      membership = check(
+        await supabase
+          .from('club_members')
+          .select('role,title,permissions')
+          .eq('club_id', club.id)
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .maybeSingle()
+      ) || {};
+    }
+
+    const role = isSystemAdmin ? 'owner' : (membership.role || 'member');
+    const title = isSystemAdmin ? 'Hệ Thống Admin' : (membership.title || '').trim();
+    const customPerms = membership.permissions || {};
     const perms = ROLE[role] || ROLE.member;
 
     let isBoardMember = false;
@@ -62,39 +70,47 @@ export function createClubService({ supabase, authService }) {
       boardTitle = (boardMemberResult.data.title || '').trim();
     }
 
-    const canViewFinance =
-      financeRoles.includes(role) ||
-      isFinanceTitle(title) ||
-      isBoardMember ||
-      ['hlv', 'huấn luyện viên'].includes(title.toLowerCase());
+    const isOwner = role === 'owner' || isSystemAdmin;
 
-    const canManageFinance =
-      financeManageRoles.includes(role) ||
-      isFinanceTitle(title) ||
-      isBoardMember;
+    const canViewFinance = isOwner || (customPerms.can_view_finance !== undefined
+      ? Boolean(customPerms.can_view_finance)
+      : (financeRoles.includes(role) || isFinanceTitle(title) || isBoardMember || ['hlv', 'huấn luyện viên'].includes(title.toLowerCase())));
+
+    const canManageFinance = isOwner || (customPerms.can_manage_finance !== undefined
+      ? Boolean(customPerms.can_manage_finance)
+      : (financeManageRoles.includes(role) || isFinanceTitle(title) || isBoardMember));
+
+    const canManageRoster = isOwner || (customPerms.can_manage_roster !== undefined
+      ? Boolean(customPerms.can_manage_roster)
+      : Boolean(perms.roster));
+
+    const canManageClub = isOwner || (customPerms.can_manage_club !== undefined
+      ? Boolean(customPerms.can_manage_club)
+      : Boolean(perms.club));
+
+    const canManageInventory = isOwner || (customPerms.can_manage_inventory !== undefined
+      ? Boolean(customPerms.can_manage_inventory)
+      : ['owner', 'co_owner', 'general_manager', 'equipment_manager'].includes(role));
+
+    const canViewInventory = canManageInventory || ['owner', 'co_owner', 'general_manager', 'equipment_manager', 'sporting_manager'].includes(role);
+
+    const canManageActivities = isOwner || (customPerms.can_manage_activities !== undefined
+      ? Boolean(customPerms.can_manage_activities)
+      : Boolean(perms.roster || isBoardMember || isFinanceTitle(title)));
 
     return {
       ...club,
       formats: club.formats || [club.format],
       membership_role: role,
+      is_system_admin: isSystemAdmin,
+      permissions: customPerms,
       can_view_finance: canViewFinance,
       can_manage_finance: canManageFinance,
-      can_manage_activities:
-        perms.roster ||
-        isBoardMember ||
-        isFinanceTitle(title),
-      can_view_inventory: [
-        'owner',
-        'co_owner',
-        'general_manager',
-        'equipment_manager',
-      ].includes(role),
-      can_manage_inventory: [
-        'owner',
-        'co_owner',
-        'general_manager',
-        'equipment_manager',
-      ].includes(role),
+      can_manage_roster: canManageRoster,
+      can_manage_club: canManageClub,
+      can_manage_inventory: canManageInventory,
+      can_view_inventory: canViewInventory,
+      can_manage_activities: canManageActivities,
       avatar_version: club.avatar_path || null,
       background_version: club.background_path || null,
     };
@@ -102,16 +118,27 @@ export function createClubService({ supabase, authService }) {
 
   async function clubs() {
     const current = await authService.user();
-    const rows =
-      check(
-        await supabase
-          .from('club_members')
-          .select('role,title,club:clubs(*)')
-          .eq('user_id', current.id)
-          .eq('status', 'active')
-      ) || [];
+    let activeRows = [];
+    if (current?.is_system_admin) {
+      const allClubs = check(await supabase.from('clubs').select('*').is('deleted_at', null).order('id')) || [];
+      activeRows = allClubs.map((club) => ({
+        club,
+        role: 'owner',
+        title: 'Hệ Thống Admin',
+        permissions: {},
+      }));
+    } else {
+      const rows =
+        check(
+          await supabase
+            .from('club_members')
+            .select('role,title,permissions,club:clubs(*)')
+            .eq('user_id', current.id)
+            .eq('status', 'active')
+        ) || [];
+      activeRows = rows.filter((x) => x.club && !x.club.deleted_at);
+    }
 
-    const activeRows = rows.filter((x) => x.club && !x.club.deleted_at);
     const mapped = await Promise.all(
       activeRows.map((x) => resource(x, current.id))
     );

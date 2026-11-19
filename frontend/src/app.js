@@ -12,6 +12,7 @@ import {
   dialog,
   toast,
   showErrors,
+  openMemberPickerModal,
 } from './components/ui.js';
 import {
   escapeHtml as e,
@@ -125,8 +126,31 @@ const ctx = {
   e,
   number,
   roleLabel,
-  canManageRoster,
-  canManageClub,
+  canManageRoster: (role) => {
+    const c = currentClub();
+    if (c?.is_system_admin || c?.membership_role === 'owner') return true;
+    if (c?.can_manage_roster !== undefined) return Boolean(c.can_manage_roster);
+    return canManageRoster(role || currentRole());
+  },
+  canManageClub: (role) => {
+    const c = currentClub();
+    if (c?.is_system_admin || c?.membership_role === 'owner') return true;
+    if (c?.can_manage_club !== undefined) return Boolean(c.can_manage_club);
+    return canManageClub(role || currentRole());
+  },
+  requirePermission: (allowed, actionLabel = '') => {
+    if (!allowed) {
+      toast(
+        actionLabel
+          ? `Bạn không có quyền thực hiện thao tác: ${actionLabel}. Vui lòng liên hệ Chủ nhiệm CLB để được cấp quyền.`
+          : 'Bạn không có quyền thực hiện thao tác này. Vui lòng liên hệ Chủ nhiệm CLB để được cấp quyền.',
+        true
+      );
+      return false;
+    }
+    return true;
+  },
+  openMemberPickerModal,
   formatDate,
   vietnamToday,
   vietnamCalendarDate,
@@ -435,6 +459,17 @@ async function loadView() {
       s.friendlies = results[1] || { data: [], meta: {} };
     }
 
+    if (tenant && ['finance', 'dues'].includes(route) && !currentClub()?.can_view_finance) {
+      toast(
+        'Bạn không có quyền xem thông tin tài chính của câu lạc bộ. Vui lòng liên hệ Chủ nhiệm CLB để được cấp quyền.',
+        true
+      );
+      s.route = 'dashboard';
+      location.hash = '#dashboard';
+      render();
+      return;
+    }
+
     if (
       tenant &&
       [
@@ -508,6 +543,7 @@ async function loadView() {
           currentClub()?.can_manage_finance)
       ) {
         tasks.push(api.get(base('/board-members'), { signal }));
+        tasks.push(api.get(base('/club-memberships'), { signal }));
       }
       if (route === 'finance' && currentClub()?.can_view_finance) {
         if (!s.financeMonth) {
@@ -595,6 +631,7 @@ async function loadView() {
       if (route === 'club-members' && results[1]) {
         s.boardMembers = unpackList(results[1]).rows;
         s.boardSharedRates = results[1].shared_rates || [];
+        s.clubMemberships = results[2] ? unpackList(results[2]).rows : [];
       }
       if (route === 'finance' && results[1]) s.finance = results[1];
       if (route === 'finance' && results[2]) {

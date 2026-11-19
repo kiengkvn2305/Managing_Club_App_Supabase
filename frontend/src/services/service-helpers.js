@@ -59,11 +59,19 @@ export const hashValue = async (value) => {
 
 export function check(result) {
   if (result.error) {
-    throw new SupabaseApiError(
-      result.error.message,
-      result.error.code === '42501' ? 403 : 422,
-      { database: [result.error.message] }
-    );
+    let msg = result.error.message;
+    let status = 422;
+    if (result.error.code === '42501' || msg.includes('forbidden')) {
+      msg = 'Bạn không có quyền thực hiện thao tác này. Vui lòng liên hệ Chủ nhiệm CLB để được cấp quyền.';
+      status = 403;
+    } else if (msg.includes('cannot_restrict_owner')) {
+      msg = 'Không thể giới hạn quyền của Chủ nhiệm CLB.';
+    } else if (msg.includes('already_owner')) {
+      msg = 'Thành viên này hiện đã là Chủ nhiệm CLB.';
+    } else if (msg.includes('target_member_not_found_or_inactive')) {
+      msg = 'Không tìm thấy thành viên nhận quyền hoặc thành viên không còn hoạt động.';
+    }
+    throw new SupabaseApiError(msg, status, { database: [msg] });
   }
   return result.data;
 }

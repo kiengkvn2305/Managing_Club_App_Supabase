@@ -5,6 +5,7 @@ import {
   hashValue,
   latestTeamDuesRate,
 } from './service-helpers.js';
+import { compareVietnameseNames } from '../utils.js';
 
 export function createRosterService({ supabase, authService }) {
   const financeRoles = ['owner', 'co_owner', 'general_manager', 'treasurer'];
@@ -115,7 +116,7 @@ export function createRosterService({ supabase, authService }) {
     rows = rows.filter(
       (x) =>
         (!q ||
-          [x.full_name, x.email, x.phone].some((v) =>
+          [x.full_name, x.email, x.phone, x.notes].some((v) =>
             String(v || '').toLowerCase().includes(q)
           )) &&
         (!status || x.status === status) &&
@@ -139,6 +140,31 @@ export function createRosterService({ supabase, authService }) {
       })),
     }));
 
+    const sortField = params.get('sort') || 'full_name';
+    const direction = params.get('direction') === 'desc' ? -1 : 1;
+
+    rows.sort((a, b) => {
+      let diff = 0;
+      if (sortField === 'full_name') {
+        diff = compareVietnameseNames(a.full_name || '', b.full_name || '');
+      } else if (sortField === 'date_of_birth') {
+        diff = (a.date_of_birth || '').localeCompare(b.date_of_birth || '');
+      } else if (sortField === 'notes') {
+        diff = (a.notes || '').localeCompare(b.notes || '', 'vi');
+      } else if (sortField === 'preferred_foot') {
+        diff = (a.preferred_foot || '').localeCompare(b.preferred_foot || '', 'vi');
+      } else if (sortField === 'position') {
+        const posA = a.teams?.find((t) => String(t.id) === String(teamId))?.position || a.position || '';
+        const posB = b.teams?.find((t) => String(t.id) === String(teamId))?.position || b.position || '';
+        diff = posA.localeCompare(posB, 'vi');
+      } else if (sortField === 'jersey_number') {
+        const jA = a.teams?.find((t) => String(t.id) === String(teamId))?.jersey_number ?? 9999;
+        const jB = b.teams?.find((t) => String(t.id) === String(teamId))?.jersey_number ?? 9999;
+        diff = Number(jA) - Number(jB);
+      }
+      return diff * direction;
+    });
+
     return page(rows, params, Math.min(100, Number(params.get('per_page') || 15)));
   }
 
@@ -146,23 +172,45 @@ export function createRosterService({ supabase, authService }) {
     if (!clubId) return null;
 
     if (clean === `/clubs/${clubId}/team-manager-candidates` && method === 'GET') {
-      const rows =
-        check(
-          await supabase
-            .from('club_members')
-            .select('id,role,title,user_id,profile:profiles(name,email)')
-            .eq('club_id', clubId)
-            .eq('status', 'active')
-            .order('id')
-        ) || [];
+      const [membersResult, playersResult] = await Promise.all([
+        supabase
+          .from('club_members')
+          .select('id,role,title,user_id,profile:profiles(name,email)')
+          .eq('club_id', clubId)
+          .eq('status', 'active')
+          .order('id'),
+        supabase
+          .from('player_profiles')
+          .select('id,user_id,email,full_name,notes,preferred_foot')
+          .eq('club_id', clubId),
+      ]);
+      const members = check(membersResult) || [];
+      const players = check(playersResult) || [];
+      const playerByUser = new Map();
+      const playerByEmail = new Map();
+      for (const p of players) {
+        if (p.user_id) playerByUser.set(p.user_id, p);
+        if (p.email) playerByEmail.set(p.email.toLowerCase(), p);
+      }
+
       return {
-        data: rows.map((row) => ({
-          id: row.id,
-          role: row.role,
-          title: row.title,
-          name: row.profile?.name,
-          email: row.profile?.email,
-        })),
+        data: members.map((row) => {
+          const player =
+            playerByUser.get(row.user_id) ||
+            (row.profile?.email ? playerByEmail.get(row.profile.email.toLowerCase()) : null);
+          const displayName =
+            row.profile?.name || player?.full_name || row.profile?.email || `Thành viên #${row.id}`;
+          return {
+            id: row.id,
+            role: row.role,
+            title: row.title,
+            name: displayName,
+            full_name: displayName,
+            email: row.profile?.email || player?.email,
+            notes: player?.notes || '',
+            preferred_foot: player?.preferred_foot || '',
+          };
+        }),
       };
     }
 
@@ -171,7 +219,7 @@ export function createRosterService({ supabase, authService }) {
         check(
           await supabase
             .from('club_members')
-            .select('id,role,title,user_id,profile:profiles(name,email)')
+            .select('id,role,title,user_id,permissions,profile:profiles(name,email)')
             .eq('club_id', clubId)
             .eq('status', 'active')
             .order('id')
@@ -181,9 +229,36 @@ export function createRosterService({ supabase, authService }) {
           id: row.id,
           role: row.role,
           title: row.title,
-          name: row.profile?.name,
+          user_id: row.user_id,
+          permissions: row.permissions || {},
+          name: row.profile?.name || row.profile?.email || `Thành viên #${row.id}`,
           email: row.profile?.email,
         })),
+      };
+    }
+
+    const memberPermissions = clean.match(/\/club-memberships\/(\d+)\/permissions$/);
+    if (memberPermissions && method === 'PATCH') {
+      return {
+        data: check(
+          await supabase.rpc('update_member_custom_permissions', {
+            p_club_id: clubId,
+            p_member_id: Number(memberPermissions[1]),
+            p_permissions: data.permissions || {},
+          })
+        ),
+      };
+    }
+
+    if (clean === `/clubs/${clubId}/transfer-ownership` && method === 'POST') {
+      return {
+        data: check(
+          await supabase.rpc('transfer_club_ownership', {
+            p_club_id: clubId,
+            p_new_owner_user_id: data.new_owner_user_id,
+            p_my_new_role: data.my_new_role || 'member',
+          })
+        ),
       };
     }
 

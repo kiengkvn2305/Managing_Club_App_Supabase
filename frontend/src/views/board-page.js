@@ -70,17 +70,63 @@ export function boardPage() {
         'Thiết lập mức quỹ ưu đãi cho từng đội.'
       );
 
+  const isOwner = c?.membership_role === 'owner' || c?.is_system_admin;
+
+  const permissionSummary = (m) => {
+    if (m.role === 'owner') return '<span class="badge" style="background:#ddf5e9;color:#126047;">Toàn quyền (Chủ sở hữu)</span>';
+    const perms = m.permissions || {};
+    const granted = [];
+    if (perms.can_view_finance) granted.push('Xem thu chi');
+    if (perms.can_manage_finance) granted.push('Ghi thu chi');
+    if (perms.can_manage_roster) granted.push('Quản lý nhân sự');
+    if (perms.can_manage_inventory) granted.push('Quản lý kho');
+    if (perms.can_manage_activities) granted.push('Quản lý hoạt động');
+    if (perms.can_manage_club) granted.push('Quản lý CLB');
+    if (!granted.length) return '<span class="badge" style="background:var(--subtle);color:var(--muted);">Quyền mặc định</span>';
+    return `<span class="badge">${e(granted.join(', '))}</span>`;
+  };
+
+  const membershipsList = s.clubMemberships?.length
+    ? s.clubMemberships
+        .map(
+          (m) => `
+        <div class="member-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line);gap:12px;">
+          <div>
+            <strong>${e(m.name || m.email || ('Thành viên #' + m.id))}</strong>
+            <small style="display:block;color:var(--muted);">${e(m.email || '')}${m.title ? ` · Chức danh: ${e(m.title)}` : ''} · Vai trò: ${e(m.role)}</small>
+            <div style="margin-top:4px;">${permissionSummary(m)}</div>
+          </div>
+          <div class="team-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${isOwner && m.role !== 'owner' ? `<button class="text-button" data-action="edit-permissions" data-id="${m.id}">Phân quyền</button>` : ''}
+            ${isOwner ? `<button class="text-button" data-action="edit-title" data-id="${m.id}">Chức danh</button>` : ''}
+            ${isOwner && m.role !== 'owner' ? `<button class="text-button danger" data-action="transfer-ownership" data-id="${m.user_id}" data-name="${e(m.name || m.email)}">Trao quyền Chủ nhiệm</button>` : ''}
+          </div>
+        </div>`
+        )
+        .join('')
+    : empty('Chưa có tài khoản thành viên', 'Mời thành viên tham gia để phân quyền sử dụng.');
+
   return `
     <div class="page-top">
       <div>
         <div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div>
-        <h1>Thành viên BCN</h1>
-        <p>Danh sách ban chủ nhiệm được chọn từ thành viên CLB.</p>
+        <h1>Thành viên BCN & Phân quyền</h1>
+        <p>Danh sách ban chủ nhiệm và quản lý quyền hạn của từng tài khoản thành viên trong CLB.</p>
       </div>
       <div class="page-actions">
         ${button('board-new', 'Thêm BCN')}
       </div>
     </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Tài khoản thành viên & Phân quyền chi tiết</h2>
+          <p>Chủ nhiệm CLB có toàn quyền cấp hoặc giới hạn từng chức năng cho từng thành viên, hoặc trao lại quyền Chủ nhiệm cho người khác.</p>
+        </div>
+      </div>
+      ${membershipsList}
+    </section>
 
     <section class="panel">
       <div class="panel-head">

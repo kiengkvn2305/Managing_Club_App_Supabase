@@ -1,6 +1,7 @@
 export function createFinanceController(ctx) {
   async function handleAction(a, el) {
-    if (a === 'new-finance' && ctx.currentClub()?.can_manage_finance) {
+    if (a === 'new-finance') {
+      if (!ctx.requirePermission(ctx.currentClub()?.can_manage_finance, 'Ghi khoản thu chi')) return true;
       const today = new Date();
       const date = ctx.vietnamToday(today);
       return ctx.dialog(
@@ -46,7 +47,8 @@ export function createFinanceController(ctx) {
       );
     }
 
-    if (a === 'export-finance' && ctx.currentClub()?.can_view_finance) {
+    if (a === 'export-finance') {
+      if (!ctx.requirePermission(ctx.currentClub()?.can_view_finance, 'Xuất sổ thu chi')) return true;
       const rows = [];
       const adjustments = [];
       let pageNumber = 1;
@@ -91,9 +93,9 @@ export function createFinanceController(ctx) {
     if (
       ['new-planned-expense', 'edit-planned-expense', 'stop-planned-expense'].includes(
         a
-      ) &&
-      ctx.currentClub()?.can_manage_finance
+      )
     ) {
+      if (!ctx.requirePermission(ctx.currentClub()?.can_manage_finance, 'Quản lý khoản chi dự kiến')) return true;
       const item =
         a === 'new-planned-expense'
           ? null

@@ -87,7 +87,72 @@ export function createRosterController(ctx) {
     const candidates = ctx.unpackList(
       await ctx.api.get(ctx.base('/team-manager-candidates'))
     ).rows;
-    const managerFields = `<fieldset class="field format-options"><legend>Người quản lý đội</legend>${candidates.map((m) => `<label><input type="checkbox" name="manager_ids" value="${m.id}" ${(team.managers || []).some((x) => String(x.id) === String(m.id)) ? 'checked' : ''}> ${ctx.e(m.name)}</label>`).join('') || 'Chưa có tài khoản thành viên.'}</fieldset>`;
+
+    const initialManagerIds = new Set((team.managers || []).map((x) => String(x.id)));
+
+    // Partition: pre-selected managers at the top on open!
+    const selectedCandidates = candidates.filter((m) => initialManagerIds.has(String(m.id)));
+    const unselectedCandidates = candidates.filter((m) => !initialManagerIds.has(String(m.id)));
+    selectedCandidates.sort((a, b) => ctx.compareVietnameseNames(a.name || a.full_name, b.name || b.full_name));
+    unselectedCandidates.sort((a, b) => ctx.compareVietnameseNames(a.name || a.full_name, b.name || b.full_name));
+    const orderedCandidates = [...selectedCandidates, ...unselectedCandidates];
+
+    const footLabel = (f) =>
+      ({ right: 'Chân phải', left: 'Chân trái', both: 'Hai chân' })[f] || (f ? String(f) : '');
+
+    const sortOptions = `
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-bottom:8px;">
+        <input type="search" data-mgr-search placeholder="Tìm người quản lý theo tên, ghi chú..." style="margin:0;">
+        <select data-mgr-sort style="margin:0;">
+          <option value="name_asc">Tên A–Z</option>
+          <option value="name_desc">Tên Z–A</option>
+          <option value="notes">Theo ghi chú</option>
+          <option value="foot">Theo chân thuận</option>
+        </select>
+      </div>
+    `;
+
+    const managerRows = orderedCandidates.map((m) => {
+      const isChecked = initialManagerIds.has(String(m.id));
+      const displayName = m.name || m.full_name || `Thành viên #${m.id}`;
+      const details = [
+        m.title ? `Chức danh: ${m.title}` : '',
+        m.role ? `Vai trò: ${ctx.roleLabel(m.role)}` : '',
+        m.preferred_foot ? footLabel(m.preferred_foot) : '',
+        m.notes ? `Ghi chú: ${m.notes}` : '',
+        m.email || '',
+      ].filter(Boolean).join(' · ');
+
+      const searchBlob = [displayName, m.email, m.title, m.notes, m.preferred_foot].filter(Boolean).join(' ').toLocaleLowerCase('vi');
+
+      return `
+        <label data-mgr-row
+          data-id="${ctx.e(m.id)}"
+          data-full-name="${ctx.e(displayName)}"
+          data-notes="${ctx.e(m.notes || '')}"
+          data-foot="${ctx.e(m.preferred_foot || '')}"
+          data-search="${ctx.e(searchBlob)}"
+          style="display:flex;align-items:flex-start;gap:10px;padding:8px;border:1px solid var(--line);border-radius:6px;cursor:pointer;margin-bottom:4px;"
+        >
+          <input type="checkbox" name="manager_ids" value="${ctx.e(m.id)}" ${isChecked ? 'checked' : ''}>
+          <span style="flex:1;min-width:0;">
+            <strong>${ctx.e(displayName)}</strong>
+            <small style="display:block;color:var(--muted);">${ctx.e(details || 'Thành viên CLB')}</small>
+          </span>
+        </label>
+      `;
+    }).join('') || '<p>Chưa có tài khoản thành viên.</p>';
+
+    const managerFields = `
+      <fieldset class="field" style="grid-column:1/-1;">
+        <legend>Người quản lý đội (Có thể chọn nhiều người từ bất kỳ thành viên nào trong CLB)</legend>
+        ${sortOptions}
+        <div data-mgr-list style="max-height:220px;overflow-y:auto;display:grid;">
+          ${managerRows}
+        </div>
+      </fieldset>
+    `;
+
     const today = ctx.vietnamCalendarDate();
     const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     const duesInfo = team.monthly_dues
@@ -106,9 +171,9 @@ export function createRosterController(ctx) {
         ctx.field('dues_month', 'Tháng áp dụng đề xuất', month, 'month')
       : '';
 
-    ctx.dialog(
+    const modal = ctx.dialog(
       'Chỉnh sửa đội bóng',
-      'Mức quỹ mới áp dụng sớm nhất trong tháng này nếu chỉnh trước ngày 3; từ ngày 3 áp dụng sớm nhất tháng sau.',
+      'Người quản lý đội có thể là bất kỳ thành viên nào trong CLB (được chọn nhiều người quản lý). Mức quỹ mới áp dụng sớm nhất trong tháng này nếu chỉnh trước ngày 3; từ ngày 3 áp dụng sớm nhất tháng sau.',
       ctx.field('name', 'Tên đội bóng', team.name, 'text', true) +
         ctx.select(
           'format',
@@ -139,9 +204,37 @@ export function createRosterController(ctx) {
               : {}),
           });
           await ctx.loadView();
-          ctx.toast('Đã đổi tên đội bóng.');
+          ctx.toast('Đã cập nhật thông tin đội bóng.');
         })
     );
+
+    const mgrList = modal.querySelector('[data-mgr-list]');
+    const mgrSearch = modal.querySelector('[data-mgr-search]');
+    const mgrSort = modal.querySelector('[data-mgr-sort]');
+
+    const filterMgrs = (shouldSort = false) => {
+      const q = (mgrSearch.value || '').trim().toLocaleLowerCase('vi');
+      const sortVal = mgrSort.value;
+      const rows = [...mgrList.querySelectorAll('[data-mgr-row]')];
+      rows.forEach((row) => {
+        row.hidden = q && !row.dataset.search.includes(q);
+      });
+      if (shouldSort) {
+        rows.sort((a, b) => {
+          if (sortVal === 'name_asc') return ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          if (sortVal === 'name_desc') return -1 * ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          if (sortVal === 'notes') return (b.dataset.notes ? 1 : 0) - (a.dataset.notes ? 1 : 0) || ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          if (sortVal === 'foot') return (a.dataset.foot || '').localeCompare(b.dataset.foot || '') || ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          return 0;
+        });
+        rows.forEach((r) => mgrList.append(r));
+      }
+    };
+
+    mgrSearch.addEventListener('input', () => filterMgrs(false));
+    mgrSort.addEventListener('change', () => filterMgrs(true));
+
+    return modal;
   }
 
   function invite() {
@@ -195,16 +288,19 @@ export function createRosterController(ctx) {
   }
 
   async function handleAction(a, el) {
-    if (a === 'new-member' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'new-member') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Thêm thành viên')) return true;
       return editMember();
     }
 
-    if (a === 'edit-member' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'edit-member') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Sửa hồ sơ thành viên')) return true;
       const m = ctx.state.members.find((x) => String(x.id) === el.dataset.id);
       if (m) return editMember(m);
     }
 
-    if (a === 'delete-member' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'delete-member') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Xóa hồ sơ thành viên')) return true;
       const m = ctx.state.members.find((x) => String(x.id) === el.dataset.id);
       if (!m) return true;
       return ctx.dialog(
@@ -273,20 +369,24 @@ export function createRosterController(ctx) {
       return modal;
     }
 
-    if (a === 'invite-member' && ctx.canManageClub(ctx.currentRole())) {
+    if (a === 'invite-member') {
+      if (!ctx.requirePermission(ctx.canManageClub(), 'Mời thành viên')) return true;
       return invite();
     }
 
-    if (a === 'new-team' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'new-team') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Tạo đội bóng')) return true;
       return editTeam();
     }
 
-    if (a === 'rename-team' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'rename-team') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Chỉnh sửa đội bóng')) return true;
       const team = ctx.state.teams.find((t) => String(t.id) === el.dataset.id);
       if (team) return renameTeam(team);
     }
 
-    if (a === 'delete-team' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'delete-team') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Xóa đội bóng')) return true;
       const team = ctx.state.teams.find((t) => String(t.id) === el.dataset.id);
       if (!team) return true;
       return ctx.dialog(
@@ -303,7 +403,9 @@ export function createRosterController(ctx) {
       );
     }
 
-    if (a === 'edit-title' && (ctx.currentRole() === 'owner' || ctx.canManageClub(ctx.currentRole()))) {
+    if (a === 'edit-title') {
+      const isPrivileged = ctx.currentRole() === 'owner' || ctx.currentClub()?.is_system_admin || ctx.canManageClub();
+      if (!ctx.requirePermission(isPrivileged, 'Sửa vai trò thành viên')) return true;
       const member = ctx.state.clubMemberships.find(
         (m) => String(m.id) === el.dataset.id
       );
@@ -356,6 +458,112 @@ export function createRosterController(ctx) {
         .addEventListener('change', toggle);
       toggle();
       return modal;
+    }
+
+    if (a === 'edit-permissions') {
+      const isOwner = ctx.currentRole() === 'owner' || ctx.currentClub()?.is_system_admin;
+      if (!ctx.requirePermission(isOwner, 'Phân quyền thành viên')) return true;
+      const member = (ctx.state.clubMemberships || []).find(
+        (m) => String(m.id) === el.dataset.id
+      );
+      if (!member) return true;
+      const perms = member.permissions || {};
+
+      const permFields = `
+        <fieldset class="field" style="grid-column:1/-1;">
+          <legend>Cấp quyền cho ${ctx.e(member.name)}</legend>
+          <p class="muted" style="margin-bottom:12px;">Chủ nhiệm CLB có thể bật/tắt từng quyền cụ thể. Khi tắt, thành viên sẽ không được phép thực hiện chức năng tương ứng.</p>
+          <div style="display:grid;gap:10px;">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="can_view_finance" ${perms.can_view_finance ? 'checked' : ''}>
+              <span><strong>Xem quỹ & thu chi</strong> <small style="display:block;color:var(--muted);">Xem số dư quỹ, các khoản thu chi và báo cáo tài chính</small></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="can_manage_finance" ${perms.can_manage_finance ? 'checked' : ''}>
+              <span><strong>Quản lý & ghi sổ thu chi</strong> <small style="display:block;color:var(--muted);">Ghi nhận khoản thu chi, sửa mức quỹ đội bóng và quỹ BCN</small></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="can_manage_roster" ${perms.can_manage_roster ? 'checked' : ''}>
+              <span><strong>Quản lý nhân sự & đội bóng</strong> <small style="display:block;color:var(--muted);">Thêm/sửa/xóa hồ sơ thành viên, đội bóng, xếp cầu thủ và đội hình</small></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="can_manage_inventory" ${perms.can_manage_inventory ? 'checked' : ''}>
+              <span><strong>Quản lý kho tài sản & trang bị</strong> <small style="display:block;color:var(--muted);">Thêm đồ dùng, ghi nhận nhập/xuất kho và gán đồ cho thành viên</small></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="can_manage_activities" ${perms.can_manage_activities ? 'checked' : ''}>
+              <span><strong>Quản lý hoạt động & sự kiện</strong> <small style="display:block;color:var(--muted);">Tạo buổi tập, điểm danh, sự kiện sinh nhật và khen thưởng</small></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="can_manage_club" ${perms.can_manage_club ? 'checked' : ''}>
+              <span><strong>Quản lý thông tin CLB & cài đặt</strong> <small style="display:block;color:var(--muted);">Sửa thông tin CLB, cài đặt trang công khai và bài tuyển quân</small></span>
+            </label>
+          </div>
+        </fieldset>
+      `;
+
+      return ctx.dialog(
+        'Phân quyền thành viên',
+        `Thiết lập quyền hạn chi tiết cho tài khoản ${ctx.e(member.name)} (${ctx.e(member.email)}).`,
+        permFields,
+        (form) =>
+          ctx.submit(form, 'member-permissions', async () => {
+            const updatedPerms = {
+              can_view_finance: form.elements.can_view_finance.checked,
+              can_manage_finance: form.elements.can_manage_finance.checked,
+              can_manage_roster: form.elements.can_manage_roster.checked,
+              can_manage_inventory: form.elements.can_manage_inventory.checked,
+              can_manage_activities: form.elements.can_manage_activities.checked,
+              can_manage_club: form.elements.can_manage_club.checked,
+            };
+            await ctx.api.patch(
+              ctx.base(`/club-memberships/${member.id}/permissions`),
+              { permissions: updatedPerms }
+            );
+            await ctx.loadApp();
+            await ctx.loadView();
+            ctx.toast(`Đã cập nhật quyền hạn cho ${member.name}.`);
+          })
+      );
+    }
+
+    if (a === 'transfer-ownership') {
+      const isOwner = ctx.currentRole() === 'owner' || ctx.currentClub()?.is_system_admin;
+      if (!ctx.requirePermission(isOwner, 'Chuyển giao quyền Chủ nhiệm')) return true;
+      const targetUserId = el.dataset.id;
+      const targetName = el.dataset.name || 'thành viên này';
+
+      const warningNotice = `
+        <div class="lineup-editor" style="grid-column:1/-1;">
+          <p class="notice" style="background:#ffe8e8;color:#a32323;border-left:4px solid #a32323;padding:12px;border-radius:4px;margin-bottom:12px;">
+            <strong>CẢNH BÁO NGUY HIỂM:</strong> Khi bạn chuyển giao quyền Chủ nhiệm cho <strong>${ctx.e(targetName)}</strong>, bạn sẽ trở thành thành viên thông thường và <strong>MẤT TOÀN BỘ QUYỀN HẠN CỦA CHỦ NHIỆM CLB</strong>. Quyền lực tối cao sẽ được chuyển giao hoàn toàn cho người nhận.
+          </p>
+          <div class="field" style="margin-top:12px;">
+            <label for="f-confirm-transfer">Nhập chữ <strong>XÁC NHẬN</strong> để đồng ý chuyển giao quyền:</label>
+            <input id="f-confirm-transfer" name="confirm_text" type="text" required placeholder="XÁC NHẬN" autocomplete="off">
+          </div>
+        </div>
+      `;
+
+      return ctx.dialog(
+        'Chuyển giao quyền Chủ nhiệm CLB',
+        `Trao quyền Chủ nhiệm CLB cho ${ctx.e(targetName)}.`,
+        warningNotice,
+        (form) =>
+          ctx.submit(form, 'transfer-ownership', async (data) => {
+            if (data.confirm_text !== 'XÁC NHẬN') {
+              throw new Error('Vui lòng nhập chính xác chữ "XÁC NHẬN" để xác nhận thao tác.');
+            }
+            await ctx.api.post(ctx.base('/transfer-ownership'), {
+              new_owner_user_id: targetUserId,
+              my_new_role: 'member',
+            });
+            await ctx.loadApp();
+            await ctx.loadView();
+            ctx.toast(`Đã chuyển giao quyền Chủ nhiệm CLB cho ${targetName}. Bạn hiện là thành viên thường.`);
+          }),
+        'Xác nhận chuyển quyền'
+      );
     }
 
     if (
@@ -434,7 +642,8 @@ export function createRosterController(ctx) {
       return true;
     }
 
-    if (a === 'team-captain' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'team-captain') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Chọn đội trưởng')) return true;
       const team = ctx.state.teams.find((t) => String(t.id) === el.dataset.id);
       if (team) {
         return openCaptain({
@@ -442,24 +651,46 @@ export function createRosterController(ctx) {
           api: ctx.api,
           base: ctx.base,
           reload: ctx.loadView,
-          canManage: ctx.canManageRoster(ctx.currentRole()),
+          canManage: ctx.canManageRoster(),
         });
       }
     }
 
-    if (a === 'select-team-players' && ctx.canManageRoster(ctx.currentRole())) {
-      const team = ctx.state.teams.find((t) => String(t.id) === el.dataset.id);
-      if (team) {
-        return openLineup({
-          team,
-          api: ctx.api,
-          base: ctx.base,
-          reload: ctx.loadView,
-        });
-      }
+    if (a === 'select-team-players') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Chọn thành viên vào đội')) return true;
+      const targetTeamId = el.dataset.id || ctx.state.teamRosterId;
+      const team = ctx.state.teams.find((t) => String(t.id) === String(targetTeamId));
+      if (!team) return true;
+
+      const players = ctx.unpackList(
+        await ctx.api.get(ctx.base('/members?per_page=1000'))
+      ).rows;
+
+      const initialSelected = players
+        .filter((p) => (p.teams || []).some((t) => String(t.id) === String(team.id)))
+        .map((p) => p.id);
+
+      return ctx.openMemberPickerModal({
+        title: `Chọn thành viên vào đội ${team.name}`,
+        description: `Sân ${team.format} người · Tích chọn các thành viên thuộc đội bóng này.`,
+        items: players,
+        initialSelectedIds: initialSelected,
+        multi: true,
+        name: 'player_ids',
+        onSubmit: async (selectedIds) => {
+          await ctx.api.patch(ctx.base(`/teams/${team.id}/players`), {
+            player_ids: selectedIds.map(Number),
+          });
+          await ctx.loadView();
+          ctx.toast(`Đã cập nhật ${selectedIds.length} thành viên cho đội ${team.name}.`);
+          return true;
+        },
+        submitLabel: 'Lưu danh sách đội',
+      });
     }
 
-    if (a === 'set-team-captain' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'set-team-captain') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Chọn đội trưởng')) return true;
       const team = ctx.state.teams.find(
         (t) => String(t.id) === ctx.state.teamRosterId
       );
@@ -476,7 +707,8 @@ export function createRosterController(ctx) {
       return true;
     }
 
-    if (a === 'edit-team-position' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'edit-team-position') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Sửa vị trí cầu thủ')) return true;
       const member = ctx.state.members.find(
         (m) => String(m.id) === el.dataset.id
       );
@@ -531,7 +763,8 @@ export function createRosterController(ctx) {
       );
     }
 
-    if (a === 'edit-team-jersey' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'edit-team-jersey') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Sửa số áo cầu thủ')) return true;
       const member = ctx.state.members.find(
         (m) => String(m.id) === el.dataset.id
       );
@@ -563,7 +796,8 @@ export function createRosterController(ctx) {
       );
     }
 
-    if (a === 'remove-team-player' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'remove-team-player') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Xóa khỏi đội')) return true;
       const member = ctx.state.members.find(
         (m) => String(m.id) === el.dataset.id
       );
@@ -598,7 +832,8 @@ export function createRosterController(ctx) {
       );
     }
 
-    if (a === 'import-members' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'import-members') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Nhập thành viên từ Excel')) return true;
       let pendingImport;
       const info = `<div class="lineup-editor"><p>Chỉ dùng file .xlsx theo mẫu, tối đa 500 dòng và 5 MB. Cột <strong>full_name</strong> bắt buộc; email không được trùng; ngày sinh theo dd/mm/yyyy. Số điện thoại đặt dạng Text. Không đổi thứ tự cột hoặc dùng công thức.</p><p>Tải mẫu để xem đầy đủ vị trí, chân thuận và trạng thái hợp lệ. Sau khi nhập, hãy chọn thành viên vào đội và đặt số áo tại đội.</p><button type="button" class="button secondary" data-download-template>Tải mẫu Excel</button><div class="field"><label for="member-file">File thành viên (.xlsx)</label><input id="member-file" type="file" name="member_file" accept=".xlsx" required></div></div>`;
 

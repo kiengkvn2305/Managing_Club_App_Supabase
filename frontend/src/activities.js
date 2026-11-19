@@ -58,18 +58,45 @@ export async function activityAction(action, id, { state: s, api, base, reload }
     const previous = new Map((training.attendance || []).map((x) => [String(x.player_id), x.status]));
     const position = (p) => (p.teams || []).find((t) => String(t.id) === String(training.team_id))?.position || '';
     const positions = [...new Set(players.map(position).filter(Boolean))].sort();
-    const fields = `<div class="member-picker"><div class="filters"><label>Tìm tên <input type="search" data-att-name placeholder="Nhập tên"></label><label>Năm sinh <input type="number" data-att-year min="1900" max="2100" placeholder="Năm"></label><label>Chân thuận <select data-att-foot><option value="">Tất cả</option><option value="left">Trái</option><option value="right">Phải</option><option value="both">Hai chân</option></select></label><label>Vị trí <select data-att-position><option value="">Tất cả</option>${positions.map((p) => `<option value="${e(p)}">${e(p)}</option>`).join('')}</select></label></div><div class="member-picker-list attendance-list">${players.map((p) => { const team = (p.teams || []).find((t) => String(t.id) === String(training.team_id)); const info = [p.date_of_birth ? `Ngày sinh: ${formatDate(p.date_of_birth)}` : '', p.email, p.phone, team?.position, team?.jersey_number != null ? `#${team.jersey_number}` : ''].filter(Boolean).join(' · '); return `<label data-attendance-row data-name="${e(p.full_name.toLocaleLowerCase('vi'))}" data-year="${e((p.date_of_birth || '').slice(0, 4))}" data-foot="${e(p.preferred_foot || '')}" data-position="${e(position(p))}"><span class="attendance-person">${avatar(p.full_name, imageUrl('player', p.id, p.avatar_version, s.clubId))}<span><strong>${e(p.full_name)}</strong><small>${e(info || 'Chưa có thông tin bổ sung')}</small></span></span><select data-player="${p.id}" aria-label="Điểm danh ${e(p.full_name)} ${e(info)}"><option value="">Chưa điểm danh</option>${[['present', 'Có mặt'], ['absent', 'Vắng'], ['excused', 'Có phép']].map(([v, label]) => `<option value="${v}" ${previous.get(String(p.id)) === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label>`; }).join('') || '<p>Đội chưa có thành viên.</p>'}</div></div>`;
+
+    // Partition on initial open: previously marked members at top!
+    const markedPlayers = players.filter((p) => previous.has(String(p.id)) && previous.get(String(p.id)));
+    const unmarkedPlayers = players.filter((p) => !previous.has(String(p.id)) || !previous.get(String(p.id)));
+    markedPlayers.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+    unmarkedPlayers.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+    const orderedPlayers = [...markedPlayers, ...unmarkedPlayers];
+
+    const fields = `<div class="member-picker"><div class="filters"><label>Tìm tên / ghi chú <input type="search" data-att-name placeholder="Nhập tên hoặc ghi chú"></label><label>Năm sinh <input type="number" data-att-year min="1900" max="2100" placeholder="Năm"></label><label>Chân thuận <select data-att-foot><option value="">Tất cả</option><option value="left">Trái</option><option value="right">Phải</option><option value="both">Hai chân</option></select></label><label>Vị trí <select data-att-position><option value="">Tất cả</option>${positions.map((p) => `<option value="${e(p)}">${e(p)}</option>`).join('')}</select></label><label>Sắp xếp <select data-att-sort><option value="asc">Tên A–Z</option><option value="desc">Tên Z–A</option><option value="notes">Theo ghi chú</option><option value="foot">Theo chân thuận</option><option value="year">Theo năm sinh</option><option value="position">Theo vị trí</option></select></label></div><div class="member-picker-list attendance-list">${orderedPlayers.map((p) => { const team = (p.teams || []).find((t) => String(t.id) === String(training.team_id)); const info = [p.date_of_birth ? `Ngày sinh: ${formatDate(p.date_of_birth)}` : '', p.preferred_foot ? (p.preferred_foot === 'right' ? 'Chân phải' : p.preferred_foot === 'left' ? 'Chân trái' : 'Hai chân') : '', p.email, p.phone, team?.position, team?.jersey_number != null ? `#${team.jersey_number}` : '', p.notes ? `Ghi chú: ${p.notes}` : ''].filter(Boolean).join(' · '); return `<label data-attendance-row data-name="${e(p.full_name.toLocaleLowerCase('vi'))}" data-notes="${e(p.notes || '')}" data-year="${e((p.date_of_birth || '').slice(0, 4))}" data-foot="${e(p.preferred_foot || '')}" data-position="${e(position(p))}"><span class="attendance-person">${avatar(p.full_name, imageUrl('player', p.id, p.avatar_version, s.clubId))}<span><strong>${e(p.full_name)}</strong><small>${e(info || 'Chưa có thông tin bổ sung')}</small></span></span><select data-player="${p.id}" aria-label="Điểm danh ${e(p.full_name)} ${e(info)}"><option value="">Chưa điểm danh</option>${[['present', 'Có mặt'], ['absent', 'Vắng'], ['excused', 'Có phép']].map(([v, label]) => `<option value="${v}" ${previous.get(String(p.id)) === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label>`; }).join('') || '<p>Đội chưa có thành viên.</p>'}</div></div>`;
     const modal = saveDialog('Điểm danh', `${e(training.team_name)} · ${e(formatDate(training.training_date))}`, fields, async (form) => {
       const selected = [...form.querySelectorAll('[data-player]')].filter((x) => x.value).map((x) => ({ player_id: Number(x.dataset.player), status: x.value }));
       await api.patch(base(`/activities/trainings/${training.id}/attendance`), { players: selected }); await reload(); toast('Đã lưu điểm danh.');
     });
     modal.classList.add('member-picker-dialog');
     modal.querySelectorAll('[data-attendance-row]').forEach((row) => { const player = players.find((p) => String(p.id) === row.querySelector('[data-player]').dataset.player); row.dataset.fullName = player.full_name; row.dataset.name = `${player.full_name} ${player.notes || ''}`.toLocaleLowerCase('vi'); });
-    modal.querySelector('[data-att-name]').placeholder = 'Tên hoặc ghi chú';
-    const sortLabel = document.createElement('label'); sortLabel.innerHTML = 'Sắp xếp <select data-att-sort><option value="asc">Tên A–Z</option><option value="desc">Tên Z–A</option></select>'; modal.querySelector('.filters').append(sortLabel);
-    const filter = () => { const name = modal.querySelector('[data-att-name]').value.trim().toLocaleLowerCase('vi'), year = modal.querySelector('[data-att-year]').value, foot = modal.querySelector('[data-att-foot]').value, pos = modal.querySelector('[data-att-position]').value, direction = modal.querySelector('[data-att-sort]').value === 'desc' ? -1 : 1, list = modal.querySelector('.attendance-list'), items = [...list.querySelectorAll('[data-attendance-row]')]; items.forEach((row) => { row.hidden = !row.dataset.name.includes(name) || (year && row.dataset.year !== year) || (foot && row.dataset.foot !== foot) || (pos && row.dataset.position !== pos); }); items.sort((a,b) => direction * compareVietnameseNames(a.dataset.fullName, b.dataset.fullName)); items.forEach((row) => list.append(row)); };
-    modal.querySelector('.member-picker').addEventListener('input', filter);
-    modal.querySelector('.member-picker').addEventListener('change', filter);
+    const filter = () => {
+      const name = modal.querySelector('[data-att-name]').value.trim().toLocaleLowerCase('vi');
+      const year = modal.querySelector('[data-att-year]').value;
+      const foot = modal.querySelector('[data-att-foot]').value;
+      const pos = modal.querySelector('[data-att-position]').value;
+      const sortVal = modal.querySelector('[data-att-sort]').value;
+      const list = modal.querySelector('.attendance-list');
+      const items = [...list.querySelectorAll('[data-attendance-row]')];
+      items.forEach((row) => {
+        row.hidden = !row.dataset.name.includes(name) || (year && row.dataset.year !== year) || (foot && row.dataset.foot !== foot) || (pos && row.dataset.position !== pos);
+      });
+      items.sort((a, b) => {
+        if (sortVal === 'asc') return compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'desc') return -1 * compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'notes') return (b.dataset.notes ? 1 : 0) - (a.dataset.notes ? 1 : 0) || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'foot') return (a.dataset.foot || '').localeCompare(b.dataset.foot || '') || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'year') return (a.dataset.year || '').localeCompare(b.dataset.year || '') || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'position') return (a.dataset.position || '').localeCompare(b.dataset.position || '') || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        return 0;
+      });
+      items.forEach((row) => list.append(row));
+    };
+    modal.querySelector('.filters').addEventListener('input', filter);
+    modal.querySelector('.filters').addEventListener('change', filter);
     filter();
     return modal;
   }
