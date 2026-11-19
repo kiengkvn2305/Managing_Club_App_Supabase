@@ -1,0 +1,476 @@
+{
+  "at": "2026-11-19T07:24:45.107Z",
+  "fixtures": {
+    "runId": "mwn85wga",
+    "environment": "local only; QA records retained for inspection",
+    "users": [
+      {
+        "id": "73222484-0f68-47a7-9619-a4435fdfddaf",
+        "email": "qa-mwn85wga-owner-a@example.test"
+      },
+      {
+        "id": "13c8c40b-c7a1-4b8e-b0b2-b222dc28778c",
+        "email": "qa-mwn85wga-owner-b@example.test"
+      },
+      {
+        "id": "2f15e5a6-3cd3-482d-8025-185929ab895f",
+        "email": "qa-mwn85wga-member@example.test"
+      },
+      {
+        "id": "d24e82cd-48af-4fa3-bf02-d07517af9307",
+        "email": "qa-mwn85wga-manager@example.test"
+      },
+      {
+        "id": "c10b4f75-ac90-4cf0-b13a-f127dc4e357f",
+        "email": "qa-mwn85wga-outsider@example.test"
+      }
+    ],
+    "clubs": [
+      22,
+      23
+    ]
+  },
+  "tests": [
+    {
+      "id": "AUTH-01",
+      "module": "Auth",
+      "steps": "Register five roles via local Auth HTTP",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 441
+    },
+    {
+      "id": "AUTH-02",
+      "module": "Auth",
+      "steps": "Logout, login, reject wrong password",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 136
+    },
+    {
+      "id": "AUTH-03",
+      "module": "Auth",
+      "steps": "Refresh token then fetch confirmed user",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 28
+    },
+    {
+      "id": "AUTH-04",
+      "module": "Profile",
+      "steps": "Update name and re-read via adapter",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 186
+    },
+    {
+      "id": "CLUB-01",
+      "module": "Clubs",
+      "steps": "Create A and B using RPC, list A",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 119
+    },
+    {
+      "id": "CLUB-02",
+      "module": "Invitations",
+      "steps": "Invite member and manager, accept real token",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 84
+    },
+    {
+      "id": "CLUB-03",
+      "module": "Clubs",
+      "steps": "Edit club and re-read",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 26
+    },
+    {
+      "id": "TEAM-01",
+      "module": "Teams",
+      "steps": "Create team and re-read",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 54
+    },
+    {
+      "id": "TEAM-02",
+      "module": "Teams",
+      "steps": "Assign manager then reload teams",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 49
+    },
+    {
+      "id": "HR-01",
+      "module": "Roster",
+      "steps": "Create and update player then read",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 36
+    },
+    {
+      "id": "TEAM-03",
+      "module": "Roster",
+      "steps": "Assign player, re-read team count and roster",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 40
+    },
+    {
+      "id": "TEAM-04",
+      "module": "Captain",
+      "steps": "Set captain and reload",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 32
+    },
+    {
+      "id": "DASH-01",
+      "module": "Dashboard",
+      "steps": "Verify total, active and management counts",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 12
+    },
+    {
+      "id": "DUES-01",
+      "module": "Rates",
+      "steps": "Save rate, reload team card",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 33
+    },
+    {
+      "id": "DUES-02",
+      "module": "Dues",
+      "steps": "Unpaid member appears BEFORE first payment",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 10
+    },
+    {
+      "id": "DUES-03",
+      "module": "Dues",
+      "steps": "Record payment and read ledger/dues",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 23
+    },
+    {
+      "id": "FIN-01",
+      "module": "Finance",
+      "steps": "Income and expense real RPC",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 38
+    },
+    {
+      "id": "FIN-02",
+      "module": "Finance",
+      "steps": "Concurrent identical requests return same transaction",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 27
+    },
+    {
+      "id": "FIN-03",
+      "module": "Finance",
+      "steps": "Reject same key with different amount",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 12
+    },
+    {
+      "id": "FIN-04",
+      "module": "Finance",
+      "steps": "Reversal nets zero and replay returns original reversal",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 34
+    },
+    {
+      "id": "FIN-05",
+      "module": "Finance",
+      "steps": "Chart derives actual entries",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 16
+    },
+    {
+      "id": "PLAN-01",
+      "module": "Planned expenses",
+      "steps": "Create and read month-expanded row for editing",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 23
+    },
+    {
+      "id": "INV-01",
+      "module": "Inventory",
+      "steps": "Create, rename, receive, issue and reload",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 69
+    },
+    {
+      "id": "INV-02",
+      "module": "Inventory",
+      "steps": "Prevent negative stock",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 26
+    },
+    {
+      "id": "INV-03",
+      "module": "Inventory",
+      "steps": "Assign and return asset",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 35
+    },
+    {
+      "id": "MATCH-01",
+      "module": "Matches",
+      "steps": "Create, edit completed result and read",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 37
+    },
+    {
+      "id": "ATT-01",
+      "module": "Attendance",
+      "steps": "Upsert match attendance twice and read",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 60
+    },
+    {
+      "id": "STAT-01",
+      "module": "Statistics",
+      "steps": "Save match stats and aggregate",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 51
+    },
+    {
+      "id": "TRAIN-01",
+      "module": "Training",
+      "steps": "Create training and save attendance",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 44
+    },
+    {
+      "id": "EVENT-01",
+      "module": "Activities",
+      "steps": "Save celebration and award",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 50
+    },
+    {
+      "id": "BOARD-01",
+      "module": "Board",
+      "steps": "Add and rename board member",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 62
+    },
+    {
+      "id": "POLL-01",
+      "module": "Voting",
+      "steps": "Create poll, member votes, duplicate denied",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 58
+    },
+    {
+      "id": "REC-01",
+      "module": "Recruitment",
+      "steps": "Create post and applicant, edit and reload",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 59
+    },
+    {
+      "id": "DISC-01",
+      "module": "Discipline",
+      "steps": "Create case, check history",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 26
+    },
+    {
+      "id": "SPON-01",
+      "module": "Sponsorship",
+      "steps": "Create sponsor, agreement, receipt and read total",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 65
+    },
+    {
+      "id": "IMPORT-01",
+      "module": "Excel commit",
+      "steps": "Preview then commit real rows",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 41
+    },
+    {
+      "id": "SEC-ownerB-READ",
+      "module": "Isolation",
+      "steps": "Read private A roster from unauthorized account",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 6
+    },
+    {
+      "id": "SEC-ownerB-WRITE",
+      "module": "Isolation",
+      "steps": "Attempt to change A player",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 7
+    },
+    {
+      "id": "SEC-ownerB-RPC",
+      "module": "Isolation",
+      "steps": "Attempt to sync A team roster",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 8
+    },
+    {
+      "id": "SEC-outsider-READ",
+      "module": "Isolation",
+      "steps": "Read private A roster from unauthorized account",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 77
+    },
+    {
+      "id": "SEC-outsider-WRITE",
+      "module": "Isolation",
+      "steps": "Attempt to change A player",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 6
+    },
+    {
+      "id": "SEC-outsider-RPC",
+      "module": "Isolation",
+      "steps": "Attempt to sync A team roster",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 5
+    },
+    {
+      "id": "SEC-ADMIN",
+      "module": "Privilege",
+      "steps": "Attempt self system-admin promotion",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 5
+    },
+    {
+      "id": "SEC-OWNER",
+      "module": "Privilege",
+      "steps": "Attempt self club-owner promotion",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 4
+    },
+    {
+      "id": "SEC-FIN",
+      "module": "Privilege",
+      "steps": "Member cannot write ledger or call finance RPC",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 14
+    },
+    {
+      "id": "SEC-LINK",
+      "module": "Privilege",
+      "steps": "Roster manager cannot link arbitrary auth account directly",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 4
+    },
+    {
+      "id": "SEC-ANON",
+      "module": "Privilege",
+      "steps": "Anon cannot execute manager sync",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 6
+    },
+    {
+      "id": "STORE-01",
+      "module": "Storage",
+      "steps": "Owner uploads private image, outsider cannot sign it",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 91
+    },
+    {
+      "id": "FIN-LOCK",
+      "module": "Finance",
+      "steps": "Close period then reject new ledger entry",
+      "expected": "Assertions succeed against real local services",
+      "actual": "Verified",
+      "status": "PASS",
+      "ms": 29
+    }
+  ]
+}

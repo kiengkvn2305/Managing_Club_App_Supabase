@@ -1,7 +1,9 @@
 import { formatDate, validDate, formatVietnamDateTime } from './utils.js';
 const HEADERS = ['full_name', 'email', 'phone', 'date_of_birth', 'position', 'preferred_foot', 'status', 'notes'];
 async function workbook() {
-  const module = await import('exceljs');
+  let module;
+  try { module = await import('exceljs'); }
+  catch { throw new Error('Không tải được thư viện Excel. Hãy giữ lại file đang nhập, tải lại trang để nhận phiên bản mới rồi thử lại.'); }
   const Excel = module.default || module;
   return new Excel.Workbook();
 }

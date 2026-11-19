@@ -5,7 +5,7 @@
       "label": "FCMS: development",
       "type": "shell",
       "command": "node",
-      "args": ["scripts/dev.mjs"],
+      "args": ["scripts/start-frontend.mjs"],
       "isBackground": true,
       "problemMatcher": []
     },

@@ -7,7 +7,7 @@ select is((select count(*)::integer from information_schema.tables t join pg_cla
 select is((select count(*)::integer from information_schema.role_table_grants where table_schema='public' and grantee='anon' and table_name <> 'club_public_settings'),0,'anon has no direct private table grants');
 select ok(has_table_privilege('anon','public.club_public_settings','SELECT'),'anon can read only the public settings table');
 select ok(has_table_privilege('authenticated','public.clubs','SELECT'),'authenticated can read clubs through RLS');
-select ok(has_table_privilege('authenticated','public.player_profiles','INSERT'),'authenticated can create roster rows through roster RLS');
+select ok(has_column_privilege('authenticated','public.player_profiles','full_name','INSERT'),'authenticated can create roster rows through column grants and roster RLS');
 select ok(has_table_privilege('authenticated','public.club_matches','UPDATE'),'authenticated can update matches through roster RLS');
 select ok(not has_table_privilege('authenticated','public.finance_transactions','INSERT'),'finance transactions cannot be inserted directly');
 select ok(not has_table_privilege('authenticated','public.finance_transactions','UPDATE'),'finance transactions cannot be updated directly');

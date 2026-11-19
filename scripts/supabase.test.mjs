@@ -92,7 +92,8 @@ test('Cloudflare frontend uses public Supabase config and never service-role cre
   assert.match(app, /from ["']\.\/api-supabase\.js["']/);
   assert.match(sw, /url\.pathname\.startsWith\("\/api"\)/);
   assert.match(sw, /url\.pathname\.startsWith\("\/auth"\)/);
-  assert.match(redirects, /\/\* \/index\.html 200/);
+  assert.doesNotMatch(redirects, /^\/\* \/index\.html 200/m);
+  assert.match(readFileSync(join(root, 'frontend', 'public', '404.html'), 'utf8'), /Không tìm thấy/);
 });
 
 test('permission hardening uses explicit grants without weakening RLS', () => {

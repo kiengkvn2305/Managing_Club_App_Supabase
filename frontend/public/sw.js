@@ -1,4 +1,4 @@
-const CACHE = "fcms-static-v1";
+const CACHE = "fcms-static-v2-mime";
 const SHELL = [
   "/offline.html",
   "/icons/crest.svg",
@@ -52,9 +52,9 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(request).then(
       (hit) =>
-        hit ||
+        (hit && validAssetResponse(url.pathname, hit) ? hit : null) ||
         fetch(request).then((response) => {
-          if (response.ok && response.type === "basic") {
+          if (response.ok && response.type === "basic" && validAssetResponse(url.pathname, response)) {
             const copy = response.clone();
             event.waitUntil(
               caches.open(CACHE).then((cache) => cache.put(request, copy)),
@@ -65,3 +65,11 @@ self.addEventListener("fetch", (event) => {
     ),
   );
 });
+
+function validAssetResponse(path, response) {
+  const mime = response.headers.get('content-type') || '';
+  if (path.endsWith('.js')) return /(?:javascript|ecmascript)/i.test(mime);
+  if (path.endsWith('.css')) return /text\/css/i.test(mime);
+  if (path.endsWith('.woff2')) return /(?:font\/woff2|application\/font-woff)/i.test(mime);
+  return true;
+}

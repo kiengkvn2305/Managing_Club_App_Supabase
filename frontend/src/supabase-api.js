@@ -1,4 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from './supabase-client.js';
+import { ledgerView, expandPlanned, statisticsView } from './data-views.js';
+import { vietnamToday, compareVietnameseNames } from './utils.js';
 
 export class SupabaseApiError extends Error {
   constructor(message, status = 0, errors = {}) { super(message); this.name = "ApiError"; this.status = status; this.errors = errors; }
@@ -13,7 +15,7 @@ const numeric = (value) => value === "" || value == null ? null : Number(value);
 const truthy = (value) => value === true || value === 1 || value === "1" || value === "true";
 const paramsOf = (path) => new URLSearchParams(path.split("?")[1] || "");
 const clubIdOf = (path) => Number(path.match(/^\/clubs\/(\d+)/)?.[1] || 0);
-const page = (rows, params, size = 20) => { const current = Math.max(1, Number(params.get("page") || 1)); const total = rows.length; const from = (current - 1) * size; return { data: rows.slice(from, from + size), meta: { current_page: current, last_page: Math.max(1, Math.ceil(total / size)), total } }; };
+const page = (rows, params, size = 20) => { const current = Math.max(1, Number(params.get("page") || 1)); const total = rows.length; const from = (current - 1) * size; const meta = { current_page: current, last_page: Math.max(1, Math.ceil(total / size)), total }; return { data: rows.slice(from, from + size), meta, ...meta }; };
 const hashValue = async (value) => { const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value))); return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join(""); };
 export function dashboardMetrics({ players = [], managerMemberships = [], teamsCount = 0 }) {
   return {
@@ -23,21 +25,15 @@ export function dashboardMetrics({ players = [], managerMemberships = [], teamsC
     managers_count: managerMemberships.filter((membership) => membership.status === "active" && membership.role !== "member").length,
   };
 }
-export function latestTeamDuesRate(rates = [], teamId, today = new Date().toISOString().slice(0, 10)) {
+export function latestTeamDuesRate(rates = [], teamId, today = vietnamToday()) {
   return rates.filter((rate) => String(rate.team_id) === String(teamId) && String(rate.effective_month) <= today).sort((a, b) => String(b.effective_month).localeCompare(String(a.effective_month)))[0] || null;
 }
 const viteEnv = import.meta.env || {};
-let supabaseClient;
-const supabaseGlobalKey = "__fcms_supabase_client__";
 
-export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
+export function createSupabaseApiClient({ onUnauthorized = () => {}, client = null } = {}) {
   const url = viteEnv.VITE_SUPABASE_URL, key = viteEnv.VITE_SUPABASE_ANON_KEY;
-  if (!url || !key) throw new SupabaseApiError("Thiếu VITE_SUPABASE_URL hoặc VITE_SUPABASE_ANON_KEY.", 500);
-  if (!supabaseClient) {
-    supabaseClient = globalThis[supabaseGlobalKey] || createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
-    globalThis[supabaseGlobalKey] = supabaseClient;
-  }
-  const supabase = supabaseClient;
+  if (!client && (!url || !key)) throw new SupabaseApiError("Thiếu VITE_SUPABASE_URL hoặc VITE_SUPABASE_ANON_KEY.", 500);
+  const supabase = client || getSupabaseClient(viteEnv);
   const check = (result) => { if (result.error) throw new SupabaseApiError(result.error.message, result.error.code === "42501" ? 403 : 422, { database: [result.error.message] }); return result.data; };
   async function user(required = true) { const result = await supabase.auth.getUser(); if (result.error || !result.data.user) { if (required) { onUnauthorized(); throw new SupabaseApiError("Phiên đăng nhập đã hết hạn.", 401); } return null; } return result.data.user; }
   async function profile(required = true) { const current = await user(required); if (!current) return null; const result = await supabase.from("profiles").select("id,name,email,avatar_path,created_at,updated_at").eq("id", current.id).maybeSingle(); const row = check(result) || { id: current.id, name: current.user_metadata?.name || "", email: current.email }; return { ...row, avatar_version: row.avatar_path || null }; }
@@ -90,7 +86,16 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     const q = (params.get("q") || "").toLowerCase(), teamId = params.get("team_id"), status = params.get("status"); rows = rows.filter((x) => (!q || [x.full_name, x.email, x.phone].some((v) => String(v || "").toLowerCase().includes(q))) && (!status || x.status === status) && (!teamId || (x.team_players || []).some((t) => String(t.team_id) === String(teamId))));
     rows = rows.map((x) => ({ ...x, avatar_version: x.avatar_path || null, team: (x.team_players || []).find((t) => String(t.team_id) === String(x.team_id))?.team || null, teams: (x.team_players || []).map((t) => ({ ...t.team, jersey_number: t.jersey_number, position: t.position })) })); return page(rows, params, Math.min(100, Number(params.get("per_page") || 15)));
   }
-  async function finance(clubId, params) { let b = supabase.from("finance_transactions").select("*").eq("club_id", clubId).eq("status", "posted").order("occurred_on", { ascending: false }); if (params.get("from")) b = b.gte("occurred_on", params.get("from")); if (params.get("to")) b = b.lte("occurred_on", params.get("to")); const rows = check(await b) || []; const data = await Promise.all(rows.map(async (row) => { if (!row.receipt_path) return { ...row, has_receipt: false }; const signedUrl = await supabase.storage.from("fcms-private").createSignedUrl(row.receipt_path, 900); return { ...row, has_receipt: !signedUrl.error, receipt_url: signedUrl.data?.signedUrl || null }; })); const income = rows.filter((x) => x.type === "income").reduce((s, x) => s + Number(x.amount), 0), expense = rows.filter((x) => x.type === "expense").reduce((s, x) => s + Number(x.amount), 0); return { data, summary: { income, expense, balance: income - expense, remaining: income - expense }, meta: { current_page: 1, last_page: 1, total: rows.length }, chart: [], adjustments: { data: [], meta: {} } }; }
+  async function finance(clubId, params) {
+    const from=params.get("from")||"", to=params.get("to")||"9999-12-31";
+    const rows=check(await supabase.from("finance_transactions").select("*").eq("club_id",clubId).in("status",["posted","reversed"]).lte("occurred_on",to).order("occurred_on",{ascending:false}))||[];
+    const view=ledgerView(rows,from,to,params.get("group")||"day");
+    const result=page(view.data,params,Math.min(100,Number(params.get("per_page")||20)));
+    result.data=await Promise.all(result.data.map(async row=>{if(!row.receipt_path)return {...row,has_receipt:false};const signed=await supabase.storage.from("fcms-private").createSignedUrl(row.receipt_path,900);return {...row,has_receipt:!signed.error,receipt_url:signed.data?.signedUrl||null};}));
+    const adjustments=check(await supabase.from("team_dues_adjustments").select("*,player:player_profiles(full_name),team:teams(name)").eq("club_id",clubId).order("created_at",{ascending:false}))||[];
+    const ap=new URLSearchParams({page:params.get("adjustment_page")||"1"});
+    return {...result,summary:view.summary,chart:view.chart,adjustments:page(adjustments.filter(x=>x.created_at.slice(0,10)>=from&&x.created_at.slice(0,10)<=to).map(x=>({...x,player_name:x.player?.full_name,team_name:x.team?.name})),ap)};
+  }
   async function inventory(clubId, params) { let b = supabase.from("inventory_items").select("*").eq("club_id", clubId).order("name"); if (!truthy(params.get("archived"))) b = b.eq("archived", false); if (params.get("search")) b = b.ilike("name", `%${params.get("search")}%`); let rows = check(await b) || []; if (truthy(params.get("low_stock"))) rows = rows.filter((x) => x.quantity <= x.low_stock_threshold); return { ...page(rows, params), total: rows.length }; }
   async function dashboard(clubId) {
     const [playersResult, teamsResult, membershipsResult] = await Promise.all([
@@ -110,7 +115,7 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     if (clean === "/auth/register" && method === "POST") { const result = await supabase.auth.signUp({ email: String(data.email).toLowerCase(), password: data.password, options: { data: { name: data.name } } }); if (result.error) throw new SupabaseApiError(result.error.message, 422); if (!result.data.session) throw new SupabaseApiError("Đăng ký thành công. Hãy xác minh email trước khi đăng nhập.", 202); return { data: await profile() }; }
     if (clean === "/auth/login" && method === "POST") { const result = await supabase.auth.signInWithPassword({ email: String(data.email).toLowerCase(), password: data.password }); if (result.error) throw new SupabaseApiError("Thông tin đăng nhập không chính xác.", 422, { email: ["Thông tin đăng nhập không chính xác."] }); return { data: await profile() }; }
     if (clean === "/auth/logout") { await supabase.auth.signOut(); return {}; }
-    if (clean === "/auth/profile" && method === "PATCH") { const result = await supabase.auth.updateUser({ ...(data.email ? { email: data.email } : {}), data: { name: data.name } }); if (result.error) throw new SupabaseApiError(result.error.message, 422); check(await supabase.from("profiles").update({ name: data.name, ...(data.email ? { email: data.email } : {}) }).eq("id", current.id)); return { data: await profile() }; }
+    if (clean === "/auth/profile" && method === "PATCH") { const result = await supabase.auth.updateUser({ ...(data.email ? { email: data.email } : {}), data: { name: data.name } }); if (result.error) throw new SupabaseApiError(result.error.message, 422); check(await supabase.from("profiles").update({ name: data.name }).eq("id", current.id).select("id").single()); return { data: await profile() }; }
     if (clean === "/auth/password" && method === "PATCH") { const auth = await supabase.auth.signInWithPassword({ email: current.email, password: data.current_password }); if (auth.error) throw new SupabaseApiError("Mật khẩu hiện tại không chính xác.", 422, { current_password: ["Mật khẩu hiện tại không chính xác."] }); const result = await supabase.auth.updateUser({ password: data.password }); if (result.error) throw new SupabaseApiError(result.error.message, 422); return {}; }
     if (clean === "/auth/forgot-password" && method === "POST") { const result = await supabase.auth.resetPasswordForEmail(data.email, { redirectTo: `${location.origin}/#reset-password` }); if (result.error) throw new SupabaseApiError(result.error.message, 422); return { message: "Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi." }; }
     if (clean === "/auth/reset-password" && method === "POST") { const result = await supabase.auth.updateUser({ password: data.password }); if (result.error) throw new SupabaseApiError(result.error.message, 422); return {}; }
@@ -183,12 +188,52 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     if (inventoryAssignmentsRoute && method === "POST") return { data: check(await supabase.rpc("assign_inventory", { p_club_id: clubId, p_item_id: Number(inventoryAssignmentsRoute[1]), p_player_id: Number(data.player_id), p_quantity: Number(data.quantity), p_reason: data.reason })) };
     const inventoryReturn = clean.match(/\/inventory\/(\d+)\/assignments\/(\d+)\/return$/); if (inventoryReturn && method === "POST") return { data: check(await supabase.rpc("return_inventory_assignment", { p_club_id: clubId, p_item_id: Number(inventoryReturn[1]), p_assignment_id: Number(inventoryReturn[2]), p_quantity: Number(data.quantity), p_reason: data.reason })) };
     if (clean === `/clubs/${clubId}/inventory/members` && method === "GET") { let b = supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).order("full_name"); if (params.get("search")) b = b.ilike("full_name", `%${params.get("search")}%`); return page(check(await b) || [], params, 50); }
-    if (clean.endsWith("/dues") && method === "GET") { const rows = check(await supabase.from("team_dues_entries").select("*,player:player_profiles(full_name),team:teams(name)").eq("club_id", clubId).eq("month", `${params.get("month") || new Date().toISOString().slice(0, 7)}-01`)) || []; const grouped = new Map(); for (const row of rows) { const item = grouped.get(row.player_id) || { player_id: row.player_id, name: row.player?.full_name, teams: [], total: 0, debt: 0 }; item.teams.push({ team_id: row.team_id, name: row.team?.name, amount: row.amount, status: row.status }); item.total += Number(row.amount || 0); if (row.status === "unpaid") item.debt += Number(row.amount || 0); grouped.set(row.player_id, item); } return { data: [...grouped.values()] }; }
+    if (clean.endsWith("/dues") && method === "GET") {
+      const targetMonth = `${params.get("month") || new Date().toISOString().slice(0, 7)}-01`;
+      const [entriesResult, teamPlayersResult, ratesResult] = await Promise.all([
+        supabase.from("team_dues_entries").select("*,player:player_profiles(id,full_name,date_of_birth,email,notes),team:teams(id,name)").eq("club_id", clubId).eq("month", targetMonth),
+        supabase.from("team_players").select("team_id,player_id,player:player_profiles(id,full_name,date_of_birth,email,notes,status),team:teams(id,name)").eq("club_id", clubId),
+        supabase.from("team_dues_rates").select("team_id,effective_month,amount").eq("club_id", clubId).lte("effective_month", targetMonth).order("effective_month", { ascending: false }),
+      ]);
+      const rows = check(entriesResult) || [];
+      const teamPlayers = check(teamPlayersResult) || [];
+      const rates = check(ratesResult) || [];
+      const latestRates = new Map();
+      for (const r of rates) {
+        if (!latestRates.has(r.team_id)) latestRates.set(r.team_id, Number(r.amount));
+      }
+      const grouped = new Map();
+      for (const row of rows) {
+        const item = grouped.get(row.player_id) || { player_id: row.player_id, name: row.player?.full_name, date_of_birth: row.player?.date_of_birth, email: row.player?.email, notes: row.player?.notes, teams: [], total: 0, debt: 0 };
+        item.teams.push({ team_id: row.team_id, name: row.team?.name, amount: Number(row.amount || 0), status: row.status });
+        item.total += Number(row.amount || 0);
+        if (row.status === "unpaid") item.debt += Number(row.amount || 0);
+        grouped.set(row.player_id, item);
+      }
+      for (const tp of teamPlayers) {
+        if (tp.player?.status !== "active") continue;
+        const rateAmount = latestRates.get(tp.team_id);
+        if (rateAmount == null || rateAmount <= 0) continue;
+        const item = grouped.get(tp.player_id) || { player_id: tp.player_id, name: tp.player?.full_name, date_of_birth: tp.player?.date_of_birth, email: tp.player?.email, notes: tp.player?.notes, teams: [], total: 0, debt: 0 };
+        if (!item.teams.some((t) => t.team_id === tp.team_id)) {
+          item.teams.push({ team_id: tp.team_id, name: tp.team?.name, amount: rateAmount, status: "unpaid" });
+          item.total += rateAmount;
+          item.debt += rateAmount;
+        }
+        grouped.set(tp.player_id, item);
+      }
+      return { data: [...grouped.values()] };
+    }
     if (clean.endsWith("/dues") && method === "POST") return { data: check(await supabase.rpc("record_player_dues", { p_club_id: clubId, p_player_id: Number(data.player_id), p_month: `${data.month}-01`, p_months: Number(data.months || 1), p_status: data.status })) };
     if (clean.endsWith("/dues") && method === "PATCH") return { data: check(await supabase.rpc("correct_team_dues", { p_club_id: clubId, p_team_id: Number(data.team_id), p_player_id: Number(data.player_id), p_month: `${data.month}-01`, p_expected_status: data.expected_status, p_status: data.status, p_reason: data.reason })) };
     const duesRate = clean.match(/\/teams\/(\d+)\/dues-rate$/); if (duesRate && method === "PATCH") { const effective = `${data.dues_month}-01`; return { data: check(await supabase.from("team_dues_rates").upsert({ club_id: clubId, team_id: Number(duesRate[1]), effective_month: effective, amount: Number(data.dues_amount) }, { onConflict: "team_id,effective_month" }).select().single()) }; }
     if (clean.endsWith("/matches/calendar") && method === "GET") { const rows = check(await supabase.from("club_matches").select("*,team:teams(name)").eq("club_id", clubId).gte("match_date", params.get("from")).lte("match_date", params.get("to")).order("match_date")) || []; return { data: rows }; }
-    if (clean.endsWith("/matches") && method === "GET") return page(check(await supabase.from("club_matches").select("*,team:teams(name)").eq("club_id", clubId).order("match_date", { ascending: false })) || [], params);
+    if (clean.endsWith("/matches") && method === "GET") {
+      let query=supabase.from("club_matches").select("*,team:teams(name)").eq("club_id",clubId).order("match_date",{ascending:false});
+      const month=params.get("month");
+      if(month && /^\d{4}-\d{2}$/.test(month)){const [y,m]=month.split("-").map(Number);query=query.gte("match_date",month+"-01").lte("match_date",month+"-"+new Date(y,m,0).getDate());}
+      return page((check(await query)||[]).map(row=>({...row,team_name:row.team?.name||null})),params);
+    }
     if (clean.endsWith("/matches") && method === "POST") return { data: check(await supabase.from("club_matches").insert({ ...data, club_id: clubId, team_id: numeric(data.team_id), created_by: current.id, our_score: numeric(data.our_score), opponent_score: numeric(data.opponent_score) }).select().single()) };
     const matchItem = clean.match(/\/matches\/(\d+)$/); if (matchItem && method === "PATCH") return { data: check(await supabase.from("club_matches").update({ ...data, team_id: numeric(data.team_id), our_score: numeric(data.our_score), opponent_score: numeric(data.opponent_score) }).eq("club_id", clubId).eq("id", Number(matchItem[1])).select().single()) };
     const matchLineup = clean.match(/\/matches\/(\d+)\/lineup$/); if (matchLineup && method === "GET") return { data: check(await supabase.from("match_lineups").select("*").eq("club_id", clubId).eq("club_match_id", Number(matchLineup[1])).maybeSingle()) || null };
@@ -200,7 +245,13 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     const matchStats = clean.match(/\/matches\/(\d+)\/player-stats$/); if (matchStats && method === "GET") { const match = check(await supabase.from("club_matches").select("team_id").eq("club_id", clubId).eq("id", Number(matchStats[1])).single()); const teamRows = match?.team_id ? check(await supabase.from("team_players").select("player_id,position,jersey_number").eq("club_id", clubId).eq("team_id", match.team_id)) || [] : []; const stats = check(await supabase.from("player_match_stats").select("*").eq("club_id", clubId).eq("match_id", Number(matchStats[1]))) || []; const ids = [...new Set([...teamRows.map((row) => row.player_id), ...stats.map((row) => row.player_id)])]; const players = ids.length ? check(await supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).in("id", ids)) || [] : []; return { data: players.map((player) => ({ player_id: player.id, full_name: player.full_name, date_of_birth: player.date_of_birth, email: player.email, current_team_player: teamRows.some((row) => row.player_id === player.id), stat_id: stats.find((row) => row.player_id === player.id)?.id, ...(stats.find((row) => row.player_id === player.id) || {}) })) }; }
     if (matchStats && method === "PUT") { const source = data.player_id ? [data] : (data.players || data.stats || []); const entries = source.map((row) => ({ club_id: clubId, match_id: Number(matchStats[1]), player_id: Number(row.player_id), goals: Number(row.goals || 0), assists: Number(row.assists || 0), yellow_cards: Number(row.yellow_cards || 0), red_cards: Number(row.red_cards || 0), goals_conceded: numeric(row.goals_conceded), rating: numeric(row.rating) })); return { data: check(await supabase.from("player_match_stats").upsert(entries, { onConflict: "match_id,player_id" })) || [] }; }
     const statDelete = clean.match(/\/matches\/(\d+)\/player-stats\/(\d+)$/); if (statDelete && method === "DELETE") { check(await supabase.rpc("delete_player_match_stat", { p_club_id: clubId, p_match_id: Number(statDelete[1]), p_player_id: Number(statDelete[2]) })); return {}; }
-    const playerStats = clean.match(/\/player-stats$/); if (playerStats && method === "GET") return { data: check(await supabase.from("player_match_stats").select("*").eq("club_id", clubId)) || [] };
+    const playerStats = clean.match(/\/player-stats$/); if (playerStats && method === "GET") {
+      let query=supabase.from("player_match_stats").select("*,player:player_profiles(full_name,date_of_birth,email),match:club_matches!inner(status,match_date,team_id,team:teams(name))").eq("club_id",clubId).eq("match.status","completed");
+      if(params.get("from")) query=query.gte("match.match_date",params.get("from"));
+      if(params.get("to")) query=query.lte("match.match_date",params.get("to"));
+      if(params.get("team_id")) query=query.eq("match.team_id",Number(params.get("team_id")));
+      return {data:statisticsView(check(await query)||[])};
+    }
     const costSplit = clean.match(/\/matches\/(\d+)\/cost-split(?:\/(preview))?$/); if (costSplit && method === "GET") { const match = check(await supabase.from("club_matches").select("team_id").eq("club_id", clubId).eq("id", Number(costSplit[1])).single()); const teamRows = match?.team_id ? check(await supabase.from("team_players").select("player_id").eq("club_id", clubId).eq("team_id", match.team_id)) || [] : []; const attendanceRows = check(await supabase.from("match_attendances").select("player_id,attendance").eq("club_id", clubId).eq("match_id", Number(costSplit[1]))) || []; const ids = [...new Set([...teamRows.map((row) => row.player_id), ...attendanceRows.map((row) => row.player_id)])]; const players = ids.length ? check(await supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).in("id", ids)) || [] : []; const split = check(await supabase.from("match_cost_splits").select("*").eq("club_id", clubId).eq("match_id", Number(costSplit[1])).maybeSingle()); const receivables = split ? check(await supabase.from("match_cost_receivables").select("*,player:player_profiles(full_name,email,date_of_birth)").eq("club_id", clubId).eq("split_id", split.id)) || [] : []; return { data: { split, receivables, players: players.map((player) => ({ ...player, player_id: player.id, attendance: attendanceRows.find((row) => row.player_id === player.id)?.attendance })) } }; }
     if (costSplit && method === "POST") { const total = Number(data.stadium || 0) + Number(data.referee || 0) + Number(data.water || 0) + Number(data.equipment || 0) + Number(data.other || 0) - Number(data.sponsorship || 0); if (costSplit[2] === "preview") return { data: { total, receivables: (data.players || []).map((row) => ({ player_id: row.player_id, amount: row.exempt ? 0 : Number(row.amount || 0), exempt: Boolean(row.exempt), weight: Number(row.weight || 1) })) } }; return { data: check(await supabase.rpc("create_match_cost_split", { p_club_id: clubId, p_match_id: Number(costSplit[1]), p_stadium: Number(data.stadium || 0), p_referee: Number(data.referee || 0), p_water: Number(data.water || 0), p_equipment: Number(data.equipment || 0), p_other: Number(data.other || 0), p_sponsorship: Number(data.sponsorship || 0), p_method: data.method || "equal", p_players: data.players || [] })) }; }
     if (clean.endsWith("/polls") && method === "GET") { const polls = check(await supabase.from("club_polls").select("*,options:club_poll_options(*)").eq("club_id", clubId).order("created_at", { ascending: false })) || []; const electors = check(await supabase.from("club_poll_electors").select("poll_id").eq("club_id", clubId).eq("user_id", current.id)) || []; const votes = check(await supabase.from("club_poll_votes").select("poll_id,option_id").eq("club_id", clubId).eq("user_id", current.id)) || []; const now = Date.now(); return { data: polls.map((poll) => ({ ...poll, options: (poll.options || []).sort((a, b) => a.sort_order - b.sort_order), eligible: electors.some((row) => row.poll_id === poll.id), voted: votes.some((row) => row.poll_id === poll.id), closed: new Date(poll.deadline).getTime() < now, eligible_count: electors.filter((row) => row.poll_id === poll.id).length })) }; }
@@ -224,7 +275,11 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     if (clean.endsWith("/my-player") && method === "GET") { const rows = check(await supabase.from("player_profiles").select("*").eq("club_id", clubId).eq("user_id", current.id)) || []; return { data: rows[0] || null, eligible: !rows.length }; }
     if (clean.endsWith("/my-player/claim") && method === "POST") return { data: check(await supabase.rpc("claim_player_profile", { p_club_id: clubId })) };
     if (clean.endsWith("/my-player/claim") && method === "DELETE") { check(await supabase.rpc("unlink_player_profile", { p_club_id: clubId })); return {}; }
-    if (clean.endsWith("/planned") && method === "GET") return { data: check(await supabase.from("planned_expenses").select("*").eq("club_id", clubId).eq("cancelled", false)) || [] };
+    if (clean.endsWith("/planned") && method === "GET") {
+      const rows=check(await supabase.from("planned_expenses").select("*").eq("club_id",clubId).eq("cancelled",false))||[];
+      const month=vietnamToday().slice(0,7);
+      return {data:expandPlanned(rows,params.get("from")||month,params.get("to")||params.get("from")||month)};
+    }
     if (clean.endsWith("/planned") && method === "POST") return { data: check(await supabase.rpc("save_planned_expense", { p_club_id: clubId, p_id: null, p_description: data.description, p_amount: data.amount === "" ? null : Number(data.amount), p_notes: data.notes || null, p_effective_from: `${data.effective_from}-01`, p_effective_to: data.effective_to ? `${data.effective_to}-01` : null })) };
     const planned = clean.match(/\/finance\/planned\/(\d+)$/); if (planned && method === "PATCH") return { data: check(await supabase.rpc("save_planned_expense", { p_club_id: clubId, p_id: Number(planned[1]), p_description: data.description, p_amount: data.amount === "" ? null : Number(data.amount), p_notes: data.notes || null, p_effective_from: `${data.effective_from}-01`, p_effective_to: data.effective_to ? `${data.effective_to}-01` : null })) };
     if (planned && method === "DELETE") return { data: check(await supabase.rpc("cancel_planned_expense", { p_club_id: clubId, p_id: Number(planned[1]), p_effective_to: params.get("month") ? `${params.get("month")}-01` : null })) };

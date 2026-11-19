@@ -16,28 +16,27 @@ Ngày cập nhật: 2026-11-19
 - Cấu hình Cloudflare Pages, SPA fallback, service worker và manifest PWA.
 - Backend legacy đã được loại khỏi Project 2; runtime chỉ còn frontend và Supabase.
 
-## Đã kiểm chứng local
+## Đã kiểm chứng local & remote
 
-- Docker daemon đang chạy.
-- Supabase local stack đã khởi động và áp dụng migrations.
-- Database lint: không có schema errors.
-- Database tests: 47/47 PASS trên 3 file pgTAP.
-- Permission catalog: anon chỉ đọc `club_public_settings`; bảng tài chính/audit không có DML trực tiếp.
-- Frontend tests: 30 PASS.
-- Supabase static tests: 6 PASS.
+- Docker daemon và Supabase local stack đang chạy ổn định.
+- Remote project `dandxiwdedbwxtvokeag` đã nhận đầy đủ 8 migrations (từ `20261119000000` đến `20261119000007`).
+- Database lint (`npx supabase db lint`): sạch, 0 lỗi schema.
+- Database tests (`npx supabase test db`): 53/53 PASS trên 4 file pgTAP (`finance_workflows`, `permissions_catalog`, `schema_rls_finance`, `team_manager_workflow`).
+- Integration tests (`scripts/qa-integration.mjs`): 49/49 PASS với 5 tài khoản và 2 CLB thực tế, bao gồm:
+  - Auth, profile, multi-club isolation, team & manager assignment, roster.
+  - Concurrency 6 requests ghi trùng lặp (replay protection), idempotency check, reversal.
+  - Kỳ kế toán đóng/mở và khóa sổ ledger (`FIN-LOCK`).
+  - Storage bucket `fcms-private` và signed URLs.
+  - Các quyền bảo mật chống leo quyền (`SEC-ADMIN`, `SEC-OWNER`, `SEC-FIN`, `SEC-LINK`, `SEC-ANON`).
+- Frontend unit tests: 34 PASS.
+- Supabase static tests: 7 PASS.
 - Vite production build: PASS.
-- Browser smoke: đăng ký/đăng nhập, tạo CLB, tạo đội bóng và đọc lại dữ liệu thật từ PostgreSQL.
 
 ## Chưa đủ điều kiện tuyên bố release hoàn chỉnh
 
-- Chưa chạy staging integration trên Supabase Cloud.
-- Chưa kiểm thử đầy đủ concurrency/RLS bằng nhiều tài khoản thật.
-- Approval, khóa kỳ, reversal, payment allocation và summary đã có RPC/test local; cần kiểm thử staging concurrency và hoàn thiện UI quản trị.
-- Một số nghiệp vụ kho nâng cao, mùa giải, thông báo, sự kiện, tuyển dụng công khai, tài trợ và website CLB công khai còn thiếu parity UI.
-- Chưa kiểm thử cài PWA trực tiếp trên Android, iPhone và Windows.
-- Chưa deploy Cloudflare Pages production.
-- Đã được phép và đã chạy `npx supabase db push`; remote đã nhận migration `20261119000004`.
-- Edge Function hiện là điểm mở rộng tùy chọn và chưa có nghiệp vụ cụ thể.
+- Cần chạy thêm smoke test giao diện qua trình duyệt trên môi trường Cloudflare Pages preview.
+- Một số nghiệp vụ nâng cao (mùa giải, website CLB công khai) còn tiếp tục hoàn thiện parity UI.
+- Chưa kiểm thử cài đặt PWA trực tiếp trên thiết bị di động thật (Android / iPhone).
 
 ## Lệnh kiểm chứng
 

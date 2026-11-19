@@ -20,41 +20,55 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 drop policy if exists profiles_self_select on public.profiles;
+drop policy if exists profiles_visible_select on public.profiles;
 create policy profiles_visible_select on public.profiles for select to authenticated using (public.can_view_profile(id));
 
 -- Missing read policy for polls used by the frontend.
+drop policy if exists club_polls_select on public.club_polls;
 create policy club_polls_select on public.club_polls for select to authenticated using (public.is_active_member(club_id));
 
 -- Sensitive records: read policies only; all writes go through RPCs.
 drop policy if exists audit_logs_select on public.audit_logs;
+drop policy if exists audit_logs_manager_select on public.audit_logs;
 create policy audit_logs_manager_select on public.audit_logs for select to authenticated using (public.can_manage_club(club_id));
 
 drop policy if exists finance_read_write on public.finance_transactions;
+drop policy if exists finance_select on public.finance_transactions;
 create policy finance_select on public.finance_transactions for select to authenticated using (public.can_view_finance(club_id));
 
 drop policy if exists dues_read_write on public.team_dues_entries;
+drop policy if exists dues_select on public.team_dues_entries;
 create policy dues_select on public.team_dues_entries for select to authenticated using (public.can_view_finance(club_id));
 
 drop policy if exists dues_adjustments_write on public.team_dues_adjustments;
+drop policy if exists dues_adjustments_select on public.team_dues_adjustments;
 create policy dues_adjustments_select on public.team_dues_adjustments for select to authenticated using (public.can_view_finance(club_id));
 
 drop policy if exists planned_expenses_write on public.planned_expenses;
+drop policy if exists planned_expenses_select on public.planned_expenses;
 create policy planned_expenses_select on public.planned_expenses for select to authenticated using (public.can_view_finance(club_id));
 
 drop policy if exists match_costs_write on public.match_cost_splits;
+drop policy if exists match_costs_select on public.match_cost_splits;
 create policy match_costs_select on public.match_cost_splits for select to authenticated using (public.can_view_finance(club_id));
 drop policy if exists match_cost_receivables_write on public.match_cost_receivables;
+drop policy if exists match_cost_receivables_select on public.match_cost_receivables;
 create policy match_cost_receivables_select on public.match_cost_receivables for select to authenticated using (public.can_view_finance(club_id));
 
 drop policy if exists periods_write on public.financial_periods;
+drop policy if exists periods_select on public.financial_periods;
 create policy periods_select on public.financial_periods for select to authenticated using (public.can_view_finance(club_id));
 drop policy if exists approvals_write on public.transaction_approvals;
+drop policy if exists approvals_select on public.transaction_approvals;
 create policy approvals_select on public.transaction_approvals for select to authenticated using (public.can_view_finance(club_id));
 drop policy if exists payments_write on public.payments;
+drop policy if exists payments_select on public.payments;
 create policy payments_select on public.payments for select to authenticated using (public.can_view_finance(club_id));
 drop policy if exists allocations_read on public.payment_allocations;
+drop policy if exists allocations_select on public.payment_allocations;
 create policy allocations_select on public.payment_allocations for select to authenticated using (public.can_view_finance(club_id));
 drop policy if exists funds_write on public.funds;
+drop policy if exists funds_select on public.funds;
 create policy funds_select on public.funds for select to authenticated using (public.can_view_finance(club_id));
 
 -- Team manager/player links are read-only from Data API; roster mutations use RPCs.
@@ -108,6 +122,7 @@ grant insert, update on public.sponsors, public.sponsorships, public.sponsorship
 grant update on public.notifications to authenticated;
 
 -- Dues rates are configuration data; the policy limits writes to finance managers.
+drop policy if exists team_dues_rates_select on public.team_dues_rates;
 create policy team_dues_rates_select on public.team_dues_rates for select to authenticated using (public.can_view_finance(club_id));
 grant select, insert, update on public.team_dues_rates to authenticated;
 
