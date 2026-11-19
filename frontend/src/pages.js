@@ -1,14 +1,11 @@
-import { state as s, currentClub } from "./state.js";
+import { state as s, currentClub } from './state.js';
 import {
   escapeHtml as e,
   number,
-  roleLabel,
-  statusLabel,
   canManageRoster,
   canManageClub,
-  formatDate, vietnamToday,
-} from "./utils.js";
-import { icon, button, field, empty } from "./components/ui.js";
+} from './utils.js';
+import { icon, button, empty } from './components/ui.js';
 import { clubDirectoryPage, teamRosterPage } from './roster-pages.js';
 import { duesPage } from './dues-page.js';
 import { financePage } from './finance-page.js';
@@ -17,214 +14,255 @@ import { matchesPage } from './matches-page.js';
 import { inventoryPage } from './inventory-page.js';
 import { pollsPage } from './polls-page.js';
 import { recruitmentPage } from './recruitment-page.js';
-import { avatar, imageUrl } from './images.js';
+import { dashboardPage } from './views/dashboard-page.js';
+import { boardPage } from './views/board-page.js';
+import { activitiesPage } from './views/activities-page.js';
+import { clubPage } from './views/club-page.js';
+import { profilePage, acceptPage } from './views/profile-page.js';
+import { authPage } from './views/auth-page.js';
+
+export { authPage };
+
 export const titles = {
-  dashboard: "Tổng quan",
-  members: "Thành viên",
-  teams: "Đội bóng",
-  "team-roster": "Thành viên đội bóng",
-  finance: "Sổ thu chi CLB",
-  dues: "Đóng quỹ",
-  activities: "Hoạt động CLB",
-  inventory: "Kho trang bị",
-  "club-members": "Thành viên BCN",
-  club: "Câu lạc bộ",
-  profile: "Tài khoản",
-  accept: "Nhận lời mời",
-  roadmap: "Lộ trình",
+  dashboard: 'Tổng quan',
+  members: 'Thành viên',
+  teams: 'Đội bóng',
+  'team-roster': 'Thành viên đội bóng',
+  finance: 'Sổ thu chi CLB',
+  dues: 'Đóng quỹ',
+  activities: 'Hoạt động CLB',
+  inventory: 'Kho trang bị',
+  'club-members': 'Thành viên BCN',
+  club: 'Câu lạc bộ',
+  profile: 'Tài khoản',
+  accept: 'Nhận lời mời',
+  roadmap: 'Lộ trình',
 };
-const playerDetails = (m) => `<small>Ngày sinh: ${e(m.date_of_birth || 'Chưa cập nhật')} · Email: ${e(m.email || 'Chưa cập nhật')} · Điện thoại: ${e(m.phone || 'Chưa cập nhật')}<br>Vị trí CLB: ${e(m.position || 'Chưa cập nhật')} · Chân thuận: ${e(({left:'Trái', right:'Phải', both:'Hai chân'})[m.preferred_foot] || 'Chưa cập nhật')} · Ghi chú: ${e(m.notes || 'Không có')}<br>Chi tiết đội: ${e((m.teams || []).map((t) => `${t.name} (${t.position || 'chưa có vị trí'}, ${t.jersey_number == null ? 'chưa có số áo' : `#${t.jersey_number}`})`).join('; ') || 'Chưa xếp đội')}</small>`;
-const badge = (status) =>
-  `<span class="badge ${e(status)}">${e(statusLabel(status))}</span>`;
-const heading = (title, text, actions = "") =>
-  `<div class="page-top"><div><div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div><h1>${title}</h1><p>${text}</p></div><div class="page-actions">${actions}</div></div>`;
-export function authPage() {
-  const register = s.authMode === "register";
-  return `<div class="auth-layout"><section class="auth-story"><div class="brand"><img src="/icons/crest.svg" alt="">FCMS <small>PRO</small></div><div><span class="eyebrow">MỘT CÂU LẠC BỘ. MỘT TINH THẦN.</span><h1>Quản lý gọn gàng.<br>Ra sân <em>hết mình.</em></h1><p>Từ đội hình đến từng thành viên, xây dựng một câu lạc bộ có tổ chức và sẵn sàng cho những mục tiêu lớn hơn.</p><div class="pitch" aria-hidden="true"><i></i><b>F</b></div></div><small>FCMS PRO · DÀNH CHO NHỮNG NGƯỜI YÊU BÓNG ĐÁ</small></section><main id="main-content" class="auth-content" tabindex="-1"><button class="icon-button theme-control" data-action="theme" aria-label="Đổi giao diện sáng tối">${icon("moon")}</button><div class="auth-card"><div class="brand mobile-brand"><img src="/icons/crest.svg" alt="">FCMS <small>PRO</small></div>${s.invite ? '<div class="notice">Đăng nhập bằng email được mời để tham gia câu lạc bộ.</div>' : ""}<h2>${register ? "Bắt đầu hành trình mới" : "Chào mừng trở lại"}</h2><p>${register ? "Tạo tài khoản để xây dựng câu lạc bộ của bạn." : "Đăng nhập để kết nối với đội bóng của bạn."}</p><form data-form="${register ? "register" : "login"}" novalidate><div class="form-error" data-form-error role="alert"></div>${register ? field("name", "Họ và tên", "", "text", true) : ""}${field("email", "Địa chỉ email", "", "email", true)}${field("password", "Mật khẩu", "", "password", true)}${register ? field("password_confirmation", "Xác nhận mật khẩu", "", "password", true) : ""}<button type="submit" class="button wide">${register ? "Tạo tài khoản" : "Đăng nhập"}${icon("arrow")}</button></form>${!register ? `<p class="auth-footer"><button type="button" class="text-button" data-action="forgot-password">Quên mật khẩu?</button></p>` : ""}<p class="auth-footer">${register ? "Đã có tài khoản?" : "Mới đến với FCMS PRO?"} <button class="text-button" data-action="auth-mode">${register ? "Đăng nhập" : "Tạo tài khoản"}</button></p><small class="auth-security">${icon("shield")} Phiên đăng nhập an toàn</small></div></main></div>`;
-}
-function dashboard() {
-  const c = currentClub(),
-    d = s.dashboard,
-    allowed = canManageRoster(c.membership_role);
-  const stats = [
-    ["Tổng thành viên", d.members_count, "users"],
-    ["Đang hoạt động", d.active_members_count, "check"],
-    ["Đội bóng", d.teams_count, "layers"],
-    ["Ban quản lý", d.managers_count, "shield"],
-  ];
-  const checks = [
-    ["Tạo không gian câu lạc bộ", true, "club"],
-    ["Thêm đội bóng đầu tiên", d.teams_count > 0, "teams"],
-    ["Xây dựng danh sách thành viên", d.members_count > 0, "members"],
-  ];
-  return `${heading("Tổng quan câu lạc bộ", `Một ngày mới, cùng ${e(c.name)} tiến về phía trước.`, button("new-club", "Tạo CLB", "plus", "secondary"))}<section class="hero"><div><span class="eyebrow">KHÔNG GIAN CỦA ĐỘI BÓNG</span><h2>Chung một màu áo.<br>Cùng một hành trình.</h2><p>Quản lý con người và đội hình của bạn,<br>để mỗi lần ra sân đều sẵn sàng hơn.</p>${allowed ? button("new-member", "Thêm thành viên") : ""}</div><div class="pitch" aria-hidden="true"><i></i><b>F</b></div></section><div class="stats-grid">${stats.map(([label, value, glyph]) => `<section class="stat"><div><span>${label}</span><i>${icon(glyph)}</i></div><strong>${number(value)}</strong><small>Dữ liệu của câu lạc bộ hiện tại</small></section>`).join("")}</div><div class="dashboard-grid"><section class="panel"><div class="panel-head"><div><h2>Những thành viên mới nhất</h2><p>Hồ sơ được thêm gần đây trong câu lạc bộ</p></div>${allowed ? '<a class="text-link" href="#members">Xem tất cả →</a>' : ""}</div>${!allowed ? empty("Quyền truy cập được bảo vệ", "Thông tin nhân sự do ban quản lý câu lạc bộ phụ trách.") : s.members.length ? s.members.map((m) => `<div class="member-row">${avatar(m.full_name, imageUrl('player', m.id, m.avatar_version, s.clubId))}<div><strong>${e(m.full_name)}</strong><small>${e(m.team?.name || "Chưa xếp đội")} · ${e(m.position || "Chưa cập nhật vị trí")}</small></div>${badge(m.status)}<span class="jersey">${m.jersey_number != null ? "#" + e(m.jersey_number) : "—"}</span></div>`).join("") : empty("Đội hình đang chờ bạn", "Thêm thành viên đầu tiên để bắt đầu xây dựng hồ sơ đội bóng.", "new-member", "Thêm thành viên")}</section><section class="panel"><div class="panel-head"><div><h2>Sẵn sàng cho chặng đường mới</h2><p>Từng bước xây dựng câu lạc bộ</p></div>${icon("flag")}</div><div class="panel-body"><p class="muted">Hoàn thiện nền tảng để quản lý câu lạc bộ thuận tiện hơn.</p><div class="progress"><span style="width:${(checks.filter((x) => x[1]).length / 3) * 100}%"></span></div><div class="checklist">${checks.map(([label, done, route]) => `<a href="#${route}"><span class="${done ? "done" : ""}">${done ? icon("check") : "○"}</span>${label}</a>`).join("")}</div><div class="notice">Một đội bóng vững mạnh bắt đầu từ những kết nối tốt.</div></div></section></div>`;
-}
-function members() {
-  const allowed = canManageRoster(currentClub().membership_role),
-    f = s.filters,
-    meta = s.meta;
-  if (!allowed)
-    return (
-      heading("Thành viên", "Thông tin được bảo vệ theo quyền truy cập.") +
-      `<section class="panel">${empty("Liên hệ ban quản lý", "Vai trò hiện tại chưa được cấp quyền xem thông tin nhân sự.")}</section>`
-    );
-  const team = s.teams.find((t) => String(t.id) === String(f.team_id));
-  return `${heading("Thành viên", team ? `Thành viên đội ${e(team.name)} · Đội trưởng: ${e(team.captain_name || "Chưa chọn")}` : "Mỗi con người, một phần không thể thiếu của đội bóng.", (team ? `<button class="button secondary" data-action="team-captain" data-id="${team.id}">Chọn đội trưởng</button>` : "") + button("new-member", "Thêm thành viên"))}<section class="panel"><div class="panel-head"><div><h2>Danh sách thành viên <span class="pill">${number(meta.total || 0)}</span></h2><p>Hồ sơ và trạng thái hoạt động trong câu lạc bộ</p></div></div><form data-form="filters" class="filters" role="search"><input name="q" type="search" aria-label="Tìm thành viên" placeholder="Tìm tên, email, số điện thoại…" value="${e(f.q)}"><select name="team_id" aria-label="Lọc đội"><option value="">Tất cả đội bóng</option>${s.teams.map((t) => `<option value="${t.id}" ${String(t.id) === String(f.team_id) ? "selected" : ""}>${e(t.name)}</option>`).join("")}</select><select name="status" aria-label="Lọc trạng thái"><option value="">Mọi trạng thái</option>${["active", "inactive", "injured"].map((v) => `<option value="${v}" ${v === f.status ? "selected" : ""}>${statusLabel(v)}</option>`).join("")}</select><button class="button secondary" type="submit">Lọc</button><button class="text-button" type="button" data-action="reset">Xóa lọc</button></form>${s.members.length ? `<div class="table-wrap"><table><thead><tr><th>Thành viên</th><th class="hide-mobile">Đội / Vị trí</th><th>Trạng thái</th><th><span class="sr-only">Thao tác</span></th></tr></thead><tbody>${s.members.map((m) => `<tr><td><div class="person">${avatar(m.full_name)}<div><strong>${e(m.full_name)}</strong><small>${e(m.email || m.phone || "Chưa có liên hệ")}</small></div></div></td><td class="hide-mobile">${e(m.team?.name || "Chưa xếp đội")}<small>${e(m.position || "—")} ${m.jersey_number != null ? "· #" + e(m.jersey_number) : ""}</small></td><td>${badge(m.status)}</td><td><div class="row-actions"><button class="icon-button" data-action="edit-member" data-id="${m.id}" aria-label="Sửa ${e(m.full_name)}">${icon("edit")}</button><button class="icon-button danger" data-action="delete-member" data-id="${m.id}" aria-label="Xóa ${e(m.full_name)}">${icon("trash")}</button></div></td></tr>`).join("")}</tbody></table></div><div class="table-footer"><span>${number(meta.total)} thành viên</span><div><button class="icon-button" data-action="prev" aria-label="Trang trước" ${meta.current_page <= 1 ? "disabled" : ""}>←</button><span> ${meta.current_page} / ${meta.last_page} </span><button class="icon-button" data-action="next" aria-label="Trang sau" ${meta.current_page >= meta.last_page ? "disabled" : ""}>→</button></div></div>` : empty("Chưa có thành viên phù hợp", "Thử thay đổi bộ lọc hoặc thêm hồ sơ mới.", "new-member", "Thêm thành viên")}</section>`;
-}
+
+const heading = (title, text, actions = '') => `
+  <div class="page-top">
+    <div>
+      <div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div>
+      <h1>${title}</h1>
+      <p>${text}</p>
+    </div>
+    <div class="page-actions">${actions}</div>
+  </div>
+`;
+
 function teams() {
+  const c = currentClub();
   return (
     heading(
-      "Đội bóng",
-      "Tổ chức đội hình cho từng sân chơi và mục tiêu.",
-      canManageRoster(currentClub().membership_role)
-        ? button("new-team", "Tạo đội bóng")
-        : "",
+      'Đội bóng',
+      'Tổ chức đội hình cho từng sân chơi và mục tiêu.',
+      canManageRoster(c.membership_role) ? button('new-team', 'Tạo đội bóng') : ''
     ) +
     (s.teams.length
-      ? `<div class="team-grid">${s.teams.map((t) => `<section class="panel team-card"><div class="team-symbol">${icon("shield")}</div><span class="pill">SÂN ${e(t.format)} NGƯỜI</span><h2>${e(t.name)}</h2><p>${e(currentClub().name)} - ${number(t.members_count)} thành viên</p>${currentClub()?.can_view_finance ? `<p>Quỹ gần nhất: ${t.monthly_dues ? `${e(number(t.monthly_dues.amount))} đ/tháng · từ ${e(t.monthly_dues.effective_month.slice(0, 7))}` : "Chưa thiết lập"}</p>` : ""}${canManageRoster(currentClub().membership_role) ? `<p>Đội trưởng: ${e(t.captain_name || "Chưa chọn")}<br>Quản lý: ${e((t.managers || []).map((m) => m.name).join(", ") || "Chưa chọn")}</p><div class="team-actions"><button class="text-button" data-action="team-members" data-id="${t.id}">Xem thành viên →</button><button class="text-button" data-action="rename-team" data-id="${t.id}">Chỉnh sửa</button><button class="text-button danger" data-action="delete-team" data-id="${t.id}">Xóa đội</button></div>` : ""}${currentClub()?.can_manage_finance && !canManageRoster(currentClub().membership_role) ? `<button class="text-button" data-action="edit-dues-rate" data-id="${t.id}">Chỉnh sửa quỹ</button>` : ""}</section>`).join("")}</div>`
-      : `<section class="panel">${empty("Một đội hình mới đang chờ", "Tạo đội sân 5, 7 hoặc 11 người để sắp xếp các thành viên.")}</section>`)
+      ? `<div class="team-grid">${s.teams
+          .map(
+            (t) => `
+          <section class="panel team-card">
+            <div class="team-symbol">${icon('shield')}</div>
+            <span class="pill">SÂN ${e(t.format)} NGƯỜI</span>
+            <h2>${e(t.name)}</h2>
+            <p>${e(c.name)} - ${number(t.members_count)} thành viên</p>
+            ${
+              c?.can_view_finance
+                ? `<p>Quỹ gần nhất: ${t.monthly_dues ? `${e(number(t.monthly_dues.amount))} đ/tháng · từ ${e(t.monthly_dues.effective_month.slice(0, 7))}` : 'Chưa thiết lập'}</p>`
+                : ''
+            }
+            ${
+              canManageRoster(c.membership_role)
+                ? `<p>Đội trưởng: ${e(t.captain_name || 'Chưa chọn')}<br>Quản lý: ${e((t.managers || []).map((m) => m.name).join(', ') || 'Chưa chọn')}</p>
+                   <div class="team-actions">
+                     <button class="text-button" data-action="team-members" data-id="${t.id}">Xem thành viên →</button>
+                     <button class="text-button" data-action="rename-team" data-id="${t.id}">Chỉnh sửa</button>
+                     <button class="text-button danger" data-action="delete-team" data-id="${t.id}">Xóa đội</button>
+                   </div>`
+                : ''
+            }
+            ${
+              c?.can_manage_finance && !canManageRoster(c.membership_role)
+                ? `<button class="text-button" data-action="edit-dues-rate" data-id="${t.id}">Chỉnh sửa quỹ</button>`
+                : ''
+            }
+          </section>`
+          )
+          .join('')}</div>`
+      : `<section class="panel">${empty('Một đội hình mới đang chờ', 'Tạo đội sân 5, 7 hoặc 11 người để sắp xếp các thành viên.')}</section>`)
   );
 }
-function memberDirectory() {
-  if (!canManageRoster(currentClub().membership_role)) return heading("Thành viên CLB", "Thông tin được bảo vệ theo quyền truy cập.");
-  const f = s.filters, meta = s.meta;
-  const team = s.teams.find((t) => String(t.id) === String(f.team_id));
-  const actions = team ? `<button class="button secondary" data-action="select-team-players" data-id="${team.id}">Chọn thành viên</button><button class="button secondary" data-action="team-captain" data-id="${team.id}">Chọn đội trưởng</button>` : button("new-member", "Thêm thành viên");
-  return heading(team ? `Thành viên · ${e(team.name)}` : "Thành viên CLB", team ? `Đội trưởng: ${e(team.captain_name || "Chưa chọn")}` : "Tạo hồ sơ thành viên trước, sau đó chọn vào một hoặc nhiều đội.", actions) + `<section class="panel"><form data-form="filters" class="filters" role="search"><input name="q" type="search" aria-label="Tìm thành viên" placeholder="Tìm tên, email, số điện thoại…" value="${e(f.q)}"><select name="team_id" aria-label="Lọc đội"><option value="">Tất cả đội bóng</option>${s.teams.map((t) => `<option value="${t.id}" ${String(t.id) === String(f.team_id) ? "selected" : ""}>${e(t.name)}</option>`).join("")}</select><select name="status" aria-label="Lọc trạng thái"><option value="">Mọi trạng thái</option>${["active", "inactive", "injured"].map((v) => `<option value="${v}" ${v === f.status ? "selected" : ""}>${statusLabel(v)}</option>`).join("")}</select><button class="button secondary" type="submit">Lọc</button><button class="text-button" type="button" data-action="reset">Xóa lọc</button></form>${s.members.length ? `<div class="table-wrap"><table><thead><tr><th>Thành viên</th><th>Đội bóng / vị trí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${s.members.map((m) => `<tr><td><button class="text-button" data-action="view-member" data-id="${m.id}">${e(m.full_name)}</button><small>${e(m.email || m.phone || "Chưa có liên hệ")}</small></td><td>${e((m.teams || []).map((t) => t.name).join(", ") || "Chưa xếp đội")}<small>${e(m.position || "Chưa có vị trí")} ${m.jersey_number == null ? "" : `· #${e(m.jersey_number)}`}</small></td><td>${badge(m.status)}</td><td><div class="row-actions"><button class="icon-button" data-action="edit-member" data-id="${m.id}" aria-label="Sửa ${e(m.full_name)}">${icon("edit")}</button><button class="icon-button danger" data-action="delete-member" data-id="${m.id}" aria-label="Xóa ${e(m.full_name)}">${icon("trash")}</button></div></td></tr>`).join("")}</tbody></table></div><div class="table-footer"><span>${number(meta.total)} thành viên</span><div><button class="icon-button" data-action="prev" ${meta.current_page <= 1 ? "disabled" : ""}>←</button> ${meta.current_page} / ${meta.last_page} <button class="icon-button" data-action="next" ${meta.current_page >= meta.last_page ? "disabled" : ""}>→</button></div></div>` : empty("Chưa có thành viên", team ? "Chọn thành viên đã tạo vào đội bóng này." : "Thêm hồ sơ thành viên đầu tiên.")}</section>`;
-}
-function clubDirectory() {
-  if (!canManageRoster(currentClub().membership_role)) return heading("Thành viên CLB", "Thông tin được bảo vệ theo quyền truy cập.");
-  const meta = s.meta, f = s.filters;
-  return heading("Thành viên CLB", "Hồ sơ cầu thủ và các đội bóng tham gia.", button("export-members", "Xuất Excel", "arrow", "secondary") + button("new-member", "Thêm thành viên")) + `<section class="panel"><form data-form="filters" class="filters" role="search"><input name="q" type="search" aria-label="Tìm thành viên" placeholder="Tìm tên, email, số điện thoại…" value="${e(f.q)}"><select name="team_id" aria-label="Lọc đội"><option value="">Tất cả đội</option>${s.teams.map((t) => `<option value="${t.id}" ${String(t.id) === String(f.team_id) ? "selected" : ""}>${e(t.name)}</option>`).join("")}</select><select name="status" aria-label="Trạng thái"><option value="">Mọi trạng thái</option>${["active", "inactive", "injured"].map((v) => `<option value="${v}" ${v === f.status ? "selected" : ""}>${e(statusLabel(v))}</option>`).join("")}</select><label>Sắp xếp <select name="sort"><option value="full_name" ${!f.sort || f.sort === "full_name" ? "selected" : ""}>Tên</option><option value="date_of_birth" ${f.sort === "date_of_birth" ? "selected" : ""}>Năm sinh</option><option value="position" ${f.sort === "position" ? "selected" : ""}>Vị trí</option></select></label><button class="button secondary">Lọc</button><button class="text-button" type="button" data-action="reset">Xóa lọc</button></form>${s.members.length ? `<div class="table-wrap"><table><thead><tr><th>Thành viên</th><th>Đội tham gia</th><th>Vị trí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${s.members.map((m) => `<tr><td><button class="text-button" data-action="view-member" data-id="${m.id}">${e(m.full_name)}</button>${playerDetails(m)}</td><td>${e((m.teams || []).map((t) => t.name).join(", ") || "Chưa xếp đội")}</td><td>${e(m.position || "—")}</td><td>${badge(m.status)}</td><td><button class="icon-button" data-action="edit-member" data-id="${m.id}" aria-label="Sửa ${e(m.full_name)}">${icon("edit")}</button> <button class="icon-button danger" data-action="delete-member" data-id="${m.id}" aria-label="Xóa ${e(m.full_name)}">${icon("trash")}</button></td></tr>`).join("")}</tbody></table></div><div class="table-footer"><span>${number(meta.total)} thành viên</span><div><button class="icon-button" data-action="prev" aria-label="Trang trước" ${meta.current_page <= 1 ? "disabled" : ""}>←</button> ${meta.current_page} / ${meta.last_page} <button class="icon-button" data-action="next" aria-label="Trang sau" ${meta.current_page >= meta.last_page ? "disabled" : ""}>→</button></div></div>` : empty("Chưa có thành viên phù hợp", "Thêm hồ sơ hoặc thay đổi bộ lọc.")}</section>`;
-}
-function teamRoster() {
-  if (!canManageRoster(currentClub().membership_role)) return heading("Thành viên đội", "Thông tin được bảo vệ theo quyền truy cập.");
-  const team = s.teams.find((t) => String(t.id) === s.teamRosterId), meta = s.meta;
-  if (!team) return heading("Không tìm thấy đội bóng", "Hãy chọn đội trong danh sách đội bóng.") + '<a class="text-link" href="#teams">← Quay lại đội bóng</a>';
-  const actions = `<button class="button secondary" data-action="export-members">Xuất Excel</button><button class="button secondary" data-action="select-team-players" data-id="${team.id}">Chọn thành viên</button><button class="button secondary" data-action="team-captain" data-id="${team.id}">Chọn đội trưởng</button>`;
-  return heading(`Đội ${e(team.name)}`, `Đội trưởng: ${e(team.captain_name || "Chưa chọn")} · ${number(meta.total)} thành viên`, actions) + `<section class="panel"><div class="panel-head"><div><h2>Danh sách đội bóng</h2><p>Vị trí và số áo được quản lý riêng cho đội này.</p></div><a class="text-link" href="#teams">← Các đội bóng</a></div><form data-form="roster-sort" class="filters"><label>Sắp xếp <select name="sort"><option value="full_name" ${s.teamRosterSort === "full_name" ? "selected" : ""}>Tên</option><option value="date_of_birth" ${s.teamRosterSort === "date_of_birth" ? "selected" : ""}>Năm sinh</option><option value="position" ${s.teamRosterSort === "position" ? "selected" : ""}>Vị trí trong đội</option></select></label>${currentClub()?.can_view_finance ? `<label>Đóng quỹ <select name="dues_status"><option value="">Tất cả</option><option value="paid" ${s.teamDuesFilter === "paid" ? "selected" : ""}>Đã đóng, không nợ</option><option value="debt" ${s.teamDuesFilter === "debt" ? "selected" : ""}>Còn nợ</option><option value="none" ${s.teamDuesFilter === "none" ? "selected" : ""}>Không có quỹ kỳ này</option></select></label>` : ""}<button class="button secondary">Lọc</button></form>${s.members.length ? `<div class="table-wrap"><table><thead><tr><th>Thành viên</th><th>Đội trưởng</th><th>Vị trí</th><th>Số áo</th><th>Trạng thái</th>${currentClub()?.can_view_finance ? "<th>Đóng quỹ</th>" : ""}<th>Thao tác</th></tr></thead><tbody>${s.members.map((m) => { const assignment = (m.teams || []).find((t) => String(t.id) === String(team.id)); const captain = String(team.captain_id) === String(m.id); return `<tr><td><button class="text-button" data-action="view-member" data-id="${m.id}">${e(m.full_name)}</button>${playerDetails(m)}</td><td><button class="text-button" data-action="set-team-captain" data-id="${m.id}" aria-label="${captain ? "Bỏ chọn" : "Chọn"} đội trưởng ${e(m.full_name)}" aria-pressed="${captain}">${captain ? "O" : "−"}</button></td><td>${e(assignment?.position || "—")}</td><td>${assignment?.jersey_number == null ? "—" : `#${e(assignment.jersey_number)}`}</td><td>${badge(m.status)}</td>${currentClub()?.can_view_finance ? `<td>${(() => { const d = s.teamDues[m.id] || { status: "none", debt: 0, months: 0 }; const label = d.debt ? `Nợ ${d.months} tháng · ${number(d.debt)} đ` : ({paid: "Đã đóng", exempt: "Miễn đóng", none: "Chưa có khoản quỹ"})[d.status] || "Chưa có khoản quỹ"; return `<span class="dues-status ${d.debt ? "owing" : d.status === "none" ? "" : "settled"}">${e(label)}</span>${currentClub()?.can_manage_finance ? `<button class="text-button" data-action="record-team-dues" data-id="${m.id}">Đóng quỹ</button>` : ""}`; })()}</td>` : ""}<td><div class="team-actions"><button class="text-button" data-action="edit-team-position" data-id="${m.id}">Sửa vị trí</button><button class="text-button" data-action="edit-team-jersey" data-id="${m.id}">Sửa số áo</button></div></td></tr>`; }).join("")}</tbody></table></div><div class="table-footer"><span>${number(meta.total)} thành viên</span><div><button class="icon-button" data-action="roster-prev" aria-label="Trang trước" ${meta.current_page <= 1 ? "disabled" : ""}>←</button> ${meta.current_page} / ${meta.last_page} <button class="icon-button" data-action="roster-next" aria-label="Trang sau" ${meta.current_page >= meta.last_page ? "disabled" : ""}>→</button></div></div>` : empty("Chưa có thành viên trong đội", "Chọn thành viên đã tạo trong CLB để thêm vào đội.")}</section>`;
-}
-function finance() {
-  if (!currentClub()?.can_view_finance) return heading("Sổ thu chi", "Bạn không có quyền xem sổ thu chi.");
-  const ledger = s.finance, summary = ledger.summary || {}, meta = ledger.meta || {};
-  const money = (amount) => `${number(amount)} đ`;
-  return heading("Sổ thu chi CLB", "Theo dõi các khoản thu, chi của câu lạc bộ.", currentClub()?.can_manage_finance ? button("new-finance", "Ghi thu chi") : "") + `<div class="stats-grid">${[["Tổng thu", summary.income], ["Tổng chi", summary.expense], ["Số dư", summary.balance]].map(([label, value]) => `<section class="stat"><div><span>${label}</span></div><strong>${e(money(value))}</strong></section>`).join("")}</div><section class="panel"><div class="panel-head"><h2>Khoản thu chi</h2></div>${ledger.data?.length ? `<div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Nội dung</th><th>Loại</th><th>Số tiền</th></tr></thead><tbody>${ledger.data.map((item) => `<tr><td>${e(item.occurred_on)}</td><td>${e(item.description)}</td><td>${item.type === "income" ? "Thu" : "Chi"}</td><td>${e(money(item.amount))}</td></tr>`).join("")}</tbody></table></div><div class="table-footer"><span>${number(meta.total)} khoản</span><div><button class="icon-button" data-action="finance-prev" aria-label="Trang trước" ${meta.current_page <= 1 ? "disabled" : ""}>←</button> ${meta.current_page} / ${meta.last_page} <button class="icon-button" data-action="finance-next" aria-label="Trang sau" ${meta.current_page >= meta.last_page ? "disabled" : ""}>→</button></div></div>` : empty("Chưa có khoản thu chi", "Các khoản đã ghi sẽ hiển thị tại đây.")}</section>`;
-}
-function clubMembers() {
-  if (currentClub().membership_role !== "owner") return heading("Thành viên BCN", "Chỉ chủ câu lạc bộ có quyền quản lý vai trò.");
-  const board = s.boardMembers.length ? s.boardMembers.map((m) => `<div class="member-row"><div><strong>${e(m.full_name)}</strong><small>${e(m.title)}${m.date_of_birth ? ` · ${e(formatDate(m.date_of_birth))}` : ''}${m.email ? ` · ${e(m.email)}` : ''}</small></div><div class="team-actions"><button class="text-button" data-action="board-edit" data-id="${m.id}">Sửa</button><button class="text-button danger" data-action="board-remove" data-id="${m.id}">Bỏ khỏi BCN</button></div></div>`).join("") : empty('Chưa có thành viên BCN', 'Chọn thành viên CLB để thêm vào ban chủ nhiệm.');
-  const rates = s.boardSharedRates.length ? s.boardSharedRates.map((r) => `<div class="member-row"><div><strong>${e(r.team_name)} · ${number(r.amount)} đ/tháng</strong><small>Áp dụng từ ${e(r.effective_month.slice(5, 7))}/${e(r.effective_month.slice(0, 4))}</small></div><div class="team-actions"><button class="text-button danger" data-action="delete-board-shared-rate" data-id="${r.id}">Xóa</button></div></div>`).join('') : empty('Chưa có mức quỹ chung', 'Thiết lập mức quỹ ưu đãi cho từng đội.');
-  return heading("Thành viên BCN", "Danh sách ban chủ nhiệm được chọn từ thành viên CLB.", button('board-new', 'Thêm BCN')) + `<section class="panel"><div class="panel-head"><div><h2>Ban chủ nhiệm</h2><p>Chức danh dùng để ghi nhận nhân sự, không tự cấp quyền đăng nhập.</p></div></div>${board}</section><section class="panel"><div class="panel-head"><div><h2>Ưu đãi quỹ chung cho BCN</h2><p>Mỗi đội có một mức áp dụng cho toàn bộ thành viên BCN.</p></div>${button('board-shared-dues', 'Đặt mức quỹ')}</div>${rates}</section>`;
-}
-function financeWithTools() {
-  if (!currentClub()?.can_view_finance) return heading("Sổ thu chi", "Bạn không có quyền xem sổ thu chi.");
-  const ledger = s.finance, summary = ledger.summary || {}, meta = ledger.meta || {};
-  const money = (amount) => `${number(amount)} đ`;
-  const actions = button("export-finance", "Xuất Excel", "arrow", "secondary") + (currentClub()?.can_manage_finance ? button("new-finance", "Ghi thu chi") : "");
-  const range = s.financeFrom ? `${e(s.financeFrom)} đến ${e(s.financeTo)}` : "Tất cả thời gian";
-  return heading("Sổ thu chi CLB", "Theo dõi các khoản thu, chi và chứng từ của câu lạc bộ.", actions) + `<section class="panel"><form class="filters" data-form="finance-filter"><label>Kỳ <select name="period">${[["all", "Tất cả"], ["week", "Tuần"], ["month", "Tháng"], ["year", "Năm"]].map(([value, label]) => `<option value="${value}" ${value === s.financePeriod ? "selected" : ""}>${label}</option>`).join("")}</select></label><label>Chọn ngày trong kỳ <input type="date" name="anchor" value="${e(s.financeAnchor)}"></label><button class="button secondary">Xem kỳ</button><span>${range}</span></form></section><div class="stats-grid">${[["Tổng thu trong kỳ", summary.income], ["Tổng chi trong kỳ", summary.expense], ["Chênh lệch trong kỳ", summary.balance]].map(([label, value]) => `<section class="stat"><div><span>${label}</span></div><strong>${e(money(value))}</strong></section>`).join("")}</div><section class="panel"><div class="panel-head"><h2>Khoản thu chi</h2></div>${ledger.data?.length ? `<div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Nội dung</th><th>Loại</th><th>Số tiền</th><th>Ảnh xác nhận</th></tr></thead><tbody>${ledger.data.map((item) => `<tr><td>${e(item.occurred_on)}</td><td>${e(item.description)}</td><td>${item.type === "income" ? "Thu" : "Chi"}</td><td>${e(money(item.amount))}</td><td>${item.receipt_url ? `<a class="text-link" href="${e(item.receipt_url)}" target="_blank" rel="noopener noreferrer">Xem ảnh</a>` : "—"}</td></tr>`).join("")}</tbody></table></div><div class="table-footer"><span>${number(meta.total)} khoản</span><div><button class="icon-button" data-action="finance-prev" aria-label="Trang trước" ${meta.current_page <= 1 ? "disabled" : ""}>←</button> ${meta.current_page} / ${meta.last_page} <button class="icon-button" data-action="finance-next" aria-label="Trang sau" ${meta.current_page >= meta.last_page ? "disabled" : ""}>→</button></div></div>` : empty("Chưa có khoản thu chi", "Không có khoản nào trong kỳ đã chọn.")}</section>`;
-}
-function duesPanel() {
-  const labels = { paid: 'Đã đóng', exempt: 'Miễn đóng', debt: 'Chưa đóng', pending: 'Chưa đến kỳ', none: 'Không thu' };
-  return `<section class="panel"><div class="panel-head"><div><h2>Quỹ thành viên theo tháng</h2><p>Đến hạn chưa đóng được ghi nợ; chọn tháng để xem từng kỳ.</p></div></div><form data-form="dues-filter" class="filters"><label>Tháng <input type="month" name="month" value="${e(s.duesMonth)}" required></label><button class="button secondary">Xem tháng</button></form>${s.dues.length ? `<div class="table-wrap"><table><thead><tr><th>Thành viên</th><th>Quỹ từng đội</th><th>Tổng phải đóng</th><th>Nợ tháng này</th><th>Thao tác</th></tr></thead><tbody>${s.dues.map((person) => `<tr><td>${e(person.name)}<small>${e([formatDate(person.date_of_birth), person.email].filter(Boolean).join(' · '))}</small></td><td>${person.teams.map((team) => `${e(team.name)}: ${e(number(team.amount))} đ (${e(labels[team.status])})`).join('<br>')}</td><td>${e(number(person.total))} đ</td><td>${e(number(person.debt))} đ</td><td>${currentClub()?.can_manage_finance ? `<button class="text-button" data-action="record-dues" data-id="${person.player_id}">Ghi đóng / miễn</button>` : '—'}</td></tr>`).join('')}</tbody></table></div>` : empty('Chưa có quỹ trong tháng', 'Thiết lập mức quỹ trong chỉnh sửa đội bóng.')}</section>`;
-}
-function financeByDate() {
-  if (!currentClub()?.can_view_finance) return heading("Sổ thu chi", "Bạn không có quyền xem sổ thu chi.");
-  const ledger = s.finance, summary = ledger.summary || {}, meta = ledger.meta || {};
-  const money = (value) => `${number(value)} đ`;
-  const groups = new Map();
-  for (const item of ledger.chart || []) { const group = groups.get(item.period) || { income: 0, expense: 0 }; group[item.type] = Number(item.total); groups.set(item.period, group); }
-  let entries = [...groups].sort(([a], [b]) => a.localeCompare(b));
-  if (entries.length > 1) {
-    const monthly = s.financeGroup === 'month';
-    const periodIndex = (period) => monthly ? Number(period.slice(0, 4)) * 12 + Number(period.slice(5, 7)) - 1 : Number(period);
-    const first = periodIndex(entries[0][0]), last = periodIndex(entries[entries.length - 1][0]);
-    if (last - first <= 1200) entries = Array.from({ length: last - first + 1 }, (_, i) => {
-      const index = first + i, period = monthly ? `${String(Math.floor(index / 12)).padStart(4, '0')}-${String(index % 12 + 1).padStart(2, '0')}` : String(index).padStart(4, '0');
-      return [period, groups.get(period) || { income: 0, expense: 0 }];
-    });
-  }
-  const maximum = Math.max(1, ...entries.flatMap(([, v]) => [v.income, v.expense]));
-  const width = Math.max(600, entries.length * 90 + 100), left = 100, right = width - 30, top = 20, bottom = 240;
-  const x = (index) => entries.length === 1 ? (left + right) / 2 : left + index * (right - left) / (entries.length - 1);
-  const y = (value) => bottom - value / maximum * (bottom - top);
-  const grid = Array.from({ length: 5 }, (_, i) => { const value = maximum * i / 4, position = y(value); return `<line x1="${left}" y1="${position}" x2="${right}" y2="${position}" class="finance-chart-grid"/><text x="${left - 10}" y="${position + 4}" text-anchor="end">${e(money(Math.round(value)))}</text>`; }).join('');
-  const lines = ['income', 'expense'].map((type) => `<polyline class="finance-chart-line ${type}" points="${entries.map(([, value], i) => `${x(i)},${y(value[type])}`).join(' ')}"/>${entries.map(([period, value], i) => `<circle class="finance-chart-point ${type}" cx="${x(i)}" cy="${y(value[type])}" r="4"><title>${e(period)}: ${type === 'income' ? 'Thu' : 'Chi'} ${e(money(value[type]))}</title></circle>`).join('')}`).join('');
-  const chart = entries.length ? `<div class="finance-chart-scroll"><svg class="finance-line-chart" viewBox="0 0 ${width} 280" style="min-width:${width}px" role="img" aria-label="Biểu đồ đường thu chi theo ${s.financeGroup === 'year' ? 'năm' : 'tháng'}, đơn vị đồng"><text x="${left}" y="12">Số tiền (đ)</text>${grid}${lines}${entries.map(([period], i) => `<text x="${x(i)}" y="260" text-anchor="middle">${e(period)}</text>`).join('')}</svg></div><div class="finance-chart-legend"><span>● Thu</span><span>● Chi</span></div><details><summary>Xem số liệu biểu đồ</summary><div class="table-wrap"><table><thead><tr><th>Thời gian</th><th>Thu</th><th>Chi</th></tr></thead><tbody>${entries.map(([period, value]) => `<tr><td>${e(period)}</td><td>${e(money(value.income))}</td><td>${e(money(value.expense))}</td></tr>`).join('')}</tbody></table></div></details>` : '';
-  const actions = button('export-finance', 'Xuất Excel', 'arrow', 'secondary') + (currentClub()?.can_manage_finance ? button('new-finance', 'Ghi thu chi') : '');
-  return heading('Sổ thu chi CLB', 'Thống kê theo khoảng ngày và theo tháng hoặc năm.', actions) + `<section class="panel"><form class="filters" data-form="finance-filter"><label>Từ ngày <input type="date" name="from" value="${e(s.financeFrom)}"></label><label>Đến ngày <input type="date" name="to" value="${e(s.financeTo)}"></label><label>Biểu đồ theo <select name="group"><option value="month" ${s.financeGroup === 'month' ? 'selected' : ''}>Tháng</option><option value="year" ${s.financeGroup === 'year' ? 'selected' : ''}>Năm</option></select></label><button class="button secondary">Xem</button></form></section><div class="stats-grid">${[['Tổng thu', summary.income], ['Tổng chi', summary.expense], ['Chênh lệch', summary.balance]].map(([label, value]) => `<section class="stat"><div><span>${label}</span></div><strong>${e(money(value))}</strong></section>`).join('')}</div><section class="panel"><div class="panel-head"><div><h2>Biểu đồ thu chi</h2><p>Màu xanh: thu · Màu cam: chi. Giá trị thuộc khoảng ngày đã chọn.</p></div></div><div class="panel-body">${chart || '<p>Chưa có dữ liệu trong khoảng ngày này.</p>'}</div></section><section class="panel"><div class="panel-head"><h2>Khoản thu chi</h2></div>${ledger.data?.length ? `<div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Nội dung</th><th>Loại</th><th>Số tiền</th><th>Ảnh xác nhận</th></tr></thead><tbody>${ledger.data.map((item) => `<tr><td>${e(item.occurred_on)}</td><td>${e(item.description)}</td><td>${item.type === 'income' ? 'Thu' : 'Chi'}</td><td>${e(money(item.amount))}</td><td>${item.has_receipt ? `<a class="text-link" href="${e(item.receipt_url)}" target="_blank" rel="noopener noreferrer">Xem ảnh</a>` : '—'}</td></tr>`).join('')}</tbody></table></div><div class="table-footer"><span>${number(meta.total)} khoản</span><div><button class="icon-button" data-action="finance-prev" aria-label="Trang trước" ${meta.current_page <= 1 ? 'disabled' : ''}>←</button> ${meta.current_page} / ${meta.last_page} <button class="icon-button" data-action="finance-next" aria-label="Trang sau" ${meta.current_page >= meta.last_page ? 'disabled' : ''}>→</button></div></div>` : empty('Chưa có khoản thu chi', 'Không có khoản nào trong khoảng ngày đã chọn.')}</section>`;
-}
-function activities() {
-  if (!currentClub()?.can_manage_activities) return heading('Hoạt động CLB', 'Thông tin được bảo vệ theo quyền truy cập.');
-  const { celebrations = [], birthdays = [], trainings = [], awards = [] } = s.activities, owner = currentClub().membership_role === 'owner';
-  const birthdayMonth = s.birthdayMonth || vietnamToday().slice(5, 7);
-  const monthlyBirthdays = birthdays.filter((p) => p.date_of_birth?.slice(5, 7) === birthdayMonth).sort((a, b) => a.date_of_birth.slice(8, 10).localeCompare(b.date_of_birth.slice(8, 10)) || a.name.localeCompare(b.name, 'vi'));
-  const birthdayPages = Math.max(1, Math.ceil(monthlyBirthdays.length / 3));
-  s.birthdayPage = Math.max(1, Math.min(s.birthdayPage || 1, birthdayPages));
-  const birthdayRows = monthlyBirthdays.slice((s.birthdayPage - 1) * 3, s.birthdayPage * 3);
-  const birthdaySelector = `<label class="birthday-month-label">Chọn tháng <select data-birthday-month aria-label="Chọn tháng sinh nhật">${Array.from({ length: 12 }, (_, i) => { const value = String(i + 1).padStart(2, '0'); return `<option value="${value}" ${value === birthdayMonth ? 'selected' : ''}>Tháng ${i + 1}</option>`; }).join('')}</select></label>`;
-  const controls = (kind, x) => owner ? `<span class="team-actions">${x.approval_status === 'pending' ? `<button class="text-button" data-action="approve-activity" data-id="${kind}:${x.id}">Duyệt</button>` : ''}<button class="text-button" data-action="edit-activity" data-id="${kind}:${x.id}">Sửa</button><button class="text-button danger" data-action="delete-activity" data-id="${kind}:${x.id}">Xóa</button></span>` : '';
-  const row = (title, text, action = '', pending = false) => `<div class="member-row"><div><strong>${e(title)}</strong><small>${e(text)}${pending ? ' · Chờ chủ nhiệm duyệt' : ''}</small></div>${action}</div>`;
-  return heading('Hoạt động CLB', 'Dịp lễ, sinh nhật, lịch tập, điểm danh và khen thưởng.') + `<div class="dashboard-grid"><section class="panel"><div class="panel-head"><h2>Dịp lễ & lời chúc</h2>${button('new-celebration', 'Thêm dịp lễ')}</div>${celebrations.length ? celebrations.map((x) => row(x.title, `${formatDate(x.event_date)}${x.message ? ` · ${x.message}` : ''}`, controls('celebrations', x), x.approval_status === 'pending')).join('') : empty('Chưa có dịp lễ', 'Thêm dịp đặc biệt và lời chúc.')}</section><section class="panel"><div class="panel-head"><h2>Sinh nhật thành viên</h2>${birthdaySelector}</div>${birthdayRows.length ? birthdayRows.map((p) => row(p.name, `${formatDate(p.date_of_birth)}`, owner ? `<button class="text-button" data-action="edit-birthday" data-id="${p.id}">Sửa hồ sơ</button>` : '')).join('') + (birthdayPages > 1 ? `<div class="table-footer"><span>${monthlyBirthdays.length} sinh nhật tháng ${Number(birthdayMonth)}</span><div><button class="icon-button" data-action="birthday-prev" aria-label="Trang trước" ${s.birthdayPage <= 1 ? 'disabled' : ''}>←</button> ${s.birthdayPage} / ${birthdayPages} <button class="icon-button" data-action="birthday-next" aria-label="Trang sau" ${s.birthdayPage >= birthdayPages ? 'disabled' : ''}>→</button></div></div>` : '') : empty(`Không có sinh nhật tháng ${Number(birthdayMonth)}`, 'Danh sách sinh nhật được lấy từ hồ sơ thành viên.')}</section><section class="panel"><div class="panel-head"><h2>Lịch tập & điểm danh</h2><div class="team-actions">${canManageRoster(currentClub().membership_role) ? button('attendance-report', 'Tiến độ điểm danh', 'check', 'secondary') : ''}${button('new-training', 'Tạo lịch tập')}</div></div>${trainings.length ? trainings.map((t) => row(`${t.team_name} · ${formatDate(t.training_date)} ${t.training_time}`, `${t.location} · ${{scheduled: 'Theo kế hoạch', cancelled: 'Không tập', postponed: 'Hoãn'}[t.training_status] || 'Theo kế hoạch'} · Đã điểm danh ${(t.attendance || []).length}`, `${canManageRoster(currentClub().membership_role) && t.team_id && t.training_status === 'scheduled' && t.approval_status === 'approved' ? `<button class="text-button" data-action="attendance" data-id="${t.id}">Điểm danh</button>` : ''}${controls('trainings', t)}`, t.approval_status === 'pending')).join('') : empty('Chưa có lịch tập', 'Tạo lịch tập cho đội bóng.')}</section><section class="panel"><div class="panel-head"><h2>Khen thưởng & phần quà</h2>${button('new-award', 'Thêm khen thưởng')}</div>${awards.length ? awards.map((a) => row(`${a.award_year} · ${a.player_name}`, `${a.title}${a.gift ? ` · Quà: ${a.gift}` : ''}${a.notes ? ` · ${a.notes}` : ''}`, controls('awards', a), a.approval_status === 'pending')).join('') : empty('Chưa có khen thưởng', 'Ghi nhận cá nhân xuất sắc và phần quà.')}</section></div>`;
-}
+
 function lineups() {
-  if (!canManageRoster(currentClub().membership_role)) return heading("Đội hình trận đấu", "Thông tin dành cho ban quản lý đội bóng.");
-  return heading("Đội hình trận đấu", "Tạo đội hình cho từng trận và sắp xếp cầu thủ trên sân.", button("new-lineup", "Tạo đội hình")) +
-    `<section class="panel"><div class="panel-head"><h2>Các trận đã lưu</h2></div>${s.lineups.length ? s.lineups.map((item) => `<div class="member-row"><div><strong>${e(s.teams.find((team) => String(team.id) === String(item.team_id))?.name || "Đội bóng")} — ${e(item.opponent)}</strong><small>${e(item.match_date)} · ${e(item.formation || "Chưa đặt sơ đồ")} · ${item.players.filter((p) => p.role === "starter").length} đá chính · ${item.players.filter((p) => p.role === "substitute").length} dự bị</small></div><button class="text-button" data-action="edit-lineup" data-id="${item.id}">Chỉnh sửa</button></div>`).join("") : empty("Chưa có đội hình", "Tạo đội hình cho trận đấu đầu tiên.", "new-lineup", "Tạo đội hình")}</section>`;
-}
-function club() {
-  const c = currentClub(),
-    canInvite = ["owner", "co_owner", "general_manager", "hr_manager"].includes(
-      c.membership_role,
+  if (!canManageRoster(currentClub().membership_role)) {
+    return heading(
+      'Đội hình trận đấu',
+      'Thông tin dành cho ban quản lý đội bóng.'
     );
-  return `${heading("Câu lạc bộ", "Bản sắc riêng, một không gian kết nối chung.", button("new-club", "Tạo CLB mới", "plus", "secondary") + (canManageClub(c.membership_role) ? button("edit-club", "Chỉnh sửa", "edit") + button("edit-club-avatar", "Ảnh đại diện", "edit", "secondary") + button("edit-club-background", "Ảnh nền", "edit", "secondary") + button("edit-public-settings", "Trang công khai", "globe", "secondary") : "") + (c.membership_role === "owner" ? button("delete-club", "Xóa CLB", "trash", "secondary") : ""))}<div class="dashboard-grid"><section class="panel"><div class="profile-head">${avatar(c.name, imageUrl('club', c.id, c.avatar_version, c.id))}<div><h2>${e(c.name)}</h2><p>${e(roleLabel(c.membership_role))} · ${c.status === "archived" ? "Đã lưu trữ" : "Đang hoạt động"}</p></div></div><dl class="details">${[
-    ["Thành phố", c.city],
-    ["Sân nhà", c.home_ground],
-    ["Loại sân", (c.formats || [c.format]).map((v) => `Sân ${v}`).join(", ")],
-    ["Giới thiệu", c.description],
-  ]
-    .map(
-      ([label, value]) =>
-        `<div><dt>${label}</dt><dd>${e(value || "Chưa cập nhật")}</dd></div>`,
-    )
-    .join(
-      "",
-    )}</dl></section><section class="panel"><div class="panel-head"><h2>Cùng xây dựng câu lạc bộ</h2>${icon("mail")}</div><div class="panel-body"><p class="muted">Mời đúng email của người nhận. Liên kết được chia sẻ trực tiếp và chỉ sử dụng một lần.</p>${canInvite ? button("invite", "Mời tham gia", "mail") : ""}<hr><p class="muted">Bạn có lời mời từ câu lạc bộ khác?</p><a class="text-link" href="#accept">Nhập mã tham gia →</a></div></section></div>`;
-}
-function profile() {
-  return `${heading("Tài khoản của bạn", "Thông tin cá nhân và phiên đăng nhập.")}<section class="panel profile-panel"><div class="profile-head">${avatar(s.user.name, imageUrl('account', s.user.id, s.user.avatar_version))}<div><h2>${e(s.user.name)}</h2><p>${e(s.user.email)} · ${s.user.email_verified_at ? "Đã xác minh" : "Chưa xác minh email"}</p></div></div><div class="panel-body"><div class="page-actions">${button("edit-account-avatar", "Đổi ảnh đại diện", "edit", "secondary")}${button("change-password", "Đổi mật khẩu", "shield", "secondary")}${s.myPlayer ? button("edit-my-player-avatar", "Đổi ảnh hồ sơ CLB", "edit", "secondary") + button("unlink-player", "Bỏ liên kết hồ sơ CLB", "edit", "secondary") : s.canClaimPlayer ? button("claim-player", "Liên kết hồ sơ CLB", "users", "secondary") : ""}</div>${s.myPlayer ? `<p class="muted">Hồ sơ CLB đã liên kết: ${e(s.myPlayer.full_name)}</p>` : currentClub() ? `<p class="muted">Có thể liên kết hồ sơ có email trùng với email đã xác minh của bạn trong CLB hiện tại.</p>` : ""}${!s.user.email_verified_at ? verification() : ""}<form data-form="profile" novalidate><div class="form-error" data-form-error role="alert"></div><div class="form-grid">${field("name", "Họ và tên", s.user.name, "text", true)}${field("email", "Email", s.user.email, "email", true)}${field("current_password", "Mật khẩu hiện tại (khi đổi email)", "", "password")}</div><div class="form-actions">${button("logout", "Đăng xuất", "arrow", "secondary")}<button class="button" type="submit">Lưu thay đổi</button></div></form></div></section>`;
-}
-function verification() {
-  return `<div class="notice"><p>Xác minh quyền sở hữu email trước khi nhận lời mời. Bạn có thể yêu cầu gửi lại liên kết hoặc tải lại sau khi xác minh.</p><div class="inline-actions">${button("verify", "Gửi liên kết xác minh", "mail", "secondary")}${button("refresh-user", "Đã xác minh, tải lại", "check", "secondary")}</div></div>`;
-}
-function accept() {
-  return `${heading("Kết nối cùng câu lạc bộ", "Một lời mời, một hành trình mới.")}<section class="panel profile-panel"><div class="panel-body">${!s.user.email_verified_at ? verification() : ""}<p class="muted">Đang sử dụng email: <strong>${e(s.user.email)}</strong></p><form data-form="accept" novalidate><div class="form-error" data-form-error role="alert"></div>${field("token", "Mã lời mời", s.invite, "text", true)}<div class="form-actions"><button class="button" type="submit" ${!s.user.email_verified_at ? "disabled" : ""}>Chấp nhận lời mời</button></div></form></div></section>`;
-}
-export function page() {
-  if (s.loading)
-    return '<div class="panel loading" role="status"><div class="spinner"></div>Đang tải dữ liệu câu lạc bộ…</div>';
-  if (s.error)
-    return `${heading(titles[s.route] || "Tổng quan", "Dữ liệu cần được tải lại.")}<div class="panel">${empty("Chưa tải được dữ liệu", e(s.error), "retry", "Thử lại")}</div>`;
-  if (s.route === "profile") return profile();
-  if (s.route === "accept") return accept();
-  if (s.route === "roadmap") {
-    const sections = [
-      ['Nền tảng & tài khoản', 'ĐANG HOÀN THIỆN', 'Đã có đăng nhập, xác minh email, ảnh đại diện và đổi/khôi phục mật khẩu. Gửi email thực cần cấu hình; quản lý phiên và chuyển quyền sở hữu vẫn cần phát triển.', '#profile', 'Tài khoản'],
-      ['CLB & thành viên', 'ĐÃ CÓ MỘT PHẦN', 'Đã có nhiều CLB, đội bóng, thành viên, chọn ảnh, danh sách và nhập/xuất Excel. Liên kết tài khoản với hồ sơ và quản lý vai trò nâng cao còn thiếu.', '#members', 'Thành viên'],
-      ['Tài chính & quỹ', 'ĐÃ CÓ MỘT PHẦN', 'Đã có sổ thu chi, chi dự kiến hằng tháng, biểu đồ, đóng quỹ, công nợ và điều chỉnh. Phê duyệt tài chính, khóa kỳ và đối soát nâng cao còn thiếu.', '#finance', 'Sổ thu chi'],
-      ['Kho trang bị', 'ĐÃ CÓ MỘT PHẦN', 'Đã có danh mục, nhập/xuất, kiểm kê từng vật tư, cấp phát/thu hồi và lịch sử. Báo cáo và xử lý hỏng/mất còn thiếu.', '#inventory', 'Kho trang bị'],
-      ['Tính năng mở rộng', 'CHƯA TRIỂN KHAI', 'Tài trợ, website CLB đầy đủ và tự động hóa vẫn nằm trong lộ trình.', '#roadmap', 'Xem lộ trình'],
-    ];
-    return heading('Lộ trình phát triển', 'Theo dõi tính năng đã có và những phần còn đang xây dựng.') + `<div class="team-grid">${sections.map(([title, status, text, link, label]) => `<section class="panel roadmap-card"><span class="pill">${e(status)}</span><h2>${e(title)}</h2><p>${e(text)}</p>${link !== '#roadmap' ? `<a class="text-link" href="${link}">${e(label)} →</a>` : ''}</section>`).join('')}</div>`;
   }
+  return (
+    heading(
+      'Đội hình trận đấu',
+      'Tạo đội hình cho từng trận và sắp xếp cầu thủ trên sân.',
+      button('new-lineup', 'Tạo đội hình')
+    ) +
+    `<section class="panel">
+      <div class="panel-head"><h2>Các trận đã lưu</h2></div>
+      ${
+        s.lineups.length
+          ? s.lineups
+              .map(
+                (item) => `
+            <div class="member-row">
+              <div>
+                <strong>${e(s.teams.find((team) => String(team.id) === String(item.team_id))?.name || 'Đội bóng')} — ${e(item.opponent)}</strong>
+                <small>${e(item.match_date)} · ${e(item.formation || 'Chưa đặt sơ đồ')} · ${item.players.filter((p) => p.role === 'starter').length} đá chính · ${item.players.filter((p) => p.role === 'substitute').length} dự bị</small>
+              </div>
+              <button class="text-button" data-action="edit-lineup" data-id="${item.id}">Chỉnh sửa</button>
+            </div>`
+              )
+              .join('')
+          : empty(
+              'Chưa có đội hình',
+              'Tạo đội hình cho trận đấu đầu tiên.',
+              'new-lineup',
+              'Tạo đội hình'
+            )
+      }
+    </section>`
+  );
+}
+
+function roadmap() {
+  const sections = [
+    [
+      'Nền tảng & tài khoản',
+      'ĐANG HOÀN THIỆN',
+      'Đã có đăng nhập, xác minh email, ảnh đại diện và đổi/khôi phục mật khẩu. Gửi email thực cần cấu hình; quản lý phiên và chuyển quyền sở hữu vẫn cần phát triển.',
+      '#profile',
+      'Tài khoản',
+    ],
+    [
+      'CLB & thành viên',
+      'ĐÃ CÓ MỘT PHẦN',
+      'Đã có nhiều CLB, đội bóng, thành viên, chọn ảnh, danh sách và nhập/xuất Excel. Liên kết tài khoản với hồ sơ và quản lý vai trò nâng cao còn thiếu.',
+      '#members',
+      'Thành viên',
+    ],
+    [
+      'Tài chính & quỹ',
+      'ĐÃ CÓ MỘT PHẦN',
+      'Đã có sổ thu chi, chi dự kiến hằng tháng, biểu đồ, đóng quỹ, công nợ và điều chỉnh. Phê duyệt tài chính, khóa kỳ và đối soát nâng cao còn thiếu.',
+      '#finance',
+      'Sổ thu chi',
+    ],
+    [
+      'Kho trang bị',
+      'ĐÃ CÓ MỘT PHẦN',
+      'Đã có danh mục, nhập/xuất, kiểm kê từng vật tư, cấp phát/thu hồi và lịch sử. Báo cáo và xử lý hỏng/mất còn thiếu.',
+      '#inventory',
+      'Kho trang bị',
+    ],
+    [
+      'Tính năng mở rộng',
+      'CHƯA TRIỂN KHAI',
+      'Tài trợ, website CLB đầy đủ và tự động hóa vẫn nằm trong lộ trình.',
+      '#roadmap',
+      'Xem lộ trình',
+    ],
+  ];
+
+  return (
+    heading(
+      'Lộ trình phát triển',
+      'Theo dõi tính năng đã có và những phần còn đang xây dựng.'
+    ) +
+    `<div class="team-grid">
+      ${sections
+        .map(
+          ([title, status, text, link, label]) => `
+        <section class="panel roadmap-card">
+          <span class="pill">${e(status)}</span>
+          <h2>${e(title)}</h2>
+          <p>${e(text)}</p>
+          ${link !== '#roadmap' ? `<a class="text-link" href="${link}">${e(label)} →</a>` : ''}
+        </section>`
+        )
+        .join('')}
+    </div>`
+  );
+}
+
+export function page() {
+  if (s.loading) {
+    return '<div class="panel loading" role="status"><div class="spinner"></div>Đang tải dữ liệu câu lạc bộ…</div>';
+  }
+
+  if (s.error) {
+    return `${heading(titles[s.route] || 'Tổng quan', 'Dữ liệu cần được tải lại.')}<div class="panel">${empty('Chưa tải được dữ liệu', e(s.error), 'retry', 'Thử lại')}</div>`;
+  }
+
+  if (s.route === 'profile') return profilePage();
+  if (s.route === 'accept') return acceptPage();
+  if (s.route === 'roadmap') return roadmap();
   if (s.route === 'discover') return discoveryPage();
-  if (!currentClub())
+
+  if (!currentClub()) {
     return (
       heading(
-        "Câu lạc bộ bắt đầu từ bạn",
-        "Tạo không gian đầu tiên và cùng nhau xây dựng đội bóng.",
+        'Câu lạc bộ bắt đầu từ bạn',
+        'Tạo không gian đầu tiên và cùng nhau xây dựng đội bóng.'
       ) +
-      `<section class="panel">${empty("Chào mừng đến với FCMS PRO", "Tạo câu lạc bộ của bạn hoặc nhận lời mời từ ban quản lý.", "new-club", "Tạo câu lạc bộ")}<p class="center"><a class="text-link" href="#accept">Đã có mã mời? Tham gia câu lạc bộ →</a></p></section>`
+      `<section class="panel">
+        ${empty('Chào mừng đến với FCMS PRO', 'Tạo câu lạc bộ của bạn hoặc nhận lời mời từ ban quản lý.', 'new-club', 'Tạo câu lạc bộ')}
+        <p class="center"><a class="text-link" href="#accept">Đã có mã mời? Tham gia câu lạc bộ →</a></p>
+      </section>`
     );
-  return ({ dashboard, members: () => (canManageRoster(currentClub().membership_role) ? `<div class="page-actions">${button("import-members", "Nhập Excel", "arrow", "secondary")}</div>` : "") + clubDirectoryPage(), "team-roster": teamRosterPage, teams, lineups, matches: matchesPage, inventory: () => currentClub()?.can_view_inventory ? inventoryPage({ inventory: s.inventory, canManage: currentClub()?.can_manage_inventory, search: s.inventorySearch, lowStock: s.inventoryLowStock, archived: s.inventoryArchived }) : heading('Kho trang bị', 'Bạn không có quyền xem kho.'), polls: () => pollsPage({ polls: s.polls, canCreate: canManageClub(currentClub()?.membership_role) && currentClub()?.status === 'active', canVote: currentClub()?.status === 'active' }), recruitment: () => canManageRoster(currentClub()?.membership_role) ? recruitmentPage({ recruitment: s.recruitment, canManage: currentClub()?.status === 'active', status: s.recruitmentStatus }) : heading('Tuyển dụng', 'Bạn không có quyền xem tuyển dụng.'), finance: financePage, dues: duesPage, activities, "club-members": clubMembers, club }[s.route] || dashboard)();
+  }
+
+  const routes = {
+    dashboard: dashboardPage,
+    members: () =>
+      (canManageRoster(currentClub().membership_role)
+        ? `<div class="page-actions">${button('import-members', 'Nhập Excel', 'arrow', 'secondary')}</div>`
+        : '') + clubDirectoryPage(),
+    'team-roster': teamRosterPage,
+    teams,
+    lineups,
+    matches: matchesPage,
+    inventory: () =>
+      currentClub()?.can_view_inventory
+        ? inventoryPage({
+            inventory: s.inventory,
+            canManage: currentClub()?.can_manage_inventory,
+            search: s.inventorySearch,
+            lowStock: s.inventoryLowStock,
+            archived: s.inventoryArchived,
+          })
+        : heading('Kho trang bị', 'Bạn không có quyền xem kho.'),
+    polls: () =>
+      pollsPage({
+        polls: s.polls,
+        canCreate:
+          canManageClub(currentClub()?.membership_role) &&
+          currentClub()?.status === 'active',
+        canVote: currentClub()?.status === 'active',
+      }),
+    recruitment: () =>
+      canManageRoster(currentClub()?.membership_role)
+        ? recruitmentPage({
+            recruitment: s.recruitment,
+            canManage: currentClub()?.status === 'active',
+            status: s.recruitmentStatus,
+          })
+        : heading('Tuyển dụng', 'Bạn không có quyền xem tuyển dụng.'),
+    finance: financePage,
+    dues: duesPage,
+    activities: activitiesPage,
+    'club-members': boardPage,
+    club: clubPage,
+  };
+
+  return (routes[s.route] || dashboardPage)();
 }

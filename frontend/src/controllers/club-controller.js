@@ -1,0 +1,299 @@
+import { setupImageCropper } from '../image-crop.js';
+import { imageUrl } from '../images.js';
+
+export function createClubController(ctx) {
+  function editClub(edit = false) {
+    const c = edit ? ctx.currentClub() : {};
+    const fields =
+      ctx.field('name', 'Tên câu lạc bộ', c.name, 'text', true) +
+      ctx.field('city', 'Thành phố', c.city) +
+      ctx.field('home_ground', 'Sân nhà', c.home_ground) +
+      `<fieldset class="field format-options"><legend>Loại sân *</legend>${['5', '7', '11'].map((v) => `<label><input type="checkbox" name="formats" value="${v}" ${(c.formats || [c.format || '7']).includes(v) ? 'checked' : ''}> Sân ${v} người</label>`).join('')}</fieldset>` +
+      (edit
+        ? ctx.select(
+            'status',
+            'Trạng thái',
+            [
+              ['active', 'Đang hoạt động'],
+              ['archived', 'Lưu trữ'],
+            ],
+            c.status
+          )
+        : '') +
+      ctx.field('description', 'Giới thiệu', c.description, 'textarea');
+
+    ctx.dialog(
+      edit ? 'Chỉnh sửa câu lạc bộ' : 'Tạo câu lạc bộ mới',
+      'Bạn có thể quản lý nhiều câu lạc bộ trong một tài khoản.',
+      fields,
+      (form) =>
+        ctx.submit(form, 'club', async (data) => {
+          data.formats = [
+            ...form.querySelectorAll('[name="formats"]:checked'),
+          ].map((input) => input.value);
+          if (!data.formats.length) {
+            throw new Error('Vui lòng chọn ít nhất một loại sân.');
+          }
+          const result = edit
+            ? await ctx.api.patch(ctx.base(), data)
+            : await ctx.api.post('/clubs', data);
+          ctx.state.clubId = result.data.id;
+          ctx.state.route = 'club';
+          history.replaceState(null, '', location.pathname + '#club');
+          await ctx.loadApp();
+          ctx.toast('Đã lưu câu lạc bộ.');
+        })
+    );
+  }
+
+  function editImage(kind, member) {
+    const club = ctx.currentClub();
+    const config =
+      kind === 'account'
+        ? {
+            path: '/auth/avatar',
+            title: 'Ảnh đại diện tài khoản',
+            version: ctx.state.user.avatar_version,
+          }
+        : kind === 'player'
+          ? {
+              path: `/clubs/${encodeURIComponent(club.id)}/members/${encodeURIComponent(member.id)}/avatar`,
+              title: `Ảnh đại diện · ${ctx.e(member.full_name)}`,
+              version: member.avatar_version,
+              removable: member.has_custom_avatar,
+            }
+          : {
+              path: `/clubs/${encodeURIComponent(club.id)}/images/${kind === 'background' ? 'background' : 'avatar'}`,
+              title: kind === 'background' ? 'Ảnh nền CLB' : 'Ảnh đại diện CLB',
+              version:
+                kind === 'background'
+                  ? club.background_version
+                  : club.avatar_version,
+            };
+
+    const url = imageUrl(kind, member?.id, config.version, club?.id);
+    const fields = `<div class="image-picker"><div class="image-preview ${kind === 'background' ? 'image-preview-wide' : ''}">${url ? `<img src="${ctx.e(url)}" alt="Ảnh hiện tại">` : '<span>Chưa có ảnh</span>'}</div><div class="field"><label for="f-image">Chọn ảnh JPG, PNG hoặc WEBP</label><input id="f-image" name="image" type="file" accept="image/jpeg,image/png,image/webp" required><small data-error="image"></small><small>Tối đa 5 MB. ${kind === 'background' ? 'Ảnh nền sẽ được phủ màu để nội dung dễ đọc.' : ''}</small></div><div class="crop-editor" data-crop-editor><canvas hidden aria-label="Xem trước vùng ảnh đã cắt"></canvas><p data-crop-message>Chọn một ảnh để điều chỉnh khung hình.</p><div class="crop-controls" data-crop-controls hidden><label>Phóng to <input type="range" data-crop-zoom min="1" max="3" step="0.01" value="1"></label><label>Điều chỉnh ngang <input type="range" data-crop-x min="-100" max="100" value="0"></label><label>Điều chỉnh dọc <input type="range" data-crop-y min="-100" max="100" value="0"></label></div></div>${(config.removable ?? Boolean(config.version)) ? '<button type="button" class="text-button danger" data-delete-image>Xóa ảnh hiện tại</button>' : ''}</div>`;
+
+    const refresh = async () => {
+      if (kind === 'account') {
+        ctx.state.user = (await ctx.api.get('/auth/user')).data;
+        await ctx.loadView();
+      } else if (kind === 'player') {
+        await ctx.loadView();
+      } else {
+        await ctx.loadApp();
+      }
+    };
+
+    let cropper;
+    const modal = ctx.dialog(
+      config.title,
+      'Chọn ảnh và điều chỉnh vùng hiển thị trước khi lưu.',
+      fields,
+      (form) =>
+        ctx.submit(form, 'image', async () => {
+          const file = form.elements.image.files[0];
+          if (
+            !file ||
+            !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+            file.size > 5 * 1024 * 1024
+          ) {
+            throw new Error('Chọn ảnh JPG, PNG hoặc WEBP tối đa 5 MB.');
+          }
+          const cropped = await cropper.exportFile();
+          const data = new FormData();
+          data.append('image', cropped);
+          await ctx.api.post(config.path, data);
+          await refresh();
+          ctx.toast('Đã cập nhật ảnh.');
+        })
+    );
+
+    cropper = setupImageCropper(
+      modal.querySelector('[data-crop-editor]'),
+      modal.querySelector('[name="image"]'),
+      { background: kind === 'background' }
+    );
+
+    modal
+      .querySelector('[data-delete-image]')
+      ?.addEventListener('click', async (event) => {
+        event.currentTarget.disabled = true;
+        try {
+          await ctx.api.delete(config.path);
+          await refresh();
+          modal.close();
+          ctx.toast('Đã xóa ảnh.');
+        } catch (error) {
+          ctx.showErrors(
+            modal.querySelector('form'),
+            error.errors || {},
+            error.message
+          );
+          event.currentTarget.disabled = false;
+        }
+      });
+
+    modal.addEventListener('close', () => cropper.destroy(), { once: true });
+    return modal;
+  }
+
+  async function handleAction(a, el) {
+    if (a === 'new-club') return editClub();
+
+    if (a === 'edit-club' && ctx.canManageClub(ctx.currentRole())) {
+      return editClub(true);
+    }
+
+    if (a === 'edit-account-avatar') return editImage('account');
+    if (a === 'edit-club-avatar' && ctx.canManageClub(ctx.currentRole())) {
+      return editImage('club');
+    }
+    if (a === 'edit-club-background' && ctx.canManageClub(ctx.currentRole())) {
+      return editImage('background');
+    }
+    if (a === 'edit-player-avatar' && ctx.canManageRoster(ctx.currentRole())) {
+      const member = ctx.state.members.find(
+        (x) => String(x.id) === el.dataset.id
+      );
+      if (member) return editImage('player', member);
+    }
+    if (a === 'edit-my-player-avatar' && ctx.state.myPlayer) {
+      return editImage('player', ctx.state.myPlayer);
+    }
+
+    if (a === 'change-password') {
+      return ctx.dialog(
+        'Đổi mật khẩu',
+        'Nhập mật khẩu hiện tại và mật khẩu mới. Các phiên cơ sở dữ liệu khác sẽ được thu hồi; phiên đã được bảo vệ sẽ cần đăng nhập lại.',
+        ctx.field('current_password', 'Mật khẩu hiện tại', '', 'password', true) +
+          ctx
+            .field('password', 'Mật khẩu mới', '', 'password', true)
+            .replace('autocomplete="current-password"', 'autocomplete="new-password"') +
+          ctx
+            .field(
+              'password_confirmation',
+              'Nhập lại mật khẩu mới',
+              '',
+              'password',
+              true
+            )
+            .replace('autocomplete="current-password"', 'autocomplete="new-password"'),
+        (form) =>
+          ctx.submit(form, 'change-password', async (data) => {
+            await ctx.api.patch('/auth/password', data);
+            ctx.toast('Đã đổi mật khẩu.');
+          })
+      );
+    }
+
+    if (a === 'claim-player' && ctx.state.canClaimPlayer) {
+      return ctx.dialog(
+        'Liên kết hồ sơ thành viên?',
+        'Hồ sơ có email đã xác minh của bạn sẽ được liên kết với tài khoản này trong CLB hiện tại.',
+        '',
+        (form) =>
+          ctx.submit(
+            form,
+            'claim-player',
+            async () => {
+              await ctx.api.post(ctx.base('/my-player/claim'), {});
+              await ctx.loadView();
+              ctx.toast('Đã liên kết hồ sơ thành viên.');
+            },
+            'Liên kết'
+          )
+      );
+    }
+
+    if (a === 'unlink-player' && ctx.state.myPlayer) {
+      return ctx.dialog(
+        'Bỏ liên kết hồ sơ?',
+        'Hồ sơ vẫn thuộc CLB, nhưng tài khoản này sẽ không còn quyền tự đổi ảnh hồ sơ đó.',
+        '',
+        (form) =>
+          ctx.submit(
+            form,
+            'unlink-player',
+            async () => {
+              await ctx.api.delete(ctx.base('/my-player/claim'));
+              await ctx.loadView();
+              ctx.toast('Đã bỏ liên kết hồ sơ.');
+            },
+            'Bỏ liên kết'
+          )
+      );
+    }
+
+    if (a === 'edit-public-settings' && ctx.canManageClub(ctx.currentRole())) {
+      const res = await ctx.api.get(ctx.base('/public-settings'));
+      const ps = res.data || {};
+      const fields =
+        ctx.field(
+          'public_slug',
+          'Đường dẫn trang công khai (slug)',
+          ps.public_slug || '',
+          'text'
+        ) +
+        ctx.field(
+          'headline',
+          'Tiêu đề giới thiệu nổi bật',
+          ps.headline || '',
+          'text'
+        ) +
+        `<div class="field"><label class="checkbox"><input type="checkbox" name="is_published" value="true" ${ps.is_published ? 'checked' : ''}> Xuất bản trang web công khai</label><small>Khi bật, người ngoài có thể xem thông tin câu lạc bộ qua đường dẫn công khai mà không cần đăng nhập.</small></div>`;
+
+      return ctx.dialog(
+        'Trang web công khai',
+        'Thiết lập nhận diện và cổng thông tin mở của câu lạc bộ.',
+        fields,
+        (form) =>
+          ctx.submit(
+            form,
+            'public-settings',
+            async (data) => {
+              await ctx.api.post(ctx.base('/public-settings'), {
+                public_slug: data.public_slug?.trim() || null,
+                headline: data.headline?.trim() || null,
+                is_published: data.is_published === 'true',
+              });
+              await ctx.loadView();
+              ctx.toast('Đã lưu cài đặt trang công khai.');
+            },
+            'Lưu cài đặt'
+          )
+      );
+    }
+
+    if (a === 'delete-club' && ctx.currentRole() === 'owner') {
+      const club = ctx.currentClub();
+      return ctx.dialog(
+        'Xóa câu lạc bộ?',
+        `Xóa ${ctx.e(club.name)} sẽ ẩn câu lạc bộ với tất cả thành viên. Dữ liệu được giữ trong hệ thống; hiện chưa có chức năng tự khôi phục trên giao diện.`,
+        '',
+        (form) =>
+          ctx.submit(
+            form,
+            'delete',
+            async () => {
+              await ctx.api.delete(ctx.base());
+              ctx.state.clubId = null;
+              ctx.state.route = 'dashboard';
+              history.replaceState(null, '', location.pathname + '#dashboard');
+              await ctx.loadApp();
+              ctx.toast('Đã xóa câu lạc bộ.');
+            },
+            'Xác nhận xóa CLB'
+          )
+      );
+    }
+
+    return false;
+  }
+
+  return {
+    editClub,
+    editImage,
+    handleAction,
+  };
+}

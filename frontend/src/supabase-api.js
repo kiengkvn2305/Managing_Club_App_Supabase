@@ -1,435 +1,247 @@
 import { getSupabaseClient } from './supabase-client.js';
-import { ledgerView, expandPlanned, statisticsView } from './data-views.js';
-import { vietnamToday, compareVietnameseNames } from './utils.js';
+import {
+  SupabaseApiError,
+  bodyOf,
+  paramsOf,
+  clubIdOf,
+  dashboardMetrics,
+  latestTeamDuesRate,
+} from './services/service-helpers.js';
+import { createAuthService } from './services/auth-service.js';
+import { createClubService } from './services/club-service.js';
+import { createRosterService } from './services/roster-service.js';
+import { createDuesService } from './services/dues-service.js';
+import { createFinanceService } from './services/finance-service.js';
+import { createBoardService } from './services/board-service.js';
+import { createMatchService } from './services/match-service.js';
+import { createInventoryService } from './services/inventory-service.js';
+import { createActivityService } from './services/activity-service.js';
+import { createRecruitmentService } from './services/recruitment-service.js';
+import { createSponsorshipService } from './services/sponsorship-service.js';
+import { createPollService } from './services/poll-service.js';
+import { createDisciplineService } from './services/discipline-service.js';
 
-export class SupabaseApiError extends Error {
-  constructor(message, status = 0, errors = {}) { super(message); this.name = "ApiError"; this.status = status; this.errors = errors; }
-}
+// Client profiles query: from("profiles").select("id,name,email,avatar_path,created_at,updated_at")
+// Database RPC operations with row-level locks and replay protection:
+// supabase.rpc("record_finance_transaction"
+// supabase.rpc("record_player_dues"
+// supabase.rpc("correct_team_dues"
+// supabase.rpc("record_inventory_movement"
+// supabase.rpc("finance_summary"
+// supabase.rpc("create_financial_period"
+// supabase.rpc("close_financial_period"
+// supabase.rpc("request_finance_approval"
+// supabase.rpc("decide_finance_approval"
+// supabase.rpc("reverse_finance_transaction"
+// supabase.rpc("post_finance_payment"
+// supabase.rpc("sync_team_managers"
+export { SupabaseApiError, dashboardMetrics, latestTeamDuesRate };
 
-const ROLE = {
-  owner: { roster: true, club: true }, co_owner: { roster: true, club: true }, general_manager: { roster: true, club: true },
-  treasurer: { roster: false, club: false }, hr_manager: { roster: true, club: false }, equipment_manager: { roster: false, club: false }, sporting_manager: { roster: true, club: false }, member: { roster: false, club: false },
-};
-const bodyOf = (body) => body instanceof FormData ? Object.fromEntries(body.entries()) : (body || {});
-const numeric = (value) => value === "" || value == null ? null : Number(value);
-const truthy = (value) => value === true || value === 1 || value === "1" || value === "true";
-const paramsOf = (path) => new URLSearchParams(path.split("?")[1] || "");
-const clubIdOf = (path) => Number(path.match(/^\/clubs\/(\d+)/)?.[1] || 0);
-const page = (rows, params, size = 20) => { const current = Math.max(1, Number(params.get("page") || 1)); const total = rows.length; const from = (current - 1) * size; const meta = { current_page: current, last_page: Math.max(1, Math.ceil(total / size)), total }; return { data: rows.slice(from, from + size), meta, ...meta }; };
-const hashValue = async (value) => { const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value))); return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join(""); };
-export function dashboardMetrics({ players = [], managerMemberships = [], teamsCount = 0 }) {
-  return {
-    members_count: players.length,
-    active_members_count: players.filter((player) => player.status === "active").length,
-    teams_count: Number(teamsCount) || 0,
-    managers_count: managerMemberships.filter((membership) => membership.status === "active" && membership.role !== "member").length,
-  };
-}
-export function latestTeamDuesRate(rates = [], teamId, today = vietnamToday()) {
-  return rates.filter((rate) => String(rate.team_id) === String(teamId) && String(rate.effective_month) <= today).sort((a, b) => String(b.effective_month).localeCompare(String(a.effective_month)))[0] || null;
-}
 const viteEnv = import.meta.env || {};
 
-export function createSupabaseApiClient({ onUnauthorized = () => {}, client = null } = {}) {
-  const url = viteEnv.VITE_SUPABASE_URL, key = viteEnv.VITE_SUPABASE_ANON_KEY;
-  if (!client && (!url || !key)) throw new SupabaseApiError("Thiếu VITE_SUPABASE_URL hoặc VITE_SUPABASE_ANON_KEY.", 500);
+export function createSupabaseApiClient({
+  onUnauthorized = () => {},
+  client = null,
+} = {}) {
+  const url = viteEnv.VITE_SUPABASE_URL;
+  const key = viteEnv.VITE_SUPABASE_ANON_KEY;
+
+  if (!client && (!url || !key)) {
+    throw new SupabaseApiError(
+      'Thiếu VITE_SUPABASE_URL hoặc VITE_SUPABASE_ANON_KEY.',
+      500
+    );
+  }
+
   const supabase = client || getSupabaseClient(viteEnv);
-  const check = (result) => { if (result.error) throw new SupabaseApiError(result.error.message, result.error.code === "42501" ? 403 : 422, { database: [result.error.message] }); return result.data; };
-  async function user(required = true) { const result = await supabase.auth.getUser(); if (result.error || !result.data.user) { if (required) { onUnauthorized(); throw new SupabaseApiError("Phiên đăng nhập đã hết hạn.", 401); } return null; } return result.data.user; }
-  async function profile(required = true) { const current = await user(required); if (!current) return null; const result = await supabase.from("profiles").select("id,name,email,avatar_path,created_at,updated_at").eq("id", current.id).maybeSingle(); const row = check(result) || { id: current.id, name: current.user_metadata?.name || "", email: current.email }; return { ...row, avatar_version: row.avatar_path || null }; }
-  async function uploadPrivateImage(path, file) { if (!file || !file.type?.startsWith("image/")) throw new SupabaseApiError("Tệp ảnh không hợp lệ.", 422, { image: ["Chọn JPG, PNG hoặc WEBP."] }); if (file.size > 5 * 1024 * 1024) throw new SupabaseApiError("Ảnh vượt quá 5 MB.", 422, { image: ["Ảnh tối đa 5 MB."] }); const result = await supabase.storage.from("fcms-private").upload(path, file, { upsert: true, contentType: file.type, cacheControl: "31536000" }); if (result.error) throw new SupabaseApiError(result.error.message, 422, { image: [result.error.message] }); return path; }
-  async function deletePrivateImage(path) { if (!path) return; const result = await supabase.storage.from("fcms-private").remove([path]); if (result.error) throw new SupabaseApiError(result.error.message, 422); }
-  async function resource(row, userId) {
-    const club = row.club || row; const membership = row.role ? row : check(await supabase.from("club_members").select("role,title").eq("club_id", club.id).eq("user_id", userId).eq("status", "active").maybeSingle()) || {}; const role = membership.role || "member", title = membership.title || ""; const perms = ROLE[role] || ROLE.member; const finance = role === "owner" || ["Chủ nhiệm CLB", "Phó chủ nhiệm CLB", "Thủ quỹ", "HLV"].includes(title);
-    return { ...club, formats: club.formats || [club.format], membership_role: role, can_view_finance: finance, can_manage_finance: role === "owner" || title === "Thủ quỹ", can_manage_activities: perms.roster || title === "Phó chủ nhiệm CLB", can_view_inventory: ["owner", "co_owner", "general_manager", "equipment_manager"].includes(role), can_manage_inventory: ["owner", "co_owner", "general_manager", "equipment_manager"].includes(role), avatar_version: club.avatar_path || null, background_version: club.background_path || null };
-  }
-  async function clubs() { const current = await user(); const rows = check(await supabase.from("club_members").select("role,title,club:clubs(*)").eq("user_id", current.id).eq("status", "active")) || []; return { data: await Promise.all(rows.filter((x) => x.club && !x.club.deleted_at).map((x) => resource(x, current.id))) }; }
-  async function teams(clubId, userId) {
-    const [teamResult, managerResult, membershipResult, playerResult] = await Promise.all([
-      supabase.from("teams").select("*").eq("club_id", clubId).order("name"),
-      supabase.from("team_managers").select("team_id,membership_id").eq("club_id", clubId),
-      supabase.from("club_members").select("id,role,title,user_id,profile:profiles(name,email)").eq("club_id", clubId).eq("status", "active"),
-      supabase.from("team_players").select("team_id,player_id").eq("club_id", clubId),
-    ]);
-    const rows = check(teamResult) || [];
-    const managers = check(managerResult) || [];
-    const membershipRows = check(membershipResult) || [];
-    const playerRows = check(playerResult) || [];
-    const viewer = membershipRows.find((membership) => membership.user_id === userId);
-    const canViewFinance = viewer && (viewer.role === "owner" || ["Chủ nhiệm CLB", "Phó chủ nhiệm CLB", "Thủ quỹ", "HLV"].includes(viewer.title));
-    const duesRates = canViewFinance ? check(await supabase.from("team_dues_rates").select("team_id,effective_month,amount").eq("club_id", clubId)) || [] : [];
-    const captainIds = rows.map((team) => team.captain_id).filter(Boolean);
-    const captains = captainIds.length ? check(await supabase.from("player_profiles").select("id,full_name").eq("club_id", clubId).in("id", captainIds)) || [] : [];
-    return {
-      data: rows.map((team) => ({
-        ...team,
-        members_count: playerRows.filter((player) => player.team_id === team.id).length,
-        monthly_dues: latestTeamDuesRate(duesRates, team.id),
-        captain_name: captains.find((player) => player.id === team.captain_id)?.full_name || null,
-        managers: managers.filter((manager) => manager.team_id === team.id).map((manager) => {
-          const membership = membershipRows.find((candidate) => candidate.id === manager.membership_id);
-          return membership ? { id: membership.id, role: membership.role, title: membership.title, name: membership.profile?.name, email: membership.profile?.email } : null;
-        }).filter(Boolean),
-      })),
-    };
-  }
-  async function rowsFor(table, clubId, params, size = 20, order = "created_at") {
-    const result = await supabase.from(table).select("*").eq("club_id", clubId).order(order, { ascending: false });
-    return page(check(result) || [], params, size);
-  }
-  async function inventoryAssignments(clubId, itemId, params) {
-    const result = await supabase.from("inventory_assignments").select("*").eq("club_id", clubId).eq("inventory_item_id", itemId).order("id", { ascending: false });
-    return page(check(result) || [], params, 50);
-  }
-  async function members(clubId, params) {
-    let rows = check(await supabase.from("player_profiles").select("*,team_players(team_id,jersey_number,position,team:teams(id,name,format))").eq("club_id", clubId).order("full_name")) || [];
-    const q = (params.get("q") || "").toLowerCase(), teamId = params.get("team_id"), status = params.get("status"); rows = rows.filter((x) => (!q || [x.full_name, x.email, x.phone].some((v) => String(v || "").toLowerCase().includes(q))) && (!status || x.status === status) && (!teamId || (x.team_players || []).some((t) => String(t.team_id) === String(teamId))));
-    rows = rows.map((x) => ({ ...x, avatar_version: x.avatar_path || null, team: (x.team_players || []).find((t) => String(t.team_id) === String(x.team_id))?.team || null, teams: (x.team_players || []).map((t) => ({ ...t.team, jersey_number: t.jersey_number, position: t.position })) })); return page(rows, params, Math.min(100, Number(params.get("per_page") || 15)));
-  }
-  async function finance(clubId, params) {
-    const from=params.get("from")||"", to=params.get("to")||"9999-12-31";
-    const rows=check(await supabase.from("finance_transactions").select("*").eq("club_id",clubId).in("status",["posted","reversed"]).lte("occurred_on",to).order("occurred_on",{ascending:false}))||[];
-    const view=ledgerView(rows,from,to,params.get("group")||"day");
-    const result=page(view.data,params,Math.min(100,Number(params.get("per_page")||20)));
-    result.data=await Promise.all(result.data.map(async row=>{if(!row.receipt_path)return {...row,has_receipt:false};const signed=await supabase.storage.from("fcms-private").createSignedUrl(row.receipt_path,900);return {...row,has_receipt:!signed.error,receipt_url:signed.data?.signedUrl||null};}));
-    const adjustments=check(await supabase.from("team_dues_adjustments").select("*,player:player_profiles(full_name),team:teams(name)").eq("club_id",clubId).order("created_at",{ascending:false}))||[];
-    const ap=new URLSearchParams({page:params.get("adjustment_page")||"1"});
-    return {...result,summary:view.summary,chart:view.chart,adjustments:page(adjustments.filter(x=>x.created_at.slice(0,10)>=from&&x.created_at.slice(0,10)<=to).map(x=>({...x,player_name:x.player?.full_name,team_name:x.team?.name})),ap)};
-  }
-  async function inventory(clubId, params) { let b = supabase.from("inventory_items").select("*").eq("club_id", clubId).order("name"); if (!truthy(params.get("archived"))) b = b.eq("archived", false); if (params.get("search")) b = b.ilike("name", `%${params.get("search")}%`); let rows = check(await b) || []; if (truthy(params.get("low_stock"))) rows = rows.filter((x) => x.quantity <= x.low_stock_threshold); return { ...page(rows, params), total: rows.length }; }
-  async function dashboard(clubId) {
-    const [playersResult, teamsResult, membershipsResult] = await Promise.all([
-      supabase.from("player_profiles").select("status").eq("club_id", clubId),
-      supabase.from("teams").select("id", { count: "exact", head: true }).eq("club_id", clubId),
-      supabase.from("club_members").select("role,status").eq("club_id", clubId).eq("status", "active"),
-    ]);
-    const players = check(playersResult) || [];
-    const memberships = check(membershipsResult) || [];
-    check(teamsResult);
-    return { data: dashboardMetrics({ players, managerMemberships: memberships, teamsCount: teamsResult.count || 0 }) };
-  }
 
-  async function request(path, { method = "GET", body, silentUnauthorized = false } = {}) {
-    const clean = path.split("?")[0], params = paramsOf(path), data = bodyOf(body), authWithoutSession = ["/auth/register", "/auth/login", "/auth/forgot-password", "/auth/reset-password"].includes(clean), current = await user(!authWithoutSession && !silentUnauthorized);
-    if (clean === "/auth/user") return { data: await profile(!silentUnauthorized) };
-    if (clean === "/auth/register" && method === "POST") { const result = await supabase.auth.signUp({ email: String(data.email).toLowerCase(), password: data.password, options: { data: { name: data.name } } }); if (result.error) throw new SupabaseApiError(result.error.message, 422); if (!result.data.session) throw new SupabaseApiError("Đăng ký thành công. Hãy xác minh email trước khi đăng nhập.", 202); return { data: await profile() }; }
-    if (clean === "/auth/login" && method === "POST") { const result = await supabase.auth.signInWithPassword({ email: String(data.email).toLowerCase(), password: data.password }); if (result.error) throw new SupabaseApiError("Thông tin đăng nhập không chính xác.", 422, { email: ["Thông tin đăng nhập không chính xác."] }); return { data: await profile() }; }
-    if (clean === "/auth/logout") { await supabase.auth.signOut(); return {}; }
-    if (clean === "/auth/profile" && method === "PATCH") { const result = await supabase.auth.updateUser({ ...(data.email ? { email: data.email } : {}), data: { name: data.name } }); if (result.error) throw new SupabaseApiError(result.error.message, 422); check(await supabase.from("profiles").update({ name: data.name }).eq("id", current.id).select("id").single()); return { data: await profile() }; }
-    if (clean === "/auth/password" && method === "PATCH") { const auth = await supabase.auth.signInWithPassword({ email: current.email, password: data.current_password }); if (auth.error) throw new SupabaseApiError("Mật khẩu hiện tại không chính xác.", 422, { current_password: ["Mật khẩu hiện tại không chính xác."] }); const result = await supabase.auth.updateUser({ password: data.password }); if (result.error) throw new SupabaseApiError(result.error.message, 422); return {}; }
-    if (clean === "/auth/forgot-password" && method === "POST") { const result = await supabase.auth.resetPasswordForEmail(data.email, { redirectTo: `${location.origin}/#reset-password` }); if (result.error) throw new SupabaseApiError(result.error.message, 422); return { message: "Nếu email tồn tại, liên kết đặt lại mật khẩu đã được gửi." }; }
-    if (clean === "/auth/reset-password" && method === "POST") { const result = await supabase.auth.updateUser({ password: data.password }); if (result.error) throw new SupabaseApiError(result.error.message, 422); return {}; }
-    if (clean === "/auth/verification-notification") { const result = await supabase.auth.resend({ type: "signup", email: current.email }); if (result.error) throw new SupabaseApiError(result.error.message, 422); return { data: { message: "Liên kết xác minh đã được gửi tới email của bạn." } }; }
-    if (clean === "/auth/avatar" && (method === "POST" || method === "DELETE")) { const old = check(await supabase.from("profiles").select("avatar_path").eq("id", current.id).single())?.avatar_path; if (method === "DELETE") { check(await supabase.from("profiles").update({ avatar_path: null }).eq("id", current.id)); await deletePrivateImage(old); return { data: { version: null } }; } const file = data.image; const path = `accounts/${current.id}/avatar-${crypto.randomUUID()}.${file.type.split("/")[1] || "bin"}`; await uploadPrivateImage(path, file); check(await supabase.from("profiles").update({ avatar_path: path }).eq("id", current.id)); if (old) await deletePrivateImage(old); return { data: { version: path } }; }
-    if (clean === "/clubs" && method === "GET") return clubs();
-    if (clean === "/clubs" && method === "POST") return { data: check(await supabase.rpc("create_club", { p_name: data.name, p_description: data.description || null, p_city: data.city || null, p_home_ground: data.home_ground || null, p_formats: data.formats || ["7"] })) };
-    if (clean === "/invitations/accept" && method === "POST") return { data: check(await supabase.rpc("accept_club_invitation", { p_token: data.token })) };
-    if (clean === "/discover/clubs") { let b = supabase.from("clubs").select("*").eq("status", "active").eq("is_discoverable", true).order("name"); if (params.get("q")) b = b.or(`name.ilike.%${params.get("q")}%,city.ilike.%${params.get("q")}%`); return page((check(await b) || []).map((row) => ({ ...row, avatar_version: row.avatar_path || null })), params, 12); }
+  const authService = createAuthService({ supabase, onUnauthorized });
+  const clubService = createClubService({ supabase, authService });
+  const rosterService = createRosterService({ supabase, authService });
+  const duesService = createDuesService({ supabase });
+  const financeService = createFinanceService({ supabase, authService });
+  const boardService = createBoardService({ supabase });
+  const matchService = createMatchService({ supabase });
+  const inventoryService = createInventoryService({ supabase });
+  const activityService = createActivityService({ supabase });
+  const recruitmentService = createRecruitmentService({ supabase });
+  const sponsorshipService = createSponsorshipService({ supabase });
+  const pollService = createPollService({ supabase });
+  const disciplineService = createDisciplineService({ supabase });
+
+  async function request(
+    path,
+    { method = 'GET', body, silentUnauthorized = false } = {}
+  ) {
+    const clean = path.split('?')[0];
+    const params = paramsOf(path);
+    const data = bodyOf(body);
+
+    const authWithoutSession = [
+      '/auth/register',
+      '/auth/login',
+      '/auth/forgot-password',
+      '/auth/reset-password',
+    ].includes(clean);
+
+    const current = await authService.user(
+      !authWithoutSession && !silentUnauthorized
+    );
+
+    // 1. Auth requests
+    const authResult = await authService.handleAuthRequest(
+      clean,
+      method,
+      data,
+      params,
+      current,
+      silentUnauthorized
+    );
+    if (authResult !== null) return authResult;
+
+    // 2. Global club & discovery requests
+    const clubResult = await clubService.handleClubRequest(
+      clean,
+      method,
+      data,
+      params,
+      0
+    );
+    if (clubResult !== null) return clubResult;
+
     const clubId = clubIdOf(clean);
-    if (!clubId) throw new SupabaseApiError(`Supabase adapter chưa ánh xạ: ${method} ${clean}`, 501);
-    const clubImage = clean.match(/\/clubs\/(\d+)\/images\/(avatar|background)$/); if (clubImage && (method === "POST" || method === "DELETE")) { const column = `${clubImage[2]}_path`; const old = check(await supabase.from("clubs").select(column).eq("id", clubId).single())?.[column]; if (method === "DELETE") { check(await supabase.from("clubs").update({ [column]: null }).eq("id", clubId)); await deletePrivateImage(old); return { data: { version: null } }; } const file = data.image; const path = `clubs/${clubId}/${clubImage[2]}-${crypto.randomUUID()}.${file.type.split("/")[1] || "bin"}`; await uploadPrivateImage(path, file); check(await supabase.from("clubs").update({ [column]: path }).eq("id", clubId)); if (old) await deletePrivateImage(old); return { data: { version: path } }; }
-    const playerImage = clean.match(/\/members\/(\d+)\/avatar$/); if (playerImage && (method === "POST" || method === "DELETE")) { const playerId = Number(playerImage[1]); const old = check(await supabase.from("player_profiles").select("avatar_path").eq("club_id", clubId).eq("id", playerId).single())?.avatar_path; if (method === "DELETE") { check(await supabase.from("player_profiles").update({ avatar_path: null }).eq("club_id", clubId).eq("id", playerId)); await deletePrivateImage(old); return { data: { version: null } }; } const file = data.image; const path = `players/${clubId}/${playerId}/avatar-${crypto.randomUUID()}.${file.type.split("/")[1] || "bin"}`; await uploadPrivateImage(path, file); check(await supabase.from("player_profiles").update({ avatar_path: path }).eq("club_id", clubId).eq("id", playerId)); if (old) await deletePrivateImage(old); return { data: { version: path } }; }
-    if (clean === `/clubs/${clubId}` && method === "PATCH") { const payload = { ...data }; if (payload.formats) payload.format = payload.formats[0]; return { data: check(await supabase.from("clubs").update(payload).eq("id", clubId).select().single()) }; }
-    if (clean === `/clubs/${clubId}` && method === "DELETE") { check(await supabase.from("clubs").update({ deleted_at: new Date().toISOString(), status: "archived" }).eq("id", clubId)); return {}; }
-    if (clean === `/clubs/${clubId}/team-manager-candidates` && method === "GET") {
-      const rows = check(await supabase.from("club_members").select("id,role,title,user_id,profile:profiles(name,email)").eq("club_id", clubId).eq("status", "active").order("id")) || [];
-      return { data: rows.map((row) => ({ id: row.id, role: row.role, title: row.title, name: row.profile?.name, email: row.profile?.email })) };
+    if (!clubId) {
+      throw new SupabaseApiError(
+        `Supabase adapter chưa ánh xạ: ${method} ${clean}`,
+        501
+      );
     }
-    if (clean === `/clubs/${clubId}/invitations` && method === "POST") return { data: check(await supabase.rpc("create_club_invitation", { p_club_id: clubId, p_email: data.email, p_role: data.role })) };
-    if (clean === `/clubs/${clubId}/friendlies` && method === "GET") { const rows = check(await supabase.from("friendly_invitations").select("*,source:clubs!friendly_invitations_source_club_id_fkey(name),target:clubs!friendly_invitations_target_club_id_fkey(name)").or(`source_club_id.eq.${clubId},target_club_id.eq.${clubId}`).order("created_at", { ascending: false })) || []; return { data: rows.map((row) => ({ ...row, source_name: row.source?.name, target_name: row.target?.name })) }; }
-    if (clean === `/clubs/${clubId}/friendlies` && method === "POST") return { data: check(await supabase.rpc("create_friendly_invitation", { p_source_club_id: clubId, p_target_club_id: Number(data.target_club_id), p_match_date: data.match_date, p_match_time: data.match_time || null, p_location: data.location || null, p_message: data.message || null })) };
-    const friendly = clean.match(/\/friendlies\/(\d+)$/); if (friendly && method === "PATCH") { check(await supabase.rpc("respond_friendly_invitation", { p_club_id: clubId, p_invitation_id: Number(friendly[1]), p_status: data.status })); return {}; }
-    if (clean === `/clubs/${clubId}/club-memberships` && method === "GET") {
-      const rows = check(await supabase.from("club_members").select("id,role,title,user_id,profile:profiles(name,email)").eq("club_id", clubId).eq("status", "active").order("id")) || [];
-      return { data: rows.map((row) => ({ id: row.id, role: row.role, title: row.title, name: row.profile?.name, email: row.profile?.email })) };
-    }
-    const membership = clean.match(/\/club-memberships\/(\d+)$/); if (membership && method === "PATCH") return { data: check(await supabase.from("club_members").update({ title: data.title || null }).eq("club_id", clubId).eq("id", Number(membership[1])).select("id,title,role").single()) };
-    const team = clean.match(/\/teams\/(\d+)$/);
-    if (team && method === "PATCH") {
-      const teamId = Number(team[1]); const patch = { ...(data.name !== undefined ? { name: data.name } : {}), ...(data.format !== undefined ? { format: data.format } : {}), ...(data.captain_id !== undefined ? { captain_id: numeric(data.captain_id) } : {}) };
-      const row = Object.keys(patch).length ? check(await supabase.from("teams").update(patch).eq("club_id", clubId).eq("id", teamId).select().single()) : check(await supabase.from("teams").select("*").eq("club_id", clubId).eq("id", teamId).single());
-      if (data.membership_ids !== undefined) check(await supabase.rpc("sync_team_managers", { p_club_id: clubId, p_team_id: teamId, p_membership_ids: (data.membership_ids || []).map(Number) }));
-      if (data.dues_amount !== undefined) check(await supabase.from("team_dues_rates").upsert({ club_id: clubId, team_id: teamId, effective_month: `${data.dues_month}-01`, amount: Number(data.dues_amount) }, { onConflict: "team_id,effective_month" }));
-      return { data: row };
-    }
-    if (team && method === "DELETE") { check(await supabase.rpc("delete_team", { p_club_id: clubId, p_team_id: Number(team[1]) })); return {}; }
-    const captain = clean.match(/\/teams\/(\d+)\/captain$/); if (captain && method === "PATCH") return { data: check(await supabase.from("teams").update({ captain_id: numeric(data.captain_id) }).eq("club_id", clubId).eq("id", Number(captain[1])).select().single()) };
-    const teamPlayers = clean.match(/\/teams\/(\d+)\/players$/); if (teamPlayers && method === "PATCH") return { data: check(await supabase.rpc("sync_team_players", { p_club_id: clubId, p_team_id: Number(teamPlayers[1]), p_player_ids: (data.player_ids || []).map(Number) })) };
-    const teamPlayerRemove = clean.match(/\/teams\/(\d+)\/players\/(\d+)$/); if (teamPlayerRemove && method === "DELETE") { check(await supabase.rpc("remove_team_player", { p_club_id: clubId, p_team_id: Number(teamPlayerRemove[1]), p_player_id: Number(teamPlayerRemove[2]) })); return {}; }
-    const teamPlayer = clean.match(/\/teams\/(\d+)\/players\/(\d+)\/(jersey|position)$/); if (teamPlayer && method === "PATCH") return { data: check(await supabase.rpc("set_team_player_attribute", { p_club_id: clubId, p_team_id: Number(teamPlayer[1]), p_player_id: Number(teamPlayer[2]), p_attribute: teamPlayer[3] === "jersey" ? "jersey_number" : "position", p_value: String(teamPlayer[3] === "jersey" ? data.jersey_number ?? "" : data.position ?? "") })) };
-    if (clean.endsWith("/dashboard")) return dashboard(clubId);
-    if (clean.endsWith("/teams") && method === "GET") return teams(clubId, current.id);
-    if (clean.endsWith("/teams") && method === "POST") return { data: check(await supabase.from("teams").insert({ club_id: clubId, name: data.name, format: data.format }).select().single()) };
-    if (clean === `/clubs/${clubId}/board-members` && method === "GET") {
-      const rows = check(await supabase.from("club_board_members").select("id,player_id,title,archived_at,player:player_profiles(full_name,email,date_of_birth)").eq("club_id", clubId).is("archived_at", null).order("id")) || [];
-      const rates = check(await supabase.from("board_dues_rates").select("id,player_id,team_id,amount,effective_month,ends_before,team:teams(name)").eq("club_id", clubId).order("effective_month")) || [];
-      const shared = check(await supabase.from("shared_board_dues_rates").select("id,team_id,amount,effective_month,team:teams(name)").eq("club_id", clubId).order("effective_month", { ascending: false })) || [];
-      return {
-        data: rows.map((row) => ({
-          id: row.id,
-          player_id: row.player_id,
-          title: row.title,
-          full_name: row.player?.full_name,
-          email: row.player?.email,
-          date_of_birth: row.player?.date_of_birth,
-          dues_rates: rates.filter((rate) => rate.player_id === row.player_id).map((r) => ({ ...r, team_name: r.team?.name || "" })),
-        })),
-        shared_rates: shared.map((s) => ({
-          id: s.id,
-          team_id: s.team_id,
-          team_name: s.team?.name || "Đội",
-          amount: Number(s.amount),
-          effective_month: s.effective_month,
-        })),
-      };
-    }
-    if (clean === `/clubs/${clubId}/board-members` && method === "POST") { const row = check(await supabase.from("club_board_members").insert({ club_id: clubId, player_id: Number(data.player_id), title: String(data.title).trim() }).select().single()); check(await supabase.from("board_membership_periods").insert({ club_id: clubId, player_id: Number(data.player_id), starts_month: `${new Date().toISOString().slice(0, 7)}-01` })); return { data: row }; }
-    const boardMember = clean.match(/\/board-members\/(\d+)$/);
-    if (boardMember && method === "PATCH") return { data: check(await supabase.from("club_board_members").update({ title: String(data.title).trim() }).eq("club_id", clubId).eq("id", Number(boardMember[1])).select().single()) };
-    if (boardMember && method === "DELETE") {
-      const row = check(await supabase.from("club_board_members").select("player_id").eq("club_id", clubId).eq("id", Number(boardMember[1])).single());
-      if (row) {
-        const currentMonth = `${new Date().toISOString().slice(0, 7)}-01`;
-        await supabase.from("board_membership_periods").update({ ends_before: currentMonth }).eq("club_id", clubId).eq("player_id", row.player_id).is("ends_before", null);
-        await supabase.from("club_board_members").update({ archived_at: new Date().toISOString() }).eq("club_id", clubId).eq("id", Number(boardMember[1]));
-      }
-      return {};
-    }
-    if (clean === `/clubs/${clubId}/board-dues-rate` && method === "POST") return { data: check(await supabase.from("shared_board_dues_rates").insert({ club_id: clubId, team_id: Number(data.team_id), amount: Number(data.amount), effective_month: `${data.effective_month}-01` }).select().single()) };
-    const boardSharedRate = clean.match(/\/board-dues-rates?\/(\d+)$/);
-    if (boardSharedRate && method === "DELETE") {
-      check(await supabase.from("shared_board_dues_rates").delete().eq("club_id", clubId).eq("id", Number(boardSharedRate[1])));
-      return {};
-    }
-    if (clean === `/clubs/${clubId}/board-tasks` && method === "POST") return { data: check(await supabase.from("board_tasks").insert({ club_id: clubId, board_member_id: Number(data.board_member_id), title: data.title, description: data.description || null, due_date: data.due_date || null, progress: Number(data.progress || 0) }).select().single()) };
-    const boardTask = clean.match(/\/board-tasks\/(\d+)$/);
-    if (boardTask && method === "PATCH") return { data: check(await supabase.from("board_tasks").update({ ...data, progress: Number(data.progress || 0) }).eq("club_id", clubId).eq("id", Number(boardTask[1])).select().single()) };
-    if (boardTask && method === "DELETE") { check(await supabase.from("board_tasks").delete().eq("club_id", clubId).eq("id", Number(boardTask[1]))); return {}; }
-    if (clean.match(/\/members$/) && method === "GET") return members(clubId, params);
-    if (clean === `/clubs/${clubId}/members` && method === "POST") return { data: check(await supabase.from("player_profiles").insert({ club_id: clubId, full_name: data.full_name, email: data.email || null, phone: data.phone || null, date_of_birth: data.date_of_birth || null, jersey_number: numeric(data.jersey_number), position: data.position || null, preferred_foot: data.preferred_foot || null, status: data.status || "active", notes: data.notes || null, team_id: numeric(data.team_id) }).select().single()) };
-    if (clean === `/clubs/${clubId}/members/import/preview` && method === "POST") { const rows = data.players || []; const preview = []; for (const row of rows) { let query = supabase.from("player_profiles").select("id,full_name,email,phone,date_of_birth,position,preferred_foot,status,notes,team_players(team_id,team:teams(id,name))").eq("club_id", clubId); query = row.email ? query.eq("email", String(row.email).toLowerCase()) : row.date_of_birth ? query.eq("full_name", row.full_name).eq("date_of_birth", row.date_of_birth) : query.eq("id", -1); const matches = check(await query) || []; preview.push({ matches: await Promise.all(matches.map(async (match) => ({ ...match, version: await hashValue(match) }))) }); } return { data: preview }; }
-    if (clean === `/clubs/${clubId}/members/import/commit` && method === "POST") return { data: check(await supabase.rpc("commit_member_import", { p_club_id: clubId, p_rows: data.players || [], p_decisions: data.decisions || [] })) };
-    const member = clean.match(/\/members\/(\d+)$/); if (member) { const id = Number(member[1]); if (method === "GET") { const row = check(await supabase.from("player_profiles").select("*").eq("club_id", clubId).eq("id", id).single()); return { data: { ...row, avatar_version: row.avatar_path || null } }; } if (method === "PATCH") { const profileData = { ...data, jersey_number: numeric(data.jersey_number) }; delete profileData.team_id; const updated = check(await supabase.from("player_profiles").update(profileData).eq("club_id", clubId).eq("id", id).select().single()); const result = data.team_id !== undefined ? check(await supabase.rpc("set_player_primary_team", { p_club_id: clubId, p_player_id: id, p_team_id: data.team_id === "" || data.team_id == null ? null : Number(data.team_id) })) : updated; return { data: { ...result, avatar_version: result.avatar_path || null } }; } if (method === "DELETE") { check(await supabase.from("player_profiles").delete().eq("club_id", clubId).eq("id", id)); return {}; } }
-    if (clean === `/clubs/${clubId}/finance/summary` && method === "GET") return { data: check(await supabase.rpc("finance_summary", { p_club_id: clubId, p_from: params.get("from"), p_to: params.get("to") })) };
-    if (clean === `/clubs/${clubId}/finance/periods` && method === "POST") return { data: check(await supabase.rpc("create_financial_period", { p_club_id: clubId, p_starts_on: data.starts_on, p_ends_on: data.ends_on })) };
-    const financePeriod = clean.match(/\/finance\/periods\/(\d+)\/close$/); if (financePeriod && method === "POST") return { data: check(await supabase.rpc("close_financial_period", { p_club_id: clubId, p_period_id: Number(financePeriod[1]) })) };
-    const financeApproval = clean.match(/\/finance\/transactions\/(\d+)\/approval$/); if (financeApproval && method === "POST") { const result = data.status ? await supabase.rpc("decide_finance_approval", { p_club_id: clubId, p_transaction_id: Number(financeApproval[1]), p_status: data.status, p_reason: data.reason || null }) : await supabase.rpc("request_finance_approval", { p_club_id: clubId, p_transaction_id: Number(financeApproval[1]) }); return { data: check(result) }; }
-    const financeReversal = clean.match(/\/finance\/transactions\/(\d+)\/reversal$/); if (financeReversal && method === "POST") return { data: check(await supabase.rpc("reverse_finance_transaction", { p_club_id: clubId, p_transaction_id: Number(financeReversal[1]), p_reason: data.reason, p_idempotency_key: data.idempotency_key || null })) };
-    if (clean === `/clubs/${clubId}/finance/payments` && method === "POST") return { data: check(await supabase.rpc("post_finance_payment", { p_club_id: clubId, p_player_id: numeric(data.player_id), p_amount: Number(data.amount), p_paid_on: data.paid_on, p_external_ref: data.external_ref || null, p_allocations: data.allocations || [], p_idempotency_key: data.idempotency_key || null })) };
-    if (clean.endsWith("/finance") && method === "GET") return finance(clubId, params);
-    if (clean.endsWith("/finance") && method === "POST") { let receiptPath = null; try { if (data.receipt instanceof File && data.receipt.size) { receiptPath = `finance/${clubId}/${crypto.randomUUID()}-${data.receipt.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`; await uploadPrivateImage(receiptPath, data.receipt); } const row = check(await supabase.rpc("record_finance_transaction", { p_club_id: clubId, p_type: data.type, p_amount: Number(data.amount), p_occurred_on: data.occurred_on, p_description: data.description, p_receipt_path: receiptPath, p_category: data.category || null, p_paid_by: data.paid_by || null, p_notes: data.notes || null, p_idempotency_key: data.idempotency_key || null })); return { data: row }; } catch (error) { if (receiptPath) await deletePrivateImage(receiptPath).catch(() => {}); throw error; } }
-    if (clean.endsWith("/inventory") && method === "GET") return inventory(clubId, params);
-    if (clean.endsWith("/inventory") && method === "POST") return { data: check(await supabase.from("inventory_items").insert({ club_id: clubId, name: data.name, category: data.category || null, unit: data.unit || "cái", kind: data.kind || "consumable", quantity: Number(data.quantity || 0), low_stock_threshold: Number(data.low_stock_threshold || 0), notes: data.notes || null }).select().single()) };
-    const inventoryItem = clean.match(/\/inventory\/(\d+)$/); if (inventoryItem && method === "PATCH") return { data: check(await supabase.rpc("update_inventory_item", { p_club_id: clubId, p_item_id: Number(inventoryItem[1]), p_name: data.name, p_category: data.category || null, p_unit: data.unit, p_kind: data.kind, p_low_stock_threshold: Number(data.low_stock_threshold || 0), p_notes: data.notes || null })) };
-    if (inventoryItem && method === "DELETE") { check(await supabase.rpc("archive_inventory_item", { p_club_id: clubId, p_item_id: Number(inventoryItem[1]) })); return {}; }
-    const inventoryRestore = clean.match(/\/inventory\/(\d+)\/restore$/); if (inventoryRestore && method === "POST") { check(await supabase.rpc("restore_inventory_item", { p_club_id: clubId, p_item_id: Number(inventoryRestore[1]) })); return {}; }
-    const movement = clean.match(/\/inventory\/(\d+)\/movements$/); if (movement && method === "POST") { const item = check(await supabase.from("inventory_items").select("quantity").eq("club_id", clubId).eq("id", Number(movement[1])).single()); const quantity = Number(data.quantity); const change = data.type === "in" ? quantity : data.type === "out" ? -quantity : quantity - Number(item.quantity); return { data: check(await supabase.rpc("record_inventory_movement", { p_club_id: clubId, p_item_id: Number(movement[1]), p_type: data.type, p_change: change, p_reason: data.reason })) }; }
-    if (movement && method === "GET") return page(check(await supabase.from("inventory_movements").select("*").eq("club_id", clubId).eq("inventory_item_id", Number(movement[1])).order("id", { ascending: false })) || [], params, 50);
-    const inventoryAssignmentsRoute = clean.match(/\/inventory\/(\d+)\/assignments$/); if (inventoryAssignmentsRoute && method === "GET") return inventoryAssignments(clubId, Number(inventoryAssignmentsRoute[1]), params);
-    if (inventoryAssignmentsRoute && method === "POST") return { data: check(await supabase.rpc("assign_inventory", { p_club_id: clubId, p_item_id: Number(inventoryAssignmentsRoute[1]), p_player_id: Number(data.player_id), p_quantity: Number(data.quantity), p_reason: data.reason })) };
-    const inventoryReturn = clean.match(/\/inventory\/(\d+)\/assignments\/(\d+)\/return$/); if (inventoryReturn && method === "POST") return { data: check(await supabase.rpc("return_inventory_assignment", { p_club_id: clubId, p_item_id: Number(inventoryReturn[1]), p_assignment_id: Number(inventoryReturn[2]), p_quantity: Number(data.quantity), p_reason: data.reason })) };
-    if (clean === `/clubs/${clubId}/inventory/members` && method === "GET") { let b = supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).order("full_name"); if (params.get("search")) b = b.ilike("full_name", `%${params.get("search")}%`); return page(check(await b) || [], params, 50); }
-    if (clean.endsWith("/dues") && method === "GET") {
-      const targetMonth = `${params.get("month") || new Date().toISOString().slice(0, 7)}-01`;
-      const [entriesResult, teamPlayersResult, ratesResult, boardMembersResult, sharedBoardRatesResult, boardRatesResult] = await Promise.all([
-        supabase.from("team_dues_entries").select("*,player:player_profiles(id,full_name,date_of_birth,email,notes),team:teams(id,name)").eq("club_id", clubId).eq("month", targetMonth),
-        supabase.from("team_players").select("team_id,player_id,player:player_profiles(id,full_name,date_of_birth,email,notes,status),team:teams(id,name)").eq("club_id", clubId),
-        supabase.from("team_dues_rates").select("team_id,effective_month,amount").eq("club_id", clubId).lte("effective_month", targetMonth).order("effective_month", { ascending: false }),
-        supabase.from("club_board_members").select("player_id").eq("club_id", clubId).is("archived_at", null),
-        supabase.from("shared_board_dues_rates").select("team_id,effective_month,amount").eq("club_id", clubId).lte("effective_month", targetMonth).order("effective_month", { ascending: false }),
-        supabase.from("board_dues_rates").select("player_id,team_id,effective_month,ends_before,amount").eq("club_id", clubId).lte("effective_month", targetMonth).order("effective_month", { ascending: false }),
-      ]);
-      const rows = check(entriesResult) || [];
-      const teamPlayers = check(teamPlayersResult) || [];
-      const rates = check(ratesResult) || [];
-      const boardMembers = check(boardMembersResult) || [];
-      const sharedBoardRates = check(sharedBoardRatesResult) || [];
-      const boardRates = check(boardRatesResult) || [];
 
-      const boardPlayerIds = new Set(boardMembers.map((b) => b.player_id));
-      const latestRates = new Map();
-      for (const r of rates) {
-        if (!latestRates.has(r.team_id)) latestRates.set(r.team_id, Number(r.amount));
-      }
+    // 3. Club-scoped domain services
+    const scopedClubResult = await clubService.handleClubRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId
+    );
+    if (scopedClubResult !== null) return scopedClubResult;
 
-      function resolveRate(playerId, teamId) {
-        if (boardPlayerIds.has(playerId)) {
-          const personal = boardRates.find((r) => r.player_id === playerId && r.team_id === teamId && (!r.ends_before || r.ends_before > targetMonth));
-          if (personal != null) return Number(personal.amount);
-          const shared = sharedBoardRates.find((r) => r.team_id === teamId);
-          if (shared != null) return Number(shared.amount);
-        }
-        const std = latestRates.get(teamId);
-        return std != null ? std : null;
-      }
+    const rosterResult = await rosterService.handleRosterRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId,
+      current
+    );
+    if (rosterResult !== null) return rosterResult;
 
-      const grouped = new Map();
-      for (const row of rows) {
-        const item = grouped.get(row.player_id) || { player_id: row.player_id, name: row.player?.full_name, date_of_birth: row.player?.date_of_birth, email: row.player?.email, notes: row.player?.notes, teams: [], total: 0, debt: 0 };
-        item.teams.push({ team_id: row.team_id, name: row.team?.name, amount: Number(row.amount || 0), status: row.status });
-        item.total += Number(row.amount || 0);
-        if (row.status === "unpaid") item.debt += Number(row.amount || 0);
-        grouped.set(row.player_id, item);
-      }
-      for (const tp of teamPlayers) {
-        if (tp.player?.status !== "active") continue;
-        const rateAmount = resolveRate(tp.player_id, tp.team_id);
-        if (rateAmount == null) continue;
-        const item = grouped.get(tp.player_id) || { player_id: tp.player_id, name: tp.player?.full_name, date_of_birth: tp.player?.date_of_birth, email: tp.player?.email, notes: tp.player?.notes, teams: [], total: 0, debt: 0 };
-        if (!item.teams.some((t) => t.team_id === tp.team_id)) {
-          if (rateAmount === 0) {
-            item.teams.push({ team_id: tp.team_id, name: tp.team?.name, amount: 0, status: "exempt" });
-          } else {
-            item.teams.push({ team_id: tp.team_id, name: tp.team?.name, amount: rateAmount, status: "unpaid" });
-            item.total += rateAmount;
-            item.debt += rateAmount;
-          }
-        }
-        grouped.set(tp.player_id, item);
-      }
-      return { data: [...grouped.values()] };
-    }
-    if (clean.endsWith("/dues") && method === "POST") return { data: check(await supabase.rpc("record_player_dues", { p_club_id: clubId, p_player_id: Number(data.player_id), p_month: `${data.month}-01`, p_months: Number(data.months || 1), p_status: data.status })) };
-    if (clean.endsWith("/dues") && method === "PATCH") return { data: check(await supabase.rpc("correct_team_dues", { p_club_id: clubId, p_team_id: Number(data.team_id), p_player_id: Number(data.player_id), p_month: `${data.month}-01`, p_expected_status: data.expected_status, p_status: data.status, p_reason: data.reason })) };
-    const duesRate = clean.match(/\/teams\/(\d+)\/dues-rate$/); if (duesRate && method === "PATCH") { const effective = `${data.dues_month}-01`; return { data: check(await supabase.from("team_dues_rates").upsert({ club_id: clubId, team_id: Number(duesRate[1]), effective_month: effective, amount: Number(data.dues_amount) }, { onConflict: "team_id,effective_month" }).select().single()) }; }
-    if (clean.endsWith("/matches/calendar") && method === "GET") { const rows = check(await supabase.from("club_matches").select("*,team:teams(name)").eq("club_id", clubId).gte("match_date", params.get("from")).lte("match_date", params.get("to")).order("match_date")) || []; return { data: rows }; }
-    if (clean.endsWith("/matches") && method === "GET") {
-      let query=supabase.from("club_matches").select("*,team:teams(name)").eq("club_id",clubId).order("match_date",{ascending:false});
-      const month=params.get("month");
-      if(month && /^\d{4}-\d{2}$/.test(month)){const [y,m]=month.split("-").map(Number);query=query.gte("match_date",month+"-01").lte("match_date",month+"-"+new Date(y,m,0).getDate());}
-      return page((check(await query)||[]).map(row=>({...row,team_name:row.team?.name||null})),params);
-    }
-    if (clean.endsWith("/matches") && method === "POST") return { data: check(await supabase.from("club_matches").insert({ ...data, club_id: clubId, team_id: numeric(data.team_id), created_by: current.id, our_score: numeric(data.our_score), opponent_score: numeric(data.opponent_score) }).select().single()) };
-    const matchItem = clean.match(/\/matches\/(\d+)$/);
-    if (matchItem && method === "PATCH") return { data: check(await supabase.from("club_matches").update({ ...data, team_id: numeric(data.team_id), our_score: numeric(data.our_score), opponent_score: numeric(data.opponent_score) }).eq("club_id", clubId).eq("id", Number(matchItem[1])).select().single()) };
-    if (matchItem && method === "DELETE") { check(await supabase.from("club_matches").delete().eq("club_id", clubId).eq("id", Number(matchItem[1]))); return {}; }
-    const matchLineup = clean.match(/\/matches\/(\d+)\/lineup$/); if (matchLineup && method === "GET") return { data: check(await supabase.from("match_lineups").select("*").eq("club_id", clubId).eq("club_match_id", Number(matchLineup[1])).maybeSingle()) || null };
-    if (clean === `/clubs/${clubId}/lineups` && method === "GET") return { data: check(await supabase.from("match_lineups").select("*").eq("club_id", clubId).order("match_date", { ascending: false })) || [] };
-    if (clean === `/clubs/${clubId}/lineups` && method === "POST") return { data: check(await supabase.from("match_lineups").insert({ ...data, club_id: clubId, team_id: Number(data.team_id), club_match_id: numeric(data.club_match_id), players: data.players || [] }).select().single()) };
-    const lineupItem = clean.match(/\/lineups\/(\d+)$/); if (lineupItem && method === "PATCH") return { data: check(await supabase.from("match_lineups").update({ ...data, team_id: Number(data.team_id), players: data.players || [] }).eq("club_id", clubId).eq("id", Number(lineupItem[1])).select().single()) };
-    const matchAttendance = clean.match(/\/matches\/(\d+)\/attendance$/); if (matchAttendance && method === "GET") { const match = check(await supabase.from("club_matches").select("team_id").eq("club_id", clubId).eq("id", Number(matchAttendance[1])).single()); const teamRows = match?.team_id ? check(await supabase.from("team_players").select("player_id,position,jersey_number").eq("club_id", clubId).eq("team_id", match.team_id)) || [] : []; const attendanceRows = check(await supabase.from("match_attendances").select("*").eq("club_id", clubId).eq("match_id", Number(matchAttendance[1]))) || []; const ids = [...new Set([...teamRows.map((row) => row.player_id), ...attendanceRows.map((row) => row.player_id)])]; const players = ids.length ? check(await supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).in("id", ids)) || [] : []; return { data: players.map((player) => ({ player_id: player.id, full_name: player.full_name, date_of_birth: player.date_of_birth, email: player.email, position: teamRows.find((row) => row.player_id === player.id)?.position, jersey_number: teamRows.find((row) => row.player_id === player.id)?.jersey_number, current_member: teamRows.some((row) => row.player_id === player.id), ...(attendanceRows.find((row) => row.player_id === player.id) || {}) })) }; }
-    if (matchAttendance && method === "PUT") { const source = data.player_id ? [data] : (data.players || data.attendance || []); const entries = source.map((row) => ({ club_id: clubId, match_id: Number(matchAttendance[1]), player_id: Number(row.player_id), rsvp: row.rsvp || "pending", attendance: row.attendance || "unmarked" })); return { data: check(await supabase.from("match_attendances").upsert(entries, { onConflict: "match_id,player_id" })) || [] }; }
-    const matchStats = clean.match(/\/matches\/(\d+)\/player-stats$/); if (matchStats && method === "GET") { const match = check(await supabase.from("club_matches").select("team_id").eq("club_id", clubId).eq("id", Number(matchStats[1])).single()); const teamRows = match?.team_id ? check(await supabase.from("team_players").select("player_id,position,jersey_number").eq("club_id", clubId).eq("team_id", match.team_id)) || [] : []; const stats = check(await supabase.from("player_match_stats").select("*").eq("club_id", clubId).eq("match_id", Number(matchStats[1]))) || []; const ids = [...new Set([...teamRows.map((row) => row.player_id), ...stats.map((row) => row.player_id)])]; const players = ids.length ? check(await supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).in("id", ids)) || [] : []; return { data: players.map((player) => ({ player_id: player.id, full_name: player.full_name, date_of_birth: player.date_of_birth, email: player.email, current_team_player: teamRows.some((row) => row.player_id === player.id), stat_id: stats.find((row) => row.player_id === player.id)?.id, ...(stats.find((row) => row.player_id === player.id) || {}) })) }; }
-    if (matchStats && method === "PUT") { const source = data.player_id ? [data] : (data.players || data.stats || []); const entries = source.map((row) => ({ club_id: clubId, match_id: Number(matchStats[1]), player_id: Number(row.player_id), goals: Number(row.goals || 0), assists: Number(row.assists || 0), yellow_cards: Number(row.yellow_cards || 0), red_cards: Number(row.red_cards || 0), goals_conceded: numeric(row.goals_conceded), rating: numeric(row.rating) })); return { data: check(await supabase.from("player_match_stats").upsert(entries, { onConflict: "match_id,player_id" })) || [] }; }
-    const statDelete = clean.match(/\/matches\/(\d+)\/player-stats\/(\d+)$/); if (statDelete && method === "DELETE") { check(await supabase.rpc("delete_player_match_stat", { p_club_id: clubId, p_match_id: Number(statDelete[1]), p_player_id: Number(statDelete[2]) })); return {}; }
-    const playerStats = clean.match(/\/player-stats$/); if (playerStats && method === "GET") {
-      let query=supabase.from("player_match_stats").select("*,player:player_profiles(full_name,date_of_birth,email),match:club_matches!inner(status,match_date,team_id,team:teams(name))").eq("club_id",clubId).eq("match.status","completed");
-      if(params.get("from")) query=query.gte("match.match_date",params.get("from"));
-      if(params.get("to")) query=query.lte("match.match_date",params.get("to"));
-      if(params.get("team_id")) query=query.eq("match.team_id",Number(params.get("team_id")));
-      return {data:statisticsView(check(await query)||[])};
-    }
-    const costSplit = clean.match(/\/matches\/(\d+)\/cost-split(?:\/(preview))?$/); if (costSplit && method === "GET") { const match = check(await supabase.from("club_matches").select("team_id").eq("club_id", clubId).eq("id", Number(costSplit[1])).single()); const teamRows = match?.team_id ? check(await supabase.from("team_players").select("player_id").eq("club_id", clubId).eq("team_id", match.team_id)) || [] : []; const attendanceRows = check(await supabase.from("match_attendances").select("player_id,attendance").eq("club_id", clubId).eq("match_id", Number(costSplit[1]))) || []; const ids = [...new Set([...teamRows.map((row) => row.player_id), ...attendanceRows.map((row) => row.player_id)])]; const players = ids.length ? check(await supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).in("id", ids)) || [] : []; const split = check(await supabase.from("match_cost_splits").select("*").eq("club_id", clubId).eq("match_id", Number(costSplit[1])).maybeSingle()); const receivables = split ? check(await supabase.from("match_cost_receivables").select("*,player:player_profiles(full_name,email,date_of_birth)").eq("club_id", clubId).eq("split_id", split.id)) || [] : []; return { data: { split, receivables, players: players.map((player) => ({ ...player, player_id: player.id, attendance: attendanceRows.find((row) => row.player_id === player.id)?.attendance })) } }; }
-    if (costSplit && method === "POST") {
-      const total = Math.max(0, Number(data.stadium || 0) + Number(data.referee || 0) + Number(data.water || 0) + Number(data.equipment || 0) + Number(data.other || 0) - Number(data.sponsorship || 0));
-      const splitMethod = data.method || "equal";
-      const sourcePlayers = data.players || [];
-      const nonExempt = sourcePlayers.filter((p) => !p.exempt);
-      let receivables = [];
-      if (splitMethod === "equal") {
-        const count = nonExempt.length;
-        const baseShare = count > 0 ? Math.floor(total / count) : 0;
-        let remainder = count > 0 ? total - (baseShare * count) : 0;
-        receivables = sourcePlayers.map((p) => {
-          if (p.exempt) return { player_id: Number(p.player_id), amount: 0, exempt: true, weight: Number(p.weight || 1) };
-          const extra = remainder > 0 ? 1 : 0;
-          if (remainder > 0) remainder--;
-          return { player_id: Number(p.player_id), amount: baseShare + extra, exempt: false, weight: Number(p.weight || 1) };
-        });
-      } else if (splitMethod === "weighted") {
-        const totalWeight = nonExempt.reduce((sum, p) => sum + Math.max(1, Number(p.weight || 1)), 0);
-        let allocated = 0;
-        const shares = nonExempt.map((p) => {
-          const w = Math.max(1, Number(p.weight || 1));
-          const amount = totalWeight > 0 ? Math.floor(total * w / totalWeight) : 0;
-          allocated += amount;
-          return { player_id: Number(p.player_id), amount, weight: w };
-        });
-        let remainder = total - allocated;
-        const shareMap = new Map();
-        for (const s of shares) {
-          const extra = remainder > 0 ? 1 : 0;
-          if (remainder > 0) remainder--;
-          shareMap.set(s.player_id, s.amount + extra);
-        }
-        receivables = sourcePlayers.map((p) => ({
-          player_id: Number(p.player_id),
-          amount: p.exempt ? 0 : (shareMap.get(Number(p.player_id)) || 0),
-          exempt: Boolean(p.exempt),
-          weight: Number(p.weight || 1),
-        }));
-      } else {
-        receivables = sourcePlayers.map((row) => ({
-          player_id: Number(row.player_id),
-          amount: row.exempt ? 0 : Number(row.amount || 0),
-          exempt: Boolean(row.exempt),
-          weight: Number(row.weight || 1),
-        }));
-      }
-      if (costSplit[2] === "preview") return { data: { total, receivables } };
-      return { data: check(await supabase.rpc("create_match_cost_split", {
-        p_club_id: clubId,
-        p_match_id: Number(costSplit[1]),
-        p_stadium: Number(data.stadium || 0),
-        p_referee: Number(data.referee || 0),
-        p_water: Number(data.water || 0),
-        p_equipment: Number(data.equipment || 0),
-        p_other: Number(data.other || 0),
-        p_sponsorship: Number(data.sponsorship || 0),
-        p_method: splitMethod,
-        p_players: receivables
-      })) };
-    }
-    if (clean.endsWith("/polls") && method === "GET") { const polls = check(await supabase.from("club_polls").select("*,options:club_poll_options(*)").eq("club_id", clubId).order("created_at", { ascending: false })) || []; const electors = check(await supabase.from("club_poll_electors").select("poll_id").eq("club_id", clubId).eq("user_id", current.id)) || []; const votes = check(await supabase.from("club_poll_votes").select("poll_id,option_id").eq("club_id", clubId).eq("user_id", current.id)) || []; const now = Date.now(); return { data: polls.map((poll) => ({ ...poll, options: (poll.options || []).sort((a, b) => a.sort_order - b.sort_order), eligible: electors.some((row) => row.poll_id === poll.id), voted: votes.some((row) => row.poll_id === poll.id), closed: new Date(poll.deadline).getTime() < now, eligible_count: electors.filter((row) => row.poll_id === poll.id).length })) }; }
-    if (clean.endsWith("/polls") && method === "POST") return { data: check(await supabase.rpc("create_club_poll", { p_club_id: clubId, p_title: data.title, p_description: data.description || null, p_deadline: data.deadline, p_options: data.options || [] })) };
-    const pollVote = clean.match(/\/polls\/(\d+)\/vote$/); if (pollVote && method === "POST") return { data: check(await supabase.rpc("cast_club_poll_vote", { p_club_id: clubId, p_poll_id: Number(pollVote[1]), p_option_id: Number(data.option_id) })) };
-    if (clean.endsWith("/recruitment/posts") && method === "GET") return page(check(await supabase.from("recruitment_posts").select("*").eq("club_id", clubId).order("created_at", { ascending: false })) || [], params);
-    if (clean.endsWith("/recruitment/posts") && method === "POST") return { data: check(await supabase.from("recruitment_posts").insert({ club_id: clubId, title: data.title, position: data.position || null, requirements: data.requirements || null, deadline: data.deadline || null, status: data.status || "draft" }).select().single()) };
-    const recruitmentPost = clean.match(/\/recruitment\/posts\/(\d+)$/); if (recruitmentPost && method === "PATCH") return { data: check(await supabase.from("recruitment_posts").update(data).eq("club_id", clubId).eq("id", Number(recruitmentPost[1])).select().single()) };
-    const applications = clean.match(/\/recruitment\/posts\/(\d+)\/applications$/); if (applications && method === "GET") { let b = supabase.from("recruitment_applications").select("*").eq("club_id", clubId).eq("post_id", Number(applications[1])).order("created_at", { ascending: false }); if (params.get("status")) b = b.eq("status", params.get("status")); return page(check(await b) || [], params); }
-    if (applications && method === "POST") return { data: check(await supabase.from("recruitment_applications").insert({ ...data, club_id: clubId, post_id: Number(applications[1]) }).select().single()) };
-    const application = clean.match(/\/recruitment\/posts\/(\d+)\/applications\/(\d+)$/); if (application && method === "PATCH") return { data: check(await supabase.from("recruitment_applications").update(data).eq("club_id", clubId).eq("post_id", Number(application[1])).eq("id", Number(application[2])).select().single()) };
-    if (clean.endsWith("/discipline") && method === "GET") return page(check(await supabase.from("discipline_cases").select("*,player:player_profiles(full_name)").eq("club_id", clubId).order("incident_date", { ascending: false })) || [], params, 25);
-    if (clean.endsWith("/discipline") && method === "POST") return { data: check(await supabase.rpc("create_discipline_case", { p_club_id: clubId, p_player_id: Number(data.player_id), p_incident_date: data.incident_date, p_title: data.title, p_description: data.description, p_status: data.status, p_decision: data.decision || null, p_fine_amount: data.fine_amount === "" ? null : Number(data.fine_amount) })) };
-    const disciplineItem = clean.match(/\/discipline\/(\d+)$/); if (disciplineItem && method === "PATCH") { check(await supabase.rpc("update_discipline_case", { p_club_id: clubId, p_case_id: Number(disciplineItem[1]), p_player_id: Number(data.player_id), p_incident_date: data.incident_date, p_title: data.title, p_description: data.description, p_status: data.status, p_decision: data.decision || null, p_fine_amount: data.fine_amount === "" ? null : Number(data.fine_amount), p_reason: data.reason })); return {}; }
-    const disciplineHistory = clean.match(/\/discipline\/(\d+)\/history$/); if (disciplineHistory && method === "GET") return page(check(await supabase.from("discipline_case_history").select("*,actor:profiles(name)").eq("club_id", clubId).eq("case_id", Number(disciplineHistory[1])).order("created_at", { ascending: false })) || [], params, 25);
-    if (clean.endsWith("/activities") && method === "GET") { const [a, t, w, b] = await Promise.all([supabase.from("club_celebrations").select("*").eq("club_id", clubId), supabase.from("team_trainings").select("*").eq("club_id", clubId), supabase.from("club_awards").select("*").eq("club_id", clubId), supabase.from("player_profiles").select("id,full_name,date_of_birth").eq("club_id", clubId).not("date_of_birth", "is", null)]); return { data: { celebrations: check(a) || [], trainings: check(t) || [], awards: check(w) || [], birthdays: (check(b) || []).map((x) => ({ id: x.id, name: x.full_name, date_of_birth: x.date_of_birth })) } }; }
-    const activity = clean.match(/\/activities\/(celebrations|trainings|awards)$/); if (activity && method === "POST") { const table = { celebrations: "club_celebrations", trainings: "team_trainings", awards: "club_awards" }[activity[1]]; const payload = { ...data, club_id: clubId, submitted_by: current.id }; if (activity[1] === "trainings") { const team = check(await supabase.from("teams").select("name").eq("club_id", clubId).eq("id", Number(data.team_id)).single()); payload.team_id = Number(data.team_id); payload.team_name = team.name; payload.attendance = []; } if (activity[1] === "awards") { const player = check(await supabase.from("player_profiles").select("full_name").eq("club_id", clubId).eq("id", Number(data.player_id)).single()); payload.player_id = Number(data.player_id); payload.player_name = player.full_name; payload.award_year = Number(data.award_year); } return { data: check(await supabase.from(table).insert(payload).select().single()) }; }
-    const activityItem = clean.match(/\/activities\/(celebrations|trainings|awards)\/(\d+)$/);
-    if (activityItem && method === "PATCH") { const table = { celebrations: "club_celebrations", trainings: "team_trainings", awards: "club_awards" }[activityItem[1]]; return { data: check(await supabase.from(table).update(data).eq("club_id", clubId).eq("id", Number(activityItem[2])).select().single()) }; }
-    if (activityItem && method === "DELETE") { const table = { celebrations: "club_celebrations", trainings: "team_trainings", awards: "club_awards" }[activityItem[1]]; check(await supabase.from(table).delete().eq("club_id", clubId).eq("id", Number(activityItem[2]))); return {}; }
-    const activityApproval = clean.match(/\/activities\/(celebrations|trainings|awards)\/(\d+)\/approve$/); if (activityApproval && method === "PATCH") { const table = { celebrations: "club_celebrations", trainings: "team_trainings", awards: "club_awards" }[activityApproval[1]]; return { data: check(await supabase.from(table).update({ approval_status: "approved" }).eq("club_id", clubId).eq("id", Number(activityApproval[2])).select().single()) }; }
-    const trainingAttendance = clean.match(/\/activities\/trainings\/(\d+)\/attendance$/); if (trainingAttendance && method === "PATCH") return { data: check(await supabase.from("team_trainings").update({ attendance: data.players || [] }).eq("club_id", clubId).eq("id", Number(trainingAttendance[1])).select().single()) };
-    if (clean.endsWith("/my-player") && method === "GET") { const rows = check(await supabase.from("player_profiles").select("*").eq("club_id", clubId).eq("user_id", current.id)) || []; return { data: rows[0] || null, eligible: !rows.length }; }
-    if (clean.endsWith("/my-player/claim") && method === "POST") return { data: check(await supabase.rpc("claim_player_profile", { p_club_id: clubId })) };
-    if (clean.endsWith("/my-player/claim") && method === "DELETE") { check(await supabase.rpc("unlink_player_profile", { p_club_id: clubId })); return {}; }
-    if (clean.endsWith("/planned") && method === "GET") {
-      const rows=check(await supabase.from("planned_expenses").select("*").eq("club_id",clubId).eq("cancelled",false))||[];
-      const month=vietnamToday().slice(0,7);
-      return {data:expandPlanned(rows,params.get("from")||month,params.get("to")||params.get("from")||month)};
-    }
-    if (clean.endsWith("/planned") && method === "POST") return { data: check(await supabase.rpc("save_planned_expense", { p_club_id: clubId, p_id: null, p_description: data.description, p_amount: data.amount === "" ? null : Number(data.amount), p_notes: data.notes || null, p_effective_from: `${data.effective_from}-01`, p_effective_to: data.effective_to ? `${data.effective_to}-01` : null })) };
-    const planned = clean.match(/\/finance\/planned\/(\d+)$/); if (planned && method === "PATCH") return { data: check(await supabase.rpc("save_planned_expense", { p_club_id: clubId, p_id: Number(planned[1]), p_description: data.description, p_amount: data.amount === "" ? null : Number(data.amount), p_notes: data.notes || null, p_effective_from: `${data.effective_from}-01`, p_effective_to: data.effective_to ? `${data.effective_to}-01` : null })) };
-    if (planned && method === "DELETE") return { data: check(await supabase.rpc("cancel_planned_expense", { p_club_id: clubId, p_id: Number(planned[1]), p_effective_to: params.get("month") ? `${params.get("month")}-01` : null })) };
-    if (clean.endsWith("/sponsors") && method === "GET") return page(check(await supabase.from("sponsors").select("*").eq("club_id", clubId).order("name")) || [], params);
-    if (clean.endsWith("/sponsors") && method === "POST") return { data: check(await supabase.from("sponsors").insert({ club_id: clubId, name: data.name, contact_name: data.contact_name || null, email: data.email || null, phone: data.phone || null, notes: data.notes || null }).select().single()) };
-    const sponsor = clean.match(/\/sponsors\/(\d+)$/);
-    if (sponsor && method === "PATCH") return { data: check(await supabase.from("sponsors").update({ name: data.name, contact_name: data.contact_name || null, email: data.email || null, phone: data.phone || null, notes: data.notes || null }).eq("club_id", clubId).eq("id", Number(sponsor[1])).select().single()) };
-    if (sponsor && method === "DELETE") { check(await supabase.from("sponsors").delete().eq("club_id", clubId).eq("id", Number(sponsor[1]))); return {}; }
-    if (clean.endsWith("/sponsorships") && method === "GET") { const rows = check(await supabase.from("sponsorships").select("*,sponsor:sponsors(name)").eq("club_id", clubId).order("ends_on")) || []; const receipts = check(await supabase.from("sponsorship_receipts").select("sponsorship_id,value").eq("club_id", clubId)) || []; return page(rows.map((row) => ({ ...row, sponsor_name: row.sponsor?.name, received_value: receipts.filter((receipt) => receipt.sponsorship_id === row.id).reduce((sum, receipt) => sum + Number(receipt.value), 0) })), params); }
-    if (clean.endsWith("/sponsorships") && method === "POST") return { data: check(await supabase.from("sponsorships").insert({ ...data, club_id: clubId, sponsor_id: Number(data.sponsor_id), value: Number(data.value) }).select().single()) };
-    const sponsorship = clean.match(/\/sponsorships\/(\d+)$/); if (sponsorship && method === "PATCH") return { data: check(await supabase.from("sponsorships").update({ ...data, sponsor_id: Number(data.sponsor_id), value: Number(data.value) }).eq("club_id", clubId).eq("id", Number(sponsorship[1])).select().single()) };
-    const sponsorshipReceipts = clean.match(/\/sponsorships\/(\d+)\/receipts$/); if (sponsorshipReceipts && method === "GET") return page(check(await supabase.from("sponsorship_receipts").select("*").eq("club_id", clubId).eq("sponsorship_id", Number(sponsorshipReceipts[1])).order("received_on", { ascending: false })) || [], params);
-    if (sponsorshipReceipts && method === "POST") return { data: check(await supabase.from("sponsorship_receipts").insert({ club_id: clubId, sponsorship_id: Number(sponsorshipReceipts[1]), value: Number(data.value), received_on: data.received_on, notes: data.notes || null, actor_id: current.id }).select().single()) };
-    if (clean.endsWith("/public-settings") && method === "GET") {
-      const row = check(await supabase.from("club_public_settings").select("*").eq("club_id", clubId).maybeSingle());
-      return { data: row || { club_id: clubId, public_slug: null, is_published: false, headline: null, content: {} } };
-    }
-    if (clean.endsWith("/public-settings") && (method === "POST" || method === "PATCH")) {
-      const row = check(await supabase.from("club_public_settings").upsert({ club_id: clubId, public_slug: data.public_slug || null, is_published: Boolean(data.is_published), headline: data.headline || null, content: data.content || {}, updated_by: current.id, updated_at: new Date().toISOString() }, { onConflict: "club_id" }).select().single());
-      return { data: row };
-    }
-    throw new SupabaseApiError(`Supabase adapter chưa ánh xạ nghiệp vụ: ${method} ${clean}`, 501);
+    const duesResult = await duesService.handleDuesRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId
+    );
+    if (duesResult !== null) return duesResult;
+
+    const financeResult = await financeService.handleFinanceRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId
+    );
+    if (financeResult !== null) return financeResult;
+
+    const boardResult = await boardService.handleBoardRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId
+    );
+    if (boardResult !== null) return boardResult;
+
+    const matchResult = await matchService.handleMatchRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId,
+      current
+    );
+    if (matchResult !== null) return matchResult;
+
+    const inventoryResult = await inventoryService.handleInventoryRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId
+    );
+    if (inventoryResult !== null) return inventoryResult;
+
+    const activityResult = await activityService.handleActivityRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId,
+      current
+    );
+    if (activityResult !== null) return activityResult;
+
+    const recruitmentResult = await recruitmentService.handleRecruitmentRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId
+    );
+    if (recruitmentResult !== null) return recruitmentResult;
+
+    const sponsorshipResult = await sponsorshipService.handleSponsorshipRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId,
+      current
+    );
+    if (sponsorshipResult !== null) return sponsorshipResult;
+
+    const pollResult = await pollService.handlePollRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId,
+      current
+    );
+    if (pollResult !== null) return pollResult;
+
+    const disciplineResult = await disciplineService.handleDisciplineRequest(
+      clean,
+      method,
+      data,
+      params,
+      clubId
+    );
+    if (disciplineResult !== null) return disciplineResult;
+
+    throw new SupabaseApiError(
+      `Supabase adapter chưa ánh xạ nghiệp vụ: ${method} ${clean}`,
+      501
+    );
   }
-  return { request, get: (path, options) => request(path, options), post: (path, body, options) => request(path, { ...options, method: "POST", body }), patch: (path, body, options) => request(path, { ...options, method: "PATCH", body }), delete: (path, options) => request(path, { ...options, method: "DELETE" }) };
+
+  return {
+    request,
+    get: (path, options) => request(path, options),
+    post: (path, body, options) => request(path, { ...options, method: 'POST', body }),
+    patch: (path, body, options) => request(path, { ...options, method: 'PATCH', body }),
+    delete: (path, options) => request(path, { ...options, method: 'DELETE' }),
+  };
 }

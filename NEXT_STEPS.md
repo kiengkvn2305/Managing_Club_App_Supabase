@@ -1,10 +1,10 @@
 # Công việc tiếp theo
 
-1. [x] Đã áp dụng toàn bộ 10 migrations (từ `20261119000000` đến `20261119000009`) lên Supabase local và remote (`dandxiwdedbwxtvokeag`).
-2. [x] Đã chạy toàn bộ 72 pgTAP tests (6 file test) và 57 integration tests: kiểm tra RLS, tenant isolation, Storage, concurrency, replay protection, ưu tiên ưu đãi quỹ BCN, xóa lịch sử mức quỹ BCN, xóa đội an toàn (`delete_team`), xóa cầu thủ khỏi đội (`remove_team_player`), xóa hoạt động, nhà tài trợ, công việc BCN và cài đặt website công khai.
-3. [x] Đã hoàn thiện adapter đồng bộ đóng quỹ tự động cho thành viên chưa nộp tiền (`/dues`) và tính toán quỹ ưu đãi BCN chuẩn xác.
-4. [x] Đã bổ sung quản lý và cài đặt trang web công khai CLB (`club_public_settings`) trên giao diện `#club`.
-5. [x] Deploy Cloudflare Pages (`https://managing-club-app-supabase.pages.dev`); kiểm tra headers, cache control, 404 handling và Service Worker MIME validation.
+1. [x] Đã áp dụng toàn bộ 11 migrations (từ `20261119000000` đến `20261119000010`) lên Supabase local và remote (`dandxiwdedbwxtvokeag`).
+2. [x] Đã khắc phục triệt để lỗi phân quyền và nghiệp vụ thu quỹ / đóng quỹ (`record_player_dues`, `can_manage_finance`, `can_view_finance`, hiển thị và lọc `unpaid`, quyền xem/đặt/xóa mức quỹ chung ưu đãi BCN).
+3. [x] Tái cấu trúc toàn diện mã nguồn frontend theo mô hình MVC (Services / Controllers / Views / Pages / Router), loại bỏ hoàn toàn các "God files", đảm bảo Single Responsibility và format chuẩn mực.
+4. [x] Đã chạy toàn bộ 72 pgTAP tests (6 file test), 43 static/unit tests và 57 integration tests: 100% PASS trên môi trường local và remote.
+5. [x] Vite production build thành công (125 modules transformed sạch sẽ).
 6. [ ] Chạy Excel import/export lớn, PWA và responsive smoke trên thiết bị di động thật (Android / iOS).
 7. [ ] Nghiệm thu toàn bộ tiêu chí trong [docs/MIGRATION_CHECKLIST.md](docs/MIGRATION_CHECKLIST.md) trước khi phát hành production.
 
