@@ -1,26 +1,26 @@
 {
-  "at": "2026-11-19T07:27:42.180Z",
-  "entry": "/assets/index-B64Sguri.js",
+  "at": "2026-11-19T07:31:09.243Z",
+  "entry": "/assets/index-CXt-9o6N.js",
   "safeProfile": true,
   "evidence": [
     {
       "path": "/",
       "status": 200,
       "mime": "text/html; charset=utf-8",
-      "cache": "public, max-age=0, must-revalidate",
+      "cache": "no-cache, must-revalidate",
       "html": true,
       "bytes": 1151
     },
     {
-      "path": "/assets/index-B64Sguri.js",
+      "path": "/assets/index-CXt-9o6N.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
       "html": false,
-      "bytes": 436889
+      "bytes": 441771
     },
     {
-      "path": "/assets/exceljs.min-CKuCuSSg.js",
+      "path": "/assets/exceljs.min-DwW-vMzD.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
@@ -28,7 +28,7 @@
       "bytes": 928797
     },
     {
-      "path": "/assets/web-eUgGIMvi.js",
+      "path": "/assets/web-C_KUrdNQ.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
@@ -36,7 +36,7 @@
       "bytes": 844
     },
     {
-      "path": "/assets/web-B92DDcYV.js",
+      "path": "/assets/web-5Z1ZM8A8.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
@@ -44,7 +44,7 @@
       "bytes": 1104
     },
     {
-      "path": "/assets/web-BdClaWgO.js",
+      "path": "/assets/web--1aa8G65.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
@@ -53,19 +53,19 @@
     },
     {
       "path": "/assets/exceljs.min-Cw5QacKC.js",
-      "status": 200,
+      "status": 404,
       "mime": "text/html; charset=utf-8",
-      "cache": "public, max-age=0, must-revalidate",
+      "cache": "no-store",
       "html": true,
-      "bytes": 1151
+      "bytes": 311
     },
     {
       "path": "/assets/qa-missing-never-exists.js",
-      "status": 200,
+      "status": 404,
       "mime": "text/html; charset=utf-8",
-      "cache": "public, max-age=0, must-revalidate",
+      "cache": "no-store",
       "html": true,
-      "bytes": 1151
+      "bytes": 311
     },
     {
       "path": "/sw.js",
@@ -73,7 +73,7 @@
       "mime": "application/javascript",
       "cache": "no-cache",
       "html": false,
-      "bytes": 1669
+      "bytes": 2128
     },
     {
       "path": "/manifest.webmanifest",

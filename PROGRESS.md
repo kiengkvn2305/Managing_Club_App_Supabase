@@ -31,10 +31,10 @@ Ngày cập nhật: 2026-11-19
 - Frontend unit tests: 34 PASS.
 - Supabase static tests: 7 PASS.
 - Vite production build: PASS.
+- Cloudflare Pages (`https://managing-club-app-supabase.pages.dev`): Deploy thành công commit `cc85bb8` (entry `index-CXt-9o6N.js`). HTTP probing xác nhận headers chuẩn (`no-cache` cho HTML và Service Worker, asset 404 không bị fallback HTML gây hỏng cache Service Worker, MIME type chính xác).
 
 ## Chưa đủ điều kiện tuyên bố release hoàn chỉnh
 
-- Cần chạy thêm smoke test giao diện qua trình duyệt trên môi trường Cloudflare Pages preview.
 - Một số nghiệp vụ nâng cao (mùa giải, website CLB công khai) còn tiếp tục hoàn thiện parity UI.
 - Chưa kiểm thử cài đặt PWA trực tiếp trên thiết bị di động thật (Android / iPhone).
 
