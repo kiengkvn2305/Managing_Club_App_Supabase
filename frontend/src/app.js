@@ -632,6 +632,15 @@ async function action(el) {
       await loadView(); toast('Đã lưu mức quỹ ưu đãi.');
     }), 'Lưu mức quỹ');
   }
+  if (a === 'delete-board-shared-rate' && currentRole() === 'owner') {
+    const rate = s.boardSharedRates.find((r) => String(r.id) === el.dataset.id);
+    if (!rate) return;
+    return dialog('Xóa mức ưu đãi BCN?', `Xóa mức ưu đãi quỹ ${e(rate.team_name || '')} (${number(rate.amount)} đ/tháng) áp dụng từ ${e(rate.effective_month?.slice(5, 7))}/${e(rate.effective_month?.slice(0, 4))}. Các kỳ sau sẽ áp dụng theo mức quỹ thông thường của đội.`, '', (form) => submit(form, 'board-dues-delete', async () => {
+      await api.delete(base(`/board-dues-rates/${rate.id}`));
+      await loadView();
+      toast('Đã xóa mức ưu đãi BCN.');
+    }), 'Xóa mức ưu đãi');
+  }
   if (['board-task-new', 'board-task-edit', 'board-task-delete'].includes(a) && currentRole() === 'owner') {
     const task = s.boardTasks.find((t) => String(t.id) === el.dataset.id);
     if (a !== 'board-task-new' && !task) return;

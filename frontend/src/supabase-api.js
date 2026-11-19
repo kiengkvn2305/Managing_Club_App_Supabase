@@ -158,10 +158,47 @@ export function createSupabaseApiClient({ onUnauthorized = () => {}, client = nu
     if (clean.endsWith("/dashboard")) return dashboard(clubId);
     if (clean.endsWith("/teams") && method === "GET") return teams(clubId, current.id);
     if (clean.endsWith("/teams") && method === "POST") return { data: check(await supabase.from("teams").insert({ club_id: clubId, name: data.name, format: data.format }).select().single()) };
-    if (clean === `/clubs/${clubId}/board-members` && method === "GET") { const rows = check(await supabase.from("club_board_members").select("id,player_id,title,archived_at,player:player_profiles(full_name,email,date_of_birth)").eq("club_id", clubId).is("archived_at", null).order("id")) || []; const rates = check(await supabase.from("board_dues_rates").select("player_id,team_id,amount,effective_month,ends_before,team:teams(name)").eq("club_id", clubId).order("effective_month")) || []; const shared = check(await supabase.from("shared_board_dues_rates").select("team_id,amount,effective_month,team:teams(name)").eq("club_id", clubId).order("effective_month")) || []; return { data: rows.map((row) => ({ id: row.id, player_id: row.player_id, title: row.title, full_name: row.player?.full_name, email: row.player?.email, date_of_birth: row.player?.date_of_birth, dues_rates: rates.filter((rate) => rate.player_id === row.player_id) })), shared_rates: shared }; }
+    if (clean === `/clubs/${clubId}/board-members` && method === "GET") {
+      const rows = check(await supabase.from("club_board_members").select("id,player_id,title,archived_at,player:player_profiles(full_name,email,date_of_birth)").eq("club_id", clubId).is("archived_at", null).order("id")) || [];
+      const rates = check(await supabase.from("board_dues_rates").select("id,player_id,team_id,amount,effective_month,ends_before,team:teams(name)").eq("club_id", clubId).order("effective_month")) || [];
+      const shared = check(await supabase.from("shared_board_dues_rates").select("id,team_id,amount,effective_month,team:teams(name)").eq("club_id", clubId).order("effective_month", { ascending: false })) || [];
+      return {
+        data: rows.map((row) => ({
+          id: row.id,
+          player_id: row.player_id,
+          title: row.title,
+          full_name: row.player?.full_name,
+          email: row.player?.email,
+          date_of_birth: row.player?.date_of_birth,
+          dues_rates: rates.filter((rate) => rate.player_id === row.player_id).map((r) => ({ ...r, team_name: r.team?.name || "" })),
+        })),
+        shared_rates: shared.map((s) => ({
+          id: s.id,
+          team_id: s.team_id,
+          team_name: s.team?.name || "Đội",
+          amount: Number(s.amount),
+          effective_month: s.effective_month,
+        })),
+      };
+    }
     if (clean === `/clubs/${clubId}/board-members` && method === "POST") { const row = check(await supabase.from("club_board_members").insert({ club_id: clubId, player_id: Number(data.player_id), title: String(data.title).trim() }).select().single()); check(await supabase.from("board_membership_periods").insert({ club_id: clubId, player_id: Number(data.player_id), starts_month: `${new Date().toISOString().slice(0, 7)}-01` })); return { data: row }; }
-    const boardMember = clean.match(/\/board-members\/(\d+)$/); if (boardMember && method === "PATCH") return { data: check(await supabase.from("club_board_members").update({ title: String(data.title).trim() }).eq("club_id", clubId).eq("id", Number(boardMember[1])).select().single()) };
+    const boardMember = clean.match(/\/board-members\/(\d+)$/);
+    if (boardMember && method === "PATCH") return { data: check(await supabase.from("club_board_members").update({ title: String(data.title).trim() }).eq("club_id", clubId).eq("id", Number(boardMember[1])).select().single()) };
+    if (boardMember && method === "DELETE") {
+      const row = check(await supabase.from("club_board_members").select("player_id").eq("club_id", clubId).eq("id", Number(boardMember[1])).single());
+      if (row) {
+        const currentMonth = `${new Date().toISOString().slice(0, 7)}-01`;
+        await supabase.from("board_membership_periods").update({ ends_before: currentMonth }).eq("club_id", clubId).eq("player_id", row.player_id).is("ends_before", null);
+        await supabase.from("club_board_members").update({ archived_at: new Date().toISOString() }).eq("club_id", clubId).eq("id", Number(boardMember[1]));
+      }
+      return {};
+    }
     if (clean === `/clubs/${clubId}/board-dues-rate` && method === "POST") return { data: check(await supabase.from("shared_board_dues_rates").insert({ club_id: clubId, team_id: Number(data.team_id), amount: Number(data.amount), effective_month: `${data.effective_month}-01` }).select().single()) };
+    const boardSharedRate = clean.match(/\/board-dues-rates?\/(\d+)$/);
+    if (boardSharedRate && method === "DELETE") {
+      check(await supabase.from("shared_board_dues_rates").delete().eq("club_id", clubId).eq("id", Number(boardSharedRate[1])));
+      return {};
+    }
     if (clean === `/clubs/${clubId}/board-tasks` && method === "POST") return { data: check(await supabase.from("board_tasks").insert({ club_id: clubId, board_member_id: Number(data.board_member_id), title: data.title, description: data.description || null, due_date: data.due_date || null, progress: Number(data.progress || 0) }).select().single()) };
     const boardTask = clean.match(/\/board-tasks\/(\d+)$/); if (boardTask && method === "PATCH") return { data: check(await supabase.from("board_tasks").update({ ...data, progress: Number(data.progress || 0) }).eq("club_id", clubId).eq("id", Number(boardTask[1])).select().single()) };
     if (clean.match(/\/members$/) && method === "GET") return members(clubId, params);
@@ -190,18 +227,38 @@ export function createSupabaseApiClient({ onUnauthorized = () => {}, client = nu
     if (clean === `/clubs/${clubId}/inventory/members` && method === "GET") { let b = supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).order("full_name"); if (params.get("search")) b = b.ilike("full_name", `%${params.get("search")}%`); return page(check(await b) || [], params, 50); }
     if (clean.endsWith("/dues") && method === "GET") {
       const targetMonth = `${params.get("month") || new Date().toISOString().slice(0, 7)}-01`;
-      const [entriesResult, teamPlayersResult, ratesResult] = await Promise.all([
+      const [entriesResult, teamPlayersResult, ratesResult, boardMembersResult, sharedBoardRatesResult, boardRatesResult] = await Promise.all([
         supabase.from("team_dues_entries").select("*,player:player_profiles(id,full_name,date_of_birth,email,notes),team:teams(id,name)").eq("club_id", clubId).eq("month", targetMonth),
         supabase.from("team_players").select("team_id,player_id,player:player_profiles(id,full_name,date_of_birth,email,notes,status),team:teams(id,name)").eq("club_id", clubId),
         supabase.from("team_dues_rates").select("team_id,effective_month,amount").eq("club_id", clubId).lte("effective_month", targetMonth).order("effective_month", { ascending: false }),
+        supabase.from("club_board_members").select("player_id").eq("club_id", clubId).is("archived_at", null),
+        supabase.from("shared_board_dues_rates").select("team_id,effective_month,amount").eq("club_id", clubId).lte("effective_month", targetMonth).order("effective_month", { ascending: false }),
+        supabase.from("board_dues_rates").select("player_id,team_id,effective_month,ends_before,amount").eq("club_id", clubId).lte("effective_month", targetMonth).order("effective_month", { ascending: false }),
       ]);
       const rows = check(entriesResult) || [];
       const teamPlayers = check(teamPlayersResult) || [];
       const rates = check(ratesResult) || [];
+      const boardMembers = check(boardMembersResult) || [];
+      const sharedBoardRates = check(sharedBoardRatesResult) || [];
+      const boardRates = check(boardRatesResult) || [];
+
+      const boardPlayerIds = new Set(boardMembers.map((b) => b.player_id));
       const latestRates = new Map();
       for (const r of rates) {
         if (!latestRates.has(r.team_id)) latestRates.set(r.team_id, Number(r.amount));
       }
+
+      function resolveRate(playerId, teamId) {
+        if (boardPlayerIds.has(playerId)) {
+          const personal = boardRates.find((r) => r.player_id === playerId && r.team_id === teamId && (!r.ends_before || r.ends_before > targetMonth));
+          if (personal != null) return Number(personal.amount);
+          const shared = sharedBoardRates.find((r) => r.team_id === teamId);
+          if (shared != null) return Number(shared.amount);
+        }
+        const std = latestRates.get(teamId);
+        return std != null ? std : null;
+      }
+
       const grouped = new Map();
       for (const row of rows) {
         const item = grouped.get(row.player_id) || { player_id: row.player_id, name: row.player?.full_name, date_of_birth: row.player?.date_of_birth, email: row.player?.email, notes: row.player?.notes, teams: [], total: 0, debt: 0 };
@@ -212,13 +269,17 @@ export function createSupabaseApiClient({ onUnauthorized = () => {}, client = nu
       }
       for (const tp of teamPlayers) {
         if (tp.player?.status !== "active") continue;
-        const rateAmount = latestRates.get(tp.team_id);
-        if (rateAmount == null || rateAmount <= 0) continue;
+        const rateAmount = resolveRate(tp.player_id, tp.team_id);
+        if (rateAmount == null) continue;
         const item = grouped.get(tp.player_id) || { player_id: tp.player_id, name: tp.player?.full_name, date_of_birth: tp.player?.date_of_birth, email: tp.player?.email, notes: tp.player?.notes, teams: [], total: 0, debt: 0 };
         if (!item.teams.some((t) => t.team_id === tp.team_id)) {
-          item.teams.push({ team_id: tp.team_id, name: tp.team?.name, amount: rateAmount, status: "unpaid" });
-          item.total += rateAmount;
-          item.debt += rateAmount;
+          if (rateAmount === 0) {
+            item.teams.push({ team_id: tp.team_id, name: tp.team?.name, amount: 0, status: "exempt" });
+          } else {
+            item.teams.push({ team_id: tp.team_id, name: tp.team?.name, amount: rateAmount, status: "unpaid" });
+            item.total += rateAmount;
+            item.debt += rateAmount;
+          }
         }
         grouped.set(tp.player_id, item);
       }

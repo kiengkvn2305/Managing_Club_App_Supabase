@@ -65,7 +65,34 @@ try {
  await run('STAT-01','Statistics','Save match stats and aggregate',async()=>{await a.api.request(base+`/matches/${match}/player-stats`,{method:'PUT',body:{player_id:player,goals:2}});assert.equal((await a.api.get(base+`/matches/${match}/player-stats`)).data[0].goals,2);const summary=(await a.api.get(base+'/player-stats')).data;assert.ok(summary.players?.length,'UI expects players/teams/club aggregation');});
  await run('TRAIN-01','Training','Create training and save attendance',async()=>{const t=(await a.api.post(base+'/activities/trainings',{team_id:team,training_date:today,training_time:'18:00',location:'QA Pitch'})).data;await a.api.patch(base+`/activities/trainings/${t.id}/attendance`,{players:[{player_id:player,status:'present'}]});assert.equal((await a.api.get(base+'/activities')).data.trainings[0].attendance[0].status,'present');});
  await run('EVENT-01','Activities','Save celebration and award',async()=>{await a.api.post(base+'/activities/celebrations',{title:'QA event',event_date:today});await a.api.post(base+'/activities/awards',{player_id:player,award_year:2026,title:'QA award'});const d=(await a.api.get(base+'/activities')).data;assert.equal(d.celebrations.length,1);assert.equal(d.awards.length,1);});
- await run('BOARD-01','Board','Add and rename board member',async()=>{const r=(await a.api.post(base+'/board-members',{player_id:player,title:'Thư ký'})).data;await a.api.patch(base+`/board-members/${r.id}`,{title:'Hậu cần'});assert.equal((await a.api.get(base+'/board-members')).data[0].title,'Hậu cần');});
+ let boardMemberId, sharedRateId;
+ await run('BOARD-01','Board','Add and rename board member',async()=>{const r=(await a.api.post(base+'/board-members',{player_id:player,title:'Thư ký'})).data;boardMemberId=r.id;await a.api.patch(base+`/board-members/${r.id}`,{title:'Hậu cần'});assert.equal((await a.api.get(base+'/board-members')).data[0].title,'Hậu cần');});
+ await run('BOARD-02','Board dues','Create shared dues rate and verify board member pays discounted dues',async()=>{
+  const player2 = (await a.api.post(base+'/members',{full_name:'QA Regular Player',email:`qa-reg-${runId}@example.test`,status:'active'})).data.id;
+  await a.api.patch(base+`/teams/${team}/players`,{player_ids:[player, player2]});
+  const nextMonth = new Date(Date.now() + 35 * 86400000).toISOString().slice(0, 7);
+  const sr = (await a.api.post(base+'/board-dues-rate',{team_id:team,amount:40,effective_month:nextMonth})).data;
+  sharedRateId = sr.id;
+  const duesList = (await a.api.get(base+`/dues?month=${nextMonth}`)).data;
+  const bMemberDues = duesList.find(d => d.player_id === player);
+  const regMemberDues = duesList.find(d => d.player_id === player2);
+  assert.equal(bMemberDues.total, 40, 'Board member should have board discount dues');
+  assert.equal(regMemberDues.total, 100, 'Regular member should have standard team dues');
+  const paid = (await a.api.post(base+'/dues',{player_id:player,month:nextMonth,months:1,status:'paid'})).data;
+  assert.equal(paid.amount, 40, 'Paid amount must match discounted rate');
+ });
+ await run('BOARD-03','Board rate delete','Delete shared dues rate and verify revert to standard rate',async()=>{
+  assert.ok(sharedRateId, 'Must have sharedRateId');
+  await a.api.delete(base+`/board-dues-rates/${sharedRateId}`);
+  const bmData = await a.api.get(base+'/board-members');
+  assert.ok(!bmData.shared_rates.some(r => r.id === sharedRateId), 'Deleted rate must not appear in shared_rates');
+ });
+ await run('BOARD-04','Board member remove','Remove member from board and verify archived',async()=>{
+  assert.ok(boardMemberId, 'Must have boardMemberId');
+  await a.api.delete(base+`/board-members/${boardMemberId}`);
+  const bmData = await a.api.get(base+'/board-members');
+  assert.ok(!bmData.data.some(m => m.id === boardMemberId), 'Removed member must not appear in active board members');
+ });
  await run('POLL-01','Voting','Create poll, member votes, duplicate denied',async()=>{const p=(await a.api.post(base+'/polls',{title:'QA poll',deadline:new Date(Date.now()+86400000).toISOString(),options:['A','B']})).data;const poll=(await member.api.get(base+'/polls')).data.find(v=>v.id===p.id);await member.api.post(base+`/polls/${p.id}/vote`,{option_id:poll.options[0].id});await assert.rejects(member.api.post(base+`/polls/${p.id}/vote`,{option_id:poll.options[0].id}));});
  await run('REC-01','Recruitment','Create post and applicant, edit and reload',async()=>{const p=(await a.api.post(base+'/recruitment/posts',{title:'QA keeper',status:'open'})).data;const app=(await a.api.post(base+`/recruitment/posts/${p.id}/applications`,{full_name:'QA Candidate'})).data;await a.api.patch(base+`/recruitment/posts/${p.id}/applications/${app.id}`,{status:'reviewing'});assert.equal((await a.api.get(base+`/recruitment/posts/${p.id}/applications`)).data[0].status,'reviewing');});
  await run('DISC-01','Discipline','Create case, check history',async()=>{const d=(await a.api.post(base+'/discipline',{player_id:player,incident_date:today,title:'QA case',description:'QA',status:'open',fine_amount:''})).data;assert.equal((await a.api.get(base+`/discipline/${d.id}/history`)).data.length,1);});
