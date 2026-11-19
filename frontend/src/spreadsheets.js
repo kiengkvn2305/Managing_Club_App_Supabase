@@ -73,18 +73,23 @@ export async function parseMembers(file) {
   if (!rows.length) throw new Error('File chưa có dòng thành viên.');
   return rows;
 }
+export function sanitizeCell(value) {
+  if (value == null) return '';
+  const text = String(value);
+  return /^[=+@\-\t\r]/.test(text) ? `'${text}` : text;
+}
 export async function exportFinance(items, summary, adjustments = []) {
   const book = await workbook(), sheet = book.addWorksheet('Thu chi');
   sheet.addRow(['Ngày', 'Loại', 'Nội dung', 'Số tiền (đồng)', 'Có ảnh xác nhận', 'Danh mục', 'Người thu / chi', 'Ghi chú / chứng từ']);
   sheet.getRow(1).font = { bold: true };
-  for (const item of items) sheet.addRow([formatDate(item.occurred_on), item.type === 'income' ? 'Thu' : 'Chi', String(item.description), Number(item.amount), item.has_receipt ? 'Có' : 'Không', item.category || '', item.paid_by || '', item.notes || '']);
+  for (const item of items) sheet.addRow([formatDate(item.occurred_on), item.type === 'income' ? 'Thu' : 'Chi', sanitizeCell(item.description), Number(item.amount), item.has_receipt ? 'Có' : 'Không', sanitizeCell(item.category), sanitizeCell(item.paid_by), sanitizeCell(item.notes)]);
   sheet.addRow([]); sheet.addRow(['Tổng thu trong kỳ', Number(summary.income || 0)]); sheet.addRow(['Tổng chi trong kỳ', Number(summary.expense || 0)]); sheet.addRow(['Thu trừ chi trong kỳ', Number(summary.balance || 0)]); sheet.addRow(['Còn lại đến cuối kỳ', Number(summary.remaining || 0)]);
   sheet.columns.forEach((c) => { c.width = 24; }); sheet.getColumn(3).width = 50;
   const changes = book.addWorksheet('Dieu chinh quy');
   changes.addRow(['Ngày điều chỉnh', 'Thành viên', 'Đội', 'Tháng quỹ', 'Trạng thái cũ', 'Trạng thái mới', 'Số tiền', 'Lý do']);
   changes.getRow(1).font = { bold: true };
   const labels = { unpaid: 'Chưa đóng', paid: 'Đã đóng', exempt: 'Miễn đóng' };
-  for (const a of adjustments) changes.addRow([formatVietnamDateTime(a.created_at), a.player_name, a.team_name, a.month, labels[a.old_status] || a.old_status, labels[a.new_status] || a.new_status, Number(a.amount), a.reason]);
+  for (const a of adjustments) changes.addRow([formatVietnamDateTime(a.created_at), sanitizeCell(a.player_name), sanitizeCell(a.team_name), a.month, labels[a.old_status] || a.old_status, labels[a.new_status] || a.new_status, Number(a.amount), sanitizeCell(a.reason)]);
   changes.columns.forEach((c) => { c.width = 24; }); changes.getColumn(8).width = 45;
   await download(book, 'so-thu-chi.xlsx');
 }
@@ -94,7 +99,16 @@ export async function buildMembersWorkbook(items, teamId = '') {
   sheet.getRow(1).font = { bold: true };
   for (const item of items) {
     const team = (item.teams || []).find((t) => String(t.id) === String(teamId));
-    sheet.addRow([item.full_name, formatDate(item.date_of_birth), item.phone, item.email, ...(teamId ? [team?.position, team?.jersey_number ?? ''] : [(item.teams || []).map((t) => t.name).join(', ')]), item.preferred_foot, item.status, item.notes].map((value) => value == null ? '' : String(value)));
+    sheet.addRow([
+      sanitizeCell(item.full_name),
+      formatDate(item.date_of_birth),
+      sanitizeCell(item.phone),
+      sanitizeCell(item.email),
+      ...(teamId ? [sanitizeCell(team?.position), sanitizeCell(team?.jersey_number)] : [sanitizeCell((item.teams || []).map((t) => t.name).join(', '))]),
+      sanitizeCell(item.preferred_foot),
+      sanitizeCell(item.status),
+      sanitizeCell(item.notes)
+    ]);
   }
   sheet.columns.forEach((column) => { column.width = 24; });
   sheet.getColumn(teamId ? 9 : 8).width = 45;

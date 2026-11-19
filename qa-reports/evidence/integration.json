@@ -1,33 +1,33 @@
 {
-  "at": "2026-11-19T07:24:45.107Z",
+  "at": "2026-11-19T07:36:54.485Z",
   "fixtures": {
-    "runId": "mwn85wga",
+    "runId": "mwn8ljye",
     "environment": "local only; QA records retained for inspection",
     "users": [
       {
-        "id": "73222484-0f68-47a7-9619-a4435fdfddaf",
-        "email": "qa-mwn85wga-owner-a@example.test"
+        "id": "5a653d52-23aa-4960-a2f0-586f775849fe",
+        "email": "qa-mwn8ljye-owner-a@example.test"
       },
       {
-        "id": "13c8c40b-c7a1-4b8e-b0b2-b222dc28778c",
-        "email": "qa-mwn85wga-owner-b@example.test"
+        "id": "297a4aaa-20b2-437c-90ba-fb1b4d5ee444",
+        "email": "qa-mwn8ljye-owner-b@example.test"
       },
       {
-        "id": "2f15e5a6-3cd3-482d-8025-185929ab895f",
-        "email": "qa-mwn85wga-member@example.test"
+        "id": "1d05e279-8873-4cb8-83a2-1e1a1775a3db",
+        "email": "qa-mwn8ljye-member@example.test"
       },
       {
-        "id": "d24e82cd-48af-4fa3-bf02-d07517af9307",
-        "email": "qa-mwn85wga-manager@example.test"
+        "id": "ae2ad0ed-2dfa-4644-bd78-b4dd021393a1",
+        "email": "qa-mwn8ljye-manager@example.test"
       },
       {
-        "id": "c10b4f75-ac90-4cf0-b13a-f127dc4e357f",
-        "email": "qa-mwn85wga-outsider@example.test"
+        "id": "c6151010-df9a-48d0-a031-4ef1cb17c517",
+        "email": "qa-mwn8ljye-outsider@example.test"
       }
     ],
     "clubs": [
-      22,
-      23
+      24,
+      25
     ]
   },
   "tests": [
@@ -38,7 +38,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 441
+      "ms": 397
     },
     {
       "id": "AUTH-02",
@@ -47,7 +47,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 136
+      "ms": 128
     },
     {
       "id": "AUTH-03",
@@ -56,7 +56,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 28
+      "ms": 18
     },
     {
       "id": "AUTH-04",
@@ -65,7 +65,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 186
+      "ms": 104
     },
     {
       "id": "CLUB-01",
@@ -74,7 +74,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 119
+      "ms": 95
     },
     {
       "id": "CLUB-02",
@@ -83,7 +83,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 84
+      "ms": 134
     },
     {
       "id": "CLUB-03",
@@ -92,7 +92,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 26
+      "ms": 22
     },
     {
       "id": "TEAM-01",
@@ -101,7 +101,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 54
+      "ms": 43
     },
     {
       "id": "TEAM-02",
@@ -110,7 +110,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 49
+      "ms": 43
     },
     {
       "id": "HR-01",
@@ -119,7 +119,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 36
+      "ms": 39
     },
     {
       "id": "TEAM-03",
@@ -128,7 +128,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 40
+      "ms": 54
     },
     {
       "id": "TEAM-04",
@@ -137,7 +137,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 32
+      "ms": 36
     },
     {
       "id": "DASH-01",
@@ -146,7 +146,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 12
+      "ms": 16
     },
     {
       "id": "DUES-01",
@@ -155,7 +155,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 33
+      "ms": 40
     },
     {
       "id": "DUES-02",
@@ -164,7 +164,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 10
+      "ms": 14
     },
     {
       "id": "DUES-03",
@@ -173,7 +173,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 23
+      "ms": 27
     },
     {
       "id": "FIN-01",
@@ -182,7 +182,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 38
+      "ms": 40
     },
     {
       "id": "FIN-02",
@@ -191,7 +191,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 27
+      "ms": 23
     },
     {
       "id": "FIN-03",
@@ -209,7 +209,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 34
+      "ms": 31
     },
     {
       "id": "FIN-05",
@@ -227,7 +227,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 23
+      "ms": 22
     },
     {
       "id": "INV-01",
@@ -236,7 +236,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 69
+      "ms": 62
     },
     {
       "id": "INV-02",
@@ -245,7 +245,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 26
+      "ms": 18
     },
     {
       "id": "INV-03",
@@ -254,7 +254,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 35
+      "ms": 27
     },
     {
       "id": "MATCH-01",
@@ -263,7 +263,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 37
+      "ms": 30
     },
     {
       "id": "ATT-01",
@@ -272,7 +272,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 60
+      "ms": 39
     },
     {
       "id": "STAT-01",
@@ -281,7 +281,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 51
+      "ms": 42
     },
     {
       "id": "TRAIN-01",
@@ -290,7 +290,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 44
+      "ms": 38
     },
     {
       "id": "EVENT-01",
@@ -299,7 +299,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 50
+      "ms": 38
     },
     {
       "id": "BOARD-01",
@@ -308,7 +308,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 62
+      "ms": 49
     },
     {
       "id": "POLL-01",
@@ -317,7 +317,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 58
+      "ms": 53
     },
     {
       "id": "REC-01",
@@ -326,7 +326,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 59
+      "ms": 43
     },
     {
       "id": "DISC-01",
@@ -335,7 +335,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 26
+      "ms": 21
     },
     {
       "id": "SPON-01",
@@ -344,7 +344,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 65
+      "ms": 47
     },
     {
       "id": "IMPORT-01",
@@ -353,7 +353,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 41
+      "ms": 18
     },
     {
       "id": "SEC-ownerB-READ",
@@ -362,7 +362,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 6
+      "ms": 5
     },
     {
       "id": "SEC-ownerB-WRITE",
@@ -371,7 +371,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 7
+      "ms": 5
     },
     {
       "id": "SEC-ownerB-RPC",
@@ -380,7 +380,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 8
+      "ms": 5
     },
     {
       "id": "SEC-outsider-READ",
@@ -389,7 +389,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 77
+      "ms": 19
     },
     {
       "id": "SEC-outsider-WRITE",
@@ -398,7 +398,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 6
+      "ms": 4
     },
     {
       "id": "SEC-outsider-RPC",
@@ -407,7 +407,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 5
+      "ms": 4
     },
     {
       "id": "SEC-ADMIN",
@@ -416,7 +416,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 5
+      "ms": 4
     },
     {
       "id": "SEC-OWNER",
@@ -434,7 +434,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 14
+      "ms": 12
     },
     {
       "id": "SEC-LINK",
@@ -452,7 +452,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 6
+      "ms": 4
     },
     {
       "id": "STORE-01",
@@ -461,7 +461,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 91
+      "ms": 65
     },
     {
       "id": "FIN-LOCK",
@@ -470,7 +470,7 @@
       "expected": "Assertions succeed against real local services",
       "actual": "Verified",
       "status": "PASS",
-      "ms": 29
+      "ms": 21
     }
   ]
 }

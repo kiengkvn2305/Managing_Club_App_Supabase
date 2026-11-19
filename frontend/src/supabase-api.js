@@ -253,7 +253,66 @@ export function createSupabaseApiClient({ onUnauthorized = () => {}, client = nu
       return {data:statisticsView(check(await query)||[])};
     }
     const costSplit = clean.match(/\/matches\/(\d+)\/cost-split(?:\/(preview))?$/); if (costSplit && method === "GET") { const match = check(await supabase.from("club_matches").select("team_id").eq("club_id", clubId).eq("id", Number(costSplit[1])).single()); const teamRows = match?.team_id ? check(await supabase.from("team_players").select("player_id").eq("club_id", clubId).eq("team_id", match.team_id)) || [] : []; const attendanceRows = check(await supabase.from("match_attendances").select("player_id,attendance").eq("club_id", clubId).eq("match_id", Number(costSplit[1]))) || []; const ids = [...new Set([...teamRows.map((row) => row.player_id), ...attendanceRows.map((row) => row.player_id)])]; const players = ids.length ? check(await supabase.from("player_profiles").select("id,full_name,date_of_birth,email").eq("club_id", clubId).in("id", ids)) || [] : []; const split = check(await supabase.from("match_cost_splits").select("*").eq("club_id", clubId).eq("match_id", Number(costSplit[1])).maybeSingle()); const receivables = split ? check(await supabase.from("match_cost_receivables").select("*,player:player_profiles(full_name,email,date_of_birth)").eq("club_id", clubId).eq("split_id", split.id)) || [] : []; return { data: { split, receivables, players: players.map((player) => ({ ...player, player_id: player.id, attendance: attendanceRows.find((row) => row.player_id === player.id)?.attendance })) } }; }
-    if (costSplit && method === "POST") { const total = Number(data.stadium || 0) + Number(data.referee || 0) + Number(data.water || 0) + Number(data.equipment || 0) + Number(data.other || 0) - Number(data.sponsorship || 0); if (costSplit[2] === "preview") return { data: { total, receivables: (data.players || []).map((row) => ({ player_id: row.player_id, amount: row.exempt ? 0 : Number(row.amount || 0), exempt: Boolean(row.exempt), weight: Number(row.weight || 1) })) } }; return { data: check(await supabase.rpc("create_match_cost_split", { p_club_id: clubId, p_match_id: Number(costSplit[1]), p_stadium: Number(data.stadium || 0), p_referee: Number(data.referee || 0), p_water: Number(data.water || 0), p_equipment: Number(data.equipment || 0), p_other: Number(data.other || 0), p_sponsorship: Number(data.sponsorship || 0), p_method: data.method || "equal", p_players: data.players || [] })) }; }
+    if (costSplit && method === "POST") {
+      const total = Math.max(0, Number(data.stadium || 0) + Number(data.referee || 0) + Number(data.water || 0) + Number(data.equipment || 0) + Number(data.other || 0) - Number(data.sponsorship || 0));
+      const splitMethod = data.method || "equal";
+      const sourcePlayers = data.players || [];
+      const nonExempt = sourcePlayers.filter((p) => !p.exempt);
+      let receivables = [];
+      if (splitMethod === "equal") {
+        const count = nonExempt.length;
+        const baseShare = count > 0 ? Math.floor(total / count) : 0;
+        let remainder = count > 0 ? total - (baseShare * count) : 0;
+        receivables = sourcePlayers.map((p) => {
+          if (p.exempt) return { player_id: Number(p.player_id), amount: 0, exempt: true, weight: Number(p.weight || 1) };
+          const extra = remainder > 0 ? 1 : 0;
+          if (remainder > 0) remainder--;
+          return { player_id: Number(p.player_id), amount: baseShare + extra, exempt: false, weight: Number(p.weight || 1) };
+        });
+      } else if (splitMethod === "weighted") {
+        const totalWeight = nonExempt.reduce((sum, p) => sum + Math.max(1, Number(p.weight || 1)), 0);
+        let allocated = 0;
+        const shares = nonExempt.map((p) => {
+          const w = Math.max(1, Number(p.weight || 1));
+          const amount = totalWeight > 0 ? Math.floor(total * w / totalWeight) : 0;
+          allocated += amount;
+          return { player_id: Number(p.player_id), amount, weight: w };
+        });
+        let remainder = total - allocated;
+        const shareMap = new Map();
+        for (const s of shares) {
+          const extra = remainder > 0 ? 1 : 0;
+          if (remainder > 0) remainder--;
+          shareMap.set(s.player_id, s.amount + extra);
+        }
+        receivables = sourcePlayers.map((p) => ({
+          player_id: Number(p.player_id),
+          amount: p.exempt ? 0 : (shareMap.get(Number(p.player_id)) || 0),
+          exempt: Boolean(p.exempt),
+          weight: Number(p.weight || 1),
+        }));
+      } else {
+        receivables = sourcePlayers.map((row) => ({
+          player_id: Number(row.player_id),
+          amount: row.exempt ? 0 : Number(row.amount || 0),
+          exempt: Boolean(row.exempt),
+          weight: Number(row.weight || 1),
+        }));
+      }
+      if (costSplit[2] === "preview") return { data: { total, receivables } };
+      return { data: check(await supabase.rpc("create_match_cost_split", {
+        p_club_id: clubId,
+        p_match_id: Number(costSplit[1]),
+        p_stadium: Number(data.stadium || 0),
+        p_referee: Number(data.referee || 0),
+        p_water: Number(data.water || 0),
+        p_equipment: Number(data.equipment || 0),
+        p_other: Number(data.other || 0),
+        p_sponsorship: Number(data.sponsorship || 0),
+        p_method: splitMethod,
+        p_players: receivables
+      })) };
+    }
     if (clean.endsWith("/polls") && method === "GET") { const polls = check(await supabase.from("club_polls").select("*,options:club_poll_options(*)").eq("club_id", clubId).order("created_at", { ascending: false })) || []; const electors = check(await supabase.from("club_poll_electors").select("poll_id").eq("club_id", clubId).eq("user_id", current.id)) || []; const votes = check(await supabase.from("club_poll_votes").select("poll_id,option_id").eq("club_id", clubId).eq("user_id", current.id)) || []; const now = Date.now(); return { data: polls.map((poll) => ({ ...poll, options: (poll.options || []).sort((a, b) => a.sort_order - b.sort_order), eligible: electors.some((row) => row.poll_id === poll.id), voted: votes.some((row) => row.poll_id === poll.id), closed: new Date(poll.deadline).getTime() < now, eligible_count: electors.filter((row) => row.poll_id === poll.id).length })) }; }
     if (clean.endsWith("/polls") && method === "POST") return { data: check(await supabase.rpc("create_club_poll", { p_club_id: clubId, p_title: data.title, p_description: data.description || null, p_deadline: data.deadline, p_options: data.options || [] })) };
     const pollVote = clean.match(/\/polls\/(\d+)\/vote$/); if (pollVote && method === "POST") return { data: check(await supabase.rpc("cast_club_poll_vote", { p_club_id: clubId, p_poll_id: Number(pollVote[1]), p_option_id: Number(data.option_id) })) };

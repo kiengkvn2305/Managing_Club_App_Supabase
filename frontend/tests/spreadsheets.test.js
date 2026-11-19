@@ -32,3 +32,12 @@ test('team export omits club memberships while retaining team position and jerse
   const club = (await buildMembersWorkbook(items)).worksheets[0];
   assert.equal(club.getRow(2).getCell(5).value, 'A, B');
 });
+
+test('export protects against formula injection for values starting with formula operators', async () => {
+  const items = [{ full_name: '=SUM(1,2)', notes: '+danger', phone: '-0912345678', teams: [] }];
+  const book = await buildMembersWorkbook(items);
+  const sheet = book.worksheets[0];
+  assert.equal(sheet.getRow(2).getCell(1).value, "'=SUM(1,2)");
+  assert.equal(sheet.getRow(2).getCell(3).value, "'-0912345678");
+  assert.equal(sheet.getRow(2).getCell(8).value, "'+danger");
+});
