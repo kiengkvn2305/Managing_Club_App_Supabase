@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dashboardMetrics } from '../src/supabase-api.js';
+import { dashboardMetrics, latestTeamDuesRate } from '../src/supabase-api.js';
 
 test('dashboard metrics count player profiles, active profiles and manager memberships separately', () => {
   assert.deepEqual(
@@ -10,5 +10,16 @@ test('dashboard metrics count player profiles, active profiles and manager membe
       teamsCount: 3,
     }),
     { members_count: 3, active_members_count: 2, teams_count: 3, managers_count: 1 },
+  );
+});
+
+test('team card shows the latest effective dues rate and ignores future rates', () => {
+  assert.deepEqual(
+    latestTeamDuesRate([
+      { team_id: 7, effective_month: '2026-01-01', amount: 100000 },
+      { team_id: 7, effective_month: '2026-11-01', amount: 150000 },
+      { team_id: 7, effective_month: '2026-12-01', amount: 200000 },
+    ], 7, '2026-11-19'),
+    { team_id: 7, effective_month: '2026-11-01', amount: 150000 },
   );
 });

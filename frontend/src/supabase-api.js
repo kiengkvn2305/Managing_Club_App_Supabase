@@ -23,6 +23,9 @@ export function dashboardMetrics({ players = [], managerMemberships = [], teamsC
     managers_count: managerMemberships.filter((membership) => membership.status === "active" && membership.role !== "member").length,
   };
 }
+export function latestTeamDuesRate(rates = [], teamId, today = new Date().toISOString().slice(0, 10)) {
+  return rates.filter((rate) => String(rate.team_id) === String(teamId) && String(rate.effective_month) <= today).sort((a, b) => String(b.effective_month).localeCompare(String(a.effective_month)))[0] || null;
+}
 const viteEnv = import.meta.env || {};
 let supabaseClient;
 const supabaseGlobalKey = "__fcms_supabase_client__";
@@ -45,7 +48,7 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     return { ...club, formats: club.formats || [club.format], membership_role: role, can_view_finance: finance, can_manage_finance: role === "owner" || title === "Thủ quỹ", can_manage_activities: perms.roster || title === "Phó chủ nhiệm CLB", can_view_inventory: ["owner", "co_owner", "general_manager", "equipment_manager"].includes(role), can_manage_inventory: ["owner", "co_owner", "general_manager", "equipment_manager"].includes(role), avatar_version: club.avatar_path || null, background_version: club.background_path || null };
   }
   async function clubs() { const current = await user(); const rows = check(await supabase.from("club_members").select("role,title,club:clubs(*)").eq("user_id", current.id).eq("status", "active")) || []; return { data: await Promise.all(rows.filter((x) => x.club && !x.club.deleted_at).map((x) => resource(x, current.id))) }; }
-  async function teams(clubId) {
+  async function teams(clubId, userId) {
     const [teamResult, managerResult, membershipResult, playerResult] = await Promise.all([
       supabase.from("teams").select("*").eq("club_id", clubId).order("name"),
       supabase.from("team_managers").select("team_id,membership_id").eq("club_id", clubId),
@@ -56,12 +59,16 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     const managers = check(managerResult) || [];
     const membershipRows = check(membershipResult) || [];
     const playerRows = check(playerResult) || [];
+    const viewer = membershipRows.find((membership) => membership.user_id === userId);
+    const canViewFinance = viewer && (viewer.role === "owner" || ["Chủ nhiệm CLB", "Phó chủ nhiệm CLB", "Thủ quỹ", "HLV"].includes(viewer.title));
+    const duesRates = canViewFinance ? check(await supabase.from("team_dues_rates").select("team_id,effective_month,amount").eq("club_id", clubId)) || [] : [];
     const captainIds = rows.map((team) => team.captain_id).filter(Boolean);
     const captains = captainIds.length ? check(await supabase.from("player_profiles").select("id,full_name").eq("club_id", clubId).in("id", captainIds)) || [] : [];
     return {
       data: rows.map((team) => ({
         ...team,
         members_count: playerRows.filter((player) => player.team_id === team.id).length,
+        monthly_dues: latestTeamDuesRate(duesRates, team.id),
         captain_name: captains.find((player) => player.id === team.captain_id)?.full_name || null,
         managers: managers.filter((manager) => manager.team_id === team.id).map((manager) => {
           const membership = membershipRows.find((candidate) => candidate.id === manager.membership_id);
@@ -144,7 +151,7 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     const teamPlayers = clean.match(/\/teams\/(\d+)\/players$/); if (teamPlayers && method === "PATCH") return { data: check(await supabase.rpc("sync_team_players", { p_club_id: clubId, p_team_id: Number(teamPlayers[1]), p_player_ids: (data.player_ids || []).map(Number) })) };
     const teamPlayer = clean.match(/\/teams\/(\d+)\/players\/(\d+)\/(jersey|position)$/); if (teamPlayer && method === "PATCH") return { data: check(await supabase.rpc("set_team_player_attribute", { p_club_id: clubId, p_team_id: Number(teamPlayer[1]), p_player_id: Number(teamPlayer[2]), p_attribute: teamPlayer[3] === "jersey" ? "jersey_number" : "position", p_value: String(teamPlayer[3] === "jersey" ? data.jersey_number ?? "" : data.position ?? "") })) };
     if (clean.endsWith("/dashboard")) return dashboard(clubId);
-    if (clean.endsWith("/teams") && method === "GET") return teams(clubId);
+    if (clean.endsWith("/teams") && method === "GET") return teams(clubId, current.id);
     if (clean.endsWith("/teams") && method === "POST") return { data: check(await supabase.from("teams").insert({ club_id: clubId, name: data.name, format: data.format }).select().single()) };
     if (clean === `/clubs/${clubId}/board-members` && method === "GET") { const rows = check(await supabase.from("club_board_members").select("id,player_id,title,archived_at,player:player_profiles(full_name,email,date_of_birth)").eq("club_id", clubId).is("archived_at", null).order("id")) || []; const rates = check(await supabase.from("board_dues_rates").select("player_id,team_id,amount,effective_month,ends_before,team:teams(name)").eq("club_id", clubId).order("effective_month")) || []; const shared = check(await supabase.from("shared_board_dues_rates").select("team_id,amount,effective_month,team:teams(name)").eq("club_id", clubId).order("effective_month")) || []; return { data: rows.map((row) => ({ id: row.id, player_id: row.player_id, title: row.title, full_name: row.player?.full_name, email: row.player?.email, date_of_birth: row.player?.date_of_birth, dues_rates: rates.filter((rate) => rate.player_id === row.player_id) })), shared_rates: shared }; }
     if (clean === `/clubs/${clubId}/board-members` && method === "POST") { const row = check(await supabase.from("club_board_members").insert({ club_id: clubId, player_id: Number(data.player_id), title: String(data.title).trim() }).select().single()); check(await supabase.from("board_membership_periods").insert({ club_id: clubId, player_id: Number(data.player_id), starts_month: `${new Date().toISOString().slice(0, 7)}-01` })); return { data: row }; }
