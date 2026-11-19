@@ -26,6 +26,11 @@ export async function openMatchAttendance({ match, api, base }) {
       <select id="match-player-sort" style="margin:0;">
         <option value="name_asc">Tên A–Z</option>
         <option value="name_desc">Tên Z–A</option>
+        <option value="att_present">Điểm danh: Có mặt lên đầu</option>
+        <option value="att_absent">Điểm danh: Vắng lên đầu</option>
+        <option value="att_excused">Điểm danh: Có phép lên đầu</option>
+        <option value="att_unmarked">Điểm danh: Chưa điểm danh</option>
+        <option value="rsvp_yes">Đăng ký: Tham gia lên đầu</option>
         <option value="jersey">Số áo</option>
         <option value="position">Vị trí</option>
         <option value="dob">Ngày sinh</option>
@@ -57,6 +62,31 @@ export async function openMatchAttendance({ match, api, base }) {
       tableRows.sort((a, b) => {
         if (sortVal === 'name_asc') return compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
         if (sortVal === 'name_desc') return -1 * compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'att_present') {
+          const va = a.querySelector('[data-attendance]')?.value === 'present' ? 1 : 0;
+          const vb = b.querySelector('[data-attendance]')?.value === 'present' ? 1 : 0;
+          return vb - va || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        }
+        if (sortVal === 'att_absent') {
+          const va = a.querySelector('[data-attendance]')?.value === 'absent' ? 1 : 0;
+          const vb = b.querySelector('[data-attendance]')?.value === 'absent' ? 1 : 0;
+          return vb - va || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        }
+        if (sortVal === 'att_excused') {
+          const va = a.querySelector('[data-attendance]')?.value === 'excused' ? 1 : 0;
+          const vb = b.querySelector('[data-attendance]')?.value === 'excused' ? 1 : 0;
+          return vb - va || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        }
+        if (sortVal === 'att_unmarked') {
+          const va = a.querySelector('[data-attendance]')?.value === 'unmarked' ? 1 : 0;
+          const vb = b.querySelector('[data-attendance]')?.value === 'unmarked' ? 1 : 0;
+          return vb - va || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        }
+        if (sortVal === 'rsvp_yes') {
+          const va = a.querySelector('[data-rsvp]')?.value === 'yes' ? 1 : 0;
+          const vb = b.querySelector('[data-rsvp]')?.value === 'yes' ? 1 : 0;
+          return vb - va || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        }
         if (sortVal === 'jersey') return Number(a.dataset.jersey) - Number(b.dataset.jersey);
         if (sortVal === 'position') return a.dataset.pos.localeCompare(b.dataset.pos, 'vi');
         if (sortVal === 'dob') return a.dataset.dob.localeCompare(b.dataset.dob);
