@@ -159,6 +159,7 @@ export function openMemberPickerModal({
   const sortOptions = [
     ["name_asc", "Tên A–Z"],
     ["name_desc", "Tên Z–A"],
+    ["dob", "Theo ngày sinh"],
     ["notes", "Theo ghi chú"],
     ["foot", "Theo chân thuận"],
     ["position", "Theo vị trí"],
@@ -182,17 +183,20 @@ export function openMemberPickerModal({
     const isChecked = selectedSet.has(String(x.id));
     const displayName = x.full_name || x.name || `Thành viên #${x.id}`;
     const details = [
+      x.date_of_birth ? `Ngày sinh: ${formatDate(x.date_of_birth)}` : "",
+      x.notes ? `Ghi chú: ${x.notes}` : "",
       x.jersey_number != null ? `#${x.jersey_number}` : "",
       x.position ? `Vị trí: ${x.position}` : "",
       x.preferred_foot ? footLabel(x.preferred_foot) : "",
       x.title ? `Chức danh: ${x.title}` : "",
       x.email || "",
       x.phone || "",
-      x.notes ? `Ghi chú: ${x.notes}` : "",
     ].filter(Boolean).join(" · ");
 
     const searchBlob = [
       displayName,
+      x.date_of_birth,
+      x.date_of_birth ? formatDate(x.date_of_birth) : "",
       x.email,
       x.phone,
       x.notes,
@@ -205,6 +209,7 @@ export function openMemberPickerModal({
       <label data-picker-row
         data-id="${e(x.id)}"
         data-full-name="${e(displayName)}"
+        data-dob="${e(x.date_of_birth || "")}"
         data-notes="${e(x.notes || "")}"
         data-foot="${e(x.preferred_foot || "")}"
         data-pos="${e(x.position || "")}"
@@ -281,6 +286,7 @@ export function openMemberPickerModal({
       rows.sort((a, b) => {
         if (sortVal === "name_asc") return compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
         if (sortVal === "name_desc") return -1 * compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "dob") return (a.dataset.dob || "9999").localeCompare(b.dataset.dob || "9999") || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
         if (sortVal === "notes") return (b.dataset.notes ? 1 : 0) - (a.dataset.notes ? 1 : 0) || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
         if (sortVal === "foot") return (a.dataset.foot || "").localeCompare(b.dataset.foot || "") || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
         if (sortVal === "position") return (a.dataset.pos || "").localeCompare(b.dataset.pos || "") || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);

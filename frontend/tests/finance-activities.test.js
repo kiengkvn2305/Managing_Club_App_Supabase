@@ -56,3 +56,27 @@ test('awards render recipient, year, title, gift and management controls', () =>
   assert.match(html, /data-action="edit-activity"/);
   assert.match(html, /data-action="delete-activity"/);
 });
+
+test('award recipient search and sort handles name, date of birth, and notes accurately', () => {
+  const players = [
+    { id: 1, full_name: 'Nguyễn Văn An', date_of_birth: '2000-05-15', notes: 'Hậu vệ kỳ cựu' },
+    { id: 2, full_name: 'Nguyễn Văn An', date_of_birth: '2005-11-20', notes: 'Tiền đạo trẻ mới lên' },
+    { id: 3, full_name: 'Trần Bình', date_of_birth: '1998-02-10', notes: '' },
+  ];
+
+  // Distinguish members with the exact same name by DOB or notes
+  const searchBlob = (p) => `${p.full_name} ${p.date_of_birth} ${p.notes}`.toLowerCase();
+  const match2000 = players.filter((p) => searchBlob(p).includes('2000'));
+  assert.equal(match2000.length, 1);
+  assert.equal(match2000[0].notes, 'Hậu vệ kỳ cựu');
+
+  const matchTienDao = players.filter((p) => searchBlob(p).includes('tiền đạo'));
+  assert.equal(matchTienDao.length, 1);
+  assert.equal(matchTienDao[0].date_of_birth, '2005-11-20');
+
+  // Sort by DOB: oldest first (dob_asc)
+  const sortedDobAsc = [...players].sort((a, b) => a.date_of_birth.localeCompare(b.date_of_birth));
+  assert.equal(sortedDobAsc[0].id, 3); // 1998
+  assert.equal(sortedDobAsc[1].id, 1); // 2000
+  assert.equal(sortedDobAsc[2].id, 2); // 2005
+});

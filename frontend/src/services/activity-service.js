@@ -28,7 +28,7 @@ export function createActivityService({ supabase }) {
           .not('date_of_birth', 'is', null),
         supabase
           .from('player_profiles')
-          .select('id,full_name,status')
+          .select('id,full_name,date_of_birth,notes,phone,email,status')
           .eq('club_id', clubId)
           .order('full_name', { ascending: true }),
       ]);
@@ -46,6 +46,10 @@ export function createActivityService({ supabase }) {
           players: (check(p) || []).map((x) => ({
             id: x.id,
             full_name: x.full_name,
+            date_of_birth: x.date_of_birth || null,
+            notes: x.notes || '',
+            phone: x.phone || '',
+            email: x.email || '',
             status: x.status,
           })),
         },

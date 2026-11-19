@@ -21,6 +21,213 @@ function saveDialog(title, description, fields, save) {
     finally { if (button.isConnected) button.disabled = false; }
   });
 }
+
+export function openAwardDialog({
+  title = 'Khen thưởng cá nhân',
+  description = 'Ghi nhận thành tích, danh hiệu và phần quà trao tặng cho thành viên CLB.',
+  initialAward = {},
+  players = [],
+  onSubmit,
+}) {
+  const selectedPlayerId = initialAward.player_id ? String(initialAward.player_id) : '';
+  const initialPlayer = players.find((p) => String(p.id) === selectedPlayerId);
+  const selectedPlayerName = initialPlayer ? initialPlayer.full_name : (initialAward.player_name || '');
+  const awardYear = initialAward.award_year || new Date().getFullYear();
+  const awardTitle = initialAward.title || '';
+  const gift = initialAward.gift || '';
+  const notes = initialAward.notes || '';
+
+  // Partition: pre-selected recipient at the top
+  const selectedPlayers = players.filter((p) => String(p.id) === selectedPlayerId);
+  const unselectedPlayers = players.filter((p) => String(p.id) !== selectedPlayerId);
+  selectedPlayers.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+  unselectedPlayers.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
+  const orderedPlayers = [...selectedPlayers, ...unselectedPlayers];
+
+  const searchBlobOf = (p) =>
+    [
+      p.full_name,
+      p.date_of_birth,
+      p.date_of_birth ? formatDate(p.date_of_birth) : '',
+      p.notes,
+      p.email,
+      p.phone,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('vi');
+
+  const renderRow = (p) => {
+    const isChecked = String(p.id) === selectedPlayerId;
+    const dobFormatted = p.date_of_birth ? formatDate(p.date_of_birth) : '';
+    return `
+      <label data-award-player-row
+        data-id="${e(p.id)}"
+        data-full-name="${e(p.full_name)}"
+        data-dob="${e(p.date_of_birth || '')}"
+        data-notes="${e(p.notes || '')}"
+        data-search="${e(searchBlobOf(p))}"
+        style="display:grid;grid-template-columns:28px minmax(140px, 1.2fr) minmax(115px, 0.9fr) minmax(140px, 1.4fr);gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;background:${isChecked ? 'var(--primary-subtle, rgba(16, 185, 129, 0.08))' : 'var(--surface)'};transition:background 0.15s;"
+      >
+        <input type="radio" name="selected_player_id" value="${e(p.id)}" ${isChecked ? 'checked' : ''} style="margin:0;cursor:pointer;width:18px;height:18px;">
+        <div style="min-width:0;">
+          <strong style="color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">${e(p.full_name)}</strong>
+          ${p.email || p.phone ? `<small style="color:var(--muted);font-size:11px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${e([p.email, p.phone].filter(Boolean).join(' · '))}</small>` : ''}
+        </div>
+        <div style="font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;">
+          ${dobFormatted ? `📅 ${e(dobFormatted)}` : '<span style="color:var(--muted);opacity:0.5;">Chưa có NS</span>'}
+        </div>
+        <div style="min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          ${p.notes ? `<span style="background:var(--bg-subtle, rgba(0,0,0,0.06));padding:2px 8px;border-radius:4px;border:1px solid var(--border);color:var(--text);display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;" title="${e(p.notes)}">📝 ${e(p.notes)}</span>` : '<span style="color:var(--muted);opacity:0.5;">—</span>'}
+        </div>
+      </label>
+    `;
+  };
+
+  const fields = `
+    <div style="grid-column:1/-1;">
+      <div style="display:grid;grid-template-columns:130px 1fr;gap:12px;margin-bottom:12px;">
+        <label style="margin:0;">
+          <span style="display:block;font-weight:600;font-size:13px;margin-bottom:4px;">Năm khen thưởng *</span>
+          <input type="number" name="award_year" min="1900" max="2100" value="${e(awardYear)}" required style="margin:0;width:100%;">
+        </label>
+        <label style="margin:0;">
+          <span style="display:block;font-weight:600;font-size:13px;margin-bottom:4px;">Danh hiệu / Thành tích *</span>
+          <input type="text" name="title" value="${e(awardTitle)}" placeholder="VD: Cầu thủ xuất sắc nhất năm, Vua phá lưới..." required style="margin:0;width:100%;">
+        </label>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <label style="margin:0;">
+          <span style="display:block;font-weight:600;font-size:13px;margin-bottom:4px;">Phần quà (tiền / hiện vật)</span>
+          <input type="text" name="gift" value="${e(gift)}" placeholder="VD: 500.000đ, Cúp lưu niệm, Giày thi đấu..." style="margin:0;width:100%;">
+        </label>
+        <label style="margin:0;">
+          <span style="display:block;font-weight:600;font-size:13px;margin-bottom:4px;">Ghi chú trao thưởng</span>
+          <input type="text" name="notes" value="${e(notes)}" placeholder="Nhập lý do trao thưởng hoặc ghi chú thêm..." style="margin:0;width:100%;">
+        </label>
+      </div>
+
+      <div style="margin-bottom:8px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <div>
+          <strong style="font-size:14px;color:var(--text);">Chọn thành viên nhận thưởng *</strong>
+          <span style="font-size:12px;color:var(--muted);display:block;">Tìm theo tên, ngày sinh hoặc ghi chú để chọn chính xác thành viên.</span>
+        </div>
+        <span data-award-selected-badge style="font-size:12.5px;font-weight:600;color:${selectedPlayerName ? 'var(--green)' : 'var(--muted)'};">${selectedPlayerName ? `✓ Đã chọn: ${e(selectedPlayerName)}` : 'Chưa chọn thành viên'}</span>
+      </div>
+
+      <div class="filters" style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px;">
+        <input type="search" data-award-player-search placeholder="Tìm theo họ tên, ngày sinh (dd/mm/yyyy), ghi chú…" aria-label="Tìm thành viên" style="margin:0;width:100%;">
+        <select data-award-player-sort aria-label="Sắp xếp" style="margin:0;">
+          <option value="name_asc">Tên A–Z</option>
+          <option value="name_desc">Tên Z–A</option>
+          <option value="dob_asc">Ngày sinh (Lớn trước)</option>
+          <option value="dob_desc">Ngày sinh (Nhỏ trước)</option>
+          <option value="notes">Theo ghi chú</option>
+        </select>
+      </div>
+
+      <div style="display:grid;grid-template-columns:28px minmax(140px, 1.2fr) minmax(115px, 0.9fr) minmax(140px, 1.4fr);gap:10px;padding:8px 12px;font-size:12px;font-weight:600;color:var(--muted);background:var(--bg-subtle, rgba(0,0,0,0.03));border:1px solid var(--border);border-bottom:none;border-radius:6px 6px 0 0;">
+        <span></span>
+        <span>Họ và tên</span>
+        <span>Ngày sinh</span>
+        <span>Ghi chú thành viên</span>
+      </div>
+
+      <div data-award-player-list style="max-height:36dvh;overflow-y:auto;border:1px solid var(--border);border-radius:0 0 6px 6px;background:var(--surface);">
+        ${orderedPlayers.map(renderRow).join('')}
+      </div>
+      <p data-award-player-empty hidden style="text-align:center;color:var(--muted);padding:16px;">Không tìm thấy thành viên phù hợp với từ khóa.</p>
+    </div>
+  `;
+
+  const modal = saveDialog(
+    title,
+    description,
+    fields,
+    async (form) => {
+      const selectedRadio = form.querySelector('input[name="selected_player_id"]:checked');
+      if (!selectedRadio || !selectedRadio.value) {
+        throw new Error('Vui lòng click chọn thành viên nhận thưởng từ danh sách.');
+      }
+      const awardYear = Number(form.elements.award_year.value);
+      const awardTitle = form.elements.title.value.trim();
+      const giftVal = form.elements.gift.value.trim() || null;
+      const notesVal = form.elements.notes.value.trim() || null;
+
+      if (!awardYear || awardYear < 1900 || awardYear > 2100) {
+        throw new Error('Vui lòng nhập năm khen thưởng hợp lệ (1900 - 2100).');
+      }
+      if (!awardTitle) {
+        throw new Error('Vui lòng nhập danh hiệu / thành tích khen thưởng.');
+      }
+
+      return await onSubmit({
+        player_id: Number(selectedRadio.value),
+        award_year: awardYear,
+        title: awardTitle,
+        gift: giftVal,
+        notes: notesVal,
+      });
+    }
+  );
+
+  modal.classList.add('member-picker-dialog');
+  modal.style.width = 'min(920px, 96vw)';
+
+  const searchInput = modal.querySelector('[data-award-player-search]');
+  const sortSelect = modal.querySelector('[data-award-player-sort]');
+  const listEl = modal.querySelector('[data-award-player-list]');
+  const emptyEl = modal.querySelector('[data-award-player-empty]');
+  const badgeEl = modal.querySelector('[data-award-selected-badge]');
+
+  // Live badge update and highlight when radio is clicked
+  listEl.addEventListener('change', (e) => {
+    const radio = e.target.closest('input[name="selected_player_id"]');
+    if (radio && radio.checked) {
+      const row = radio.closest('[data-award-player-row]');
+      const name = row?.dataset?.fullName || 'thành viên';
+      if (badgeEl) {
+        badgeEl.textContent = `✓ Đã chọn: ${name}`;
+        badgeEl.style.color = 'var(--green)';
+      }
+      listEl.querySelectorAll('[data-award-player-row]').forEach((r) => {
+        r.style.background = r === row ? 'var(--primary-subtle, rgba(16, 185, 129, 0.08))' : 'var(--surface)';
+      });
+    }
+  });
+
+  const applyFilterAndSort = (shouldSort = false) => {
+    const query = (searchInput.value || '').trim().toLocaleLowerCase('vi');
+    const sortVal = sortSelect.value;
+    const rows = [...listEl.querySelectorAll('[data-award-player-row]')];
+
+    let visibleCount = 0;
+    rows.forEach((row) => {
+      const match = !query || row.dataset.search.includes(query);
+      row.hidden = !match;
+      if (match) visibleCount++;
+    });
+    if (emptyEl) emptyEl.hidden = visibleCount > 0;
+
+    if (shouldSort) {
+      rows.sort((a, b) => {
+        if (sortVal === 'name_asc') return compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'name_desc') return -1 * compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'dob_asc') return (a.dataset.dob || '9999').localeCompare(b.dataset.dob || '9999') || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'dob_desc') return (b.dataset.dob || '0000').localeCompare(a.dataset.dob || '0000') || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === 'notes') return (b.dataset.notes ? 1 : 0) - (a.dataset.notes ? 1 : 0) || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        return 0;
+      });
+      rows.forEach((r) => listEl.append(r));
+    }
+  };
+
+  searchInput.addEventListener('input', () => applyFilterAndSort(false));
+  sortSelect.addEventListener('change', () => applyFilterAndSort(true));
+
+  return modal;
+}
 export async function activityAction(action, id, { state: s, api, base, reload }) {
   const post = async (path, data) => { await api.post(base(path), data); await reload(); toast('Đã lưu.'); };
   if (['edit-activity', 'delete-activity', 'approve-activity'].includes(action)) {
@@ -38,24 +245,20 @@ export async function activityAction(action, id, { state: s, api, base, reload }
         players = await allPlayers(api, base);
         s.activities.players = players;
       }
-      const sortedPlayers = [...players].sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
-      fields =
-        select('player_id', 'Thành viên nhận thưởng', sortedPlayers.map((p) => [p.id, p.full_name]), item.player_id) +
-        field('award_year', 'Năm khen thưởng', item.award_year, 'number', true).replace('min="0" max="999"', 'min="1900" max="2100"') +
-        field('title', 'Danh hiệu / Thành tích', item.title, 'text', true) +
-        field('gift', 'Phần quà (tiền thưởng / hiện vật)', item.gift || '') +
-        field('notes', 'Ghi chú', item.notes || '', 'textarea');
+      return openAwardDialog({
+        title: 'Chỉnh sửa khen thưởng',
+        description: 'Cập nhật danh hiệu, phần quà và thành viên nhận thưởng.',
+        initialAward: item,
+        players,
+        onSubmit: async (data) => {
+          await api.patch(base(path), data);
+          await reload();
+          toast('Đã cập nhật hoạt động.');
+        },
+      });
     }
     return saveDialog('Chỉnh sửa hoạt động', 'Cập nhật thông tin hoạt động.', fields, async (form) => {
-      const payload = Object.fromEntries(new FormData(form));
-      if (kind === 'awards') {
-        payload.player_id = Number(payload.player_id);
-        payload.award_year = Number(payload.award_year);
-        payload.title = (payload.title || '').trim();
-        payload.gift = (payload.gift || '').trim() || null;
-        payload.notes = (payload.notes || '').trim() || null;
-      }
-      await api.patch(base(path), payload);
+      await api.patch(base(path), Object.fromEntries(new FormData(form)));
       await reload();
       toast('Đã cập nhật hoạt động.');
     });
@@ -79,34 +282,15 @@ export async function activityAction(action, id, { state: s, api, base, reload }
       toast('Câu lạc bộ chưa có thành viên nào. Hãy thêm thành viên trước.', true);
       return;
     }
-    const sortedPlayers = [...players].sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
-    return saveDialog(
-      'Khen thưởng cá nhân',
-      'Lưu danh hiệu và phần quà theo năm cho thành viên CLB.',
-      select('player_id', 'Thành viên nhận thưởng', sortedPlayers.map((p) => [p.id, p.full_name])) +
-        field('award_year', 'Năm khen thưởng', new Date().getFullYear(), 'number', true).replace('min="0" max="999"', 'min="1900" max="2100"') +
-        field('title', 'Danh hiệu / Thành tích', '', 'text', true) +
-        field('gift', 'Phần quà (tiền thưởng / hiện vật)', '') +
-        field('notes', 'Ghi chú', '', 'textarea'),
-      async (form) => {
-        const playerId = Number(form.elements.player_id.value);
-        const awardYear = Number(form.elements.award_year.value);
-        const title = form.elements.title.value.trim();
-        const gift = form.elements.gift.value.trim() || null;
-        const notes = form.elements.notes.value.trim() || null;
-
-        if (!playerId) throw new Error('Vui lòng chọn thành viên.');
-        if (!title) throw new Error('Vui lòng nhập danh hiệu.');
-
-        await post('/activities/awards', {
-          player_id: playerId,
-          award_year: awardYear,
-          title,
-          gift,
-          notes,
-        });
-      }
-    );
+    return openAwardDialog({
+      title: 'Khen thưởng cá nhân',
+      description: 'Lưu danh hiệu và phần quà theo năm cho thành viên CLB.',
+      initialAward: { award_year: new Date().getFullYear() },
+      players,
+      onSubmit: async (data) => {
+        await post('/activities/awards', data);
+      },
+    });
   }
   if (action === 'attendance') {
     const training = s.activities.trainings.find((x) => String(x.id) === id);
