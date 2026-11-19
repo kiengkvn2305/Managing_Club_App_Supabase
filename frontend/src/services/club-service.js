@@ -1,20 +1,33 @@
 import { check, dashboardMetrics, page, ROLE } from './service-helpers.js';
 
 export function createClubService({ supabase, authService }) {
-  const financeRoles = ['owner', 'co_owner', 'general_manager', 'treasurer'];
-  const financeViewTitles = [
-    'Chủ nhiệm CLB',
-    'Phó chủ nhiệm CLB',
-    'Thủ quỹ',
-    'HLV',
-    'Quản lý tài chính',
+  const financeRoles = [
+    'owner',
+    'co_owner',
+    'general_manager',
+    'treasurer',
+    'sporting_manager',
+    'equipment_manager',
+    'hr_manager',
   ];
-  const financeManageTitles = [
-    'Chủ nhiệm CLB',
-    'Phó chủ nhiệm CLB',
-    'Thủ quỹ',
-    'Quản lý tài chính',
-  ];
+  const financeManageRoles = ['owner', 'co_owner', 'general_manager', 'treasurer'];
+
+  const isFinanceTitle = (t) => {
+    if (!t) return false;
+    const lower = t.toLowerCase().trim();
+    return (
+      lower.includes('thủ quỹ') ||
+      lower.includes('tài chính') ||
+      lower.includes('chủ nhiệm') ||
+      lower.includes('kế toán') ||
+      lower.includes('quản lý') ||
+      lower.includes('ban chủ nhiệm') ||
+      lower.includes('bcn') ||
+      lower.includes('cán sự') ||
+      lower.includes('uỷ viên') ||
+      lower.includes('ủy viên')
+    );
+  };
 
   async function resource(row, userId) {
     const club = row.club || row;
@@ -34,10 +47,31 @@ export function createClubService({ supabase, authService }) {
     const title = (membership.title || '').trim();
     const perms = ROLE[role] || ROLE.member;
 
+    let isBoardMember = false;
+    let boardTitle = '';
+    const boardMemberResult = await supabase
+      .from('club_board_members')
+      .select('title, player:player_profiles!inner(user_id)')
+      .eq('club_id', club.id)
+      .eq('player.user_id', userId)
+      .is('archived_at', null)
+      .maybeSingle();
+
+    if (boardMemberResult?.data) {
+      isBoardMember = true;
+      boardTitle = (boardMemberResult.data.title || '').trim();
+    }
+
     const canViewFinance =
-      financeRoles.includes(role) || financeViewTitles.includes(title);
+      financeRoles.includes(role) ||
+      isFinanceTitle(title) ||
+      isBoardMember ||
+      ['hlv', 'huấn luyện viên'].includes(title.toLowerCase());
+
     const canManageFinance =
-      financeRoles.includes(role) || financeManageTitles.includes(title);
+      financeManageRoles.includes(role) ||
+      isFinanceTitle(title) ||
+      isBoardMember;
 
     return {
       ...club,
@@ -45,7 +79,10 @@ export function createClubService({ supabase, authService }) {
       membership_role: role,
       can_view_finance: canViewFinance,
       can_manage_finance: canManageFinance,
-      can_manage_activities: perms.roster || title === 'Phó chủ nhiệm CLB',
+      can_manage_activities:
+        perms.roster ||
+        isBoardMember ||
+        isFinanceTitle(title),
       can_view_inventory: [
         'owner',
         'co_owner',

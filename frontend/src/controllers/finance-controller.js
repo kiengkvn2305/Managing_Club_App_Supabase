@@ -26,16 +26,18 @@ export function createFinanceController(ctx) {
           '<div class="field"><label for="f-receipt">Ảnh xác nhận (không bắt buộc)</label><input id="f-receipt" name="receipt" type="file" accept="image/jpeg,image/png,image/webp"><small data-error="receipt"></small></div>',
         (form) =>
           ctx.submit(form, 'finance', async (data) => {
+            const cleanAmount = String(data.amount || '').replace(/[,. \s]/g, '');
             if (
-              !/^[1-9]\d*$/.test(data.amount) ||
-              Number(data.amount) > 1000000000000
+              !/^[1-9]\d*$/.test(cleanAmount) ||
+              Number(cleanAmount) > 1000000000000
             ) {
               throw new Error(
                 'Số tiền phải là số nguyên từ 1 đến 1.000.000.000.000 đồng.'
               );
             }
             const upload = new FormData(form);
-            if (!form.elements.receipt.files.length) upload.delete('receipt');
+            upload.set('amount', cleanAmount);
+            if (!form.elements.receipt?.files?.length) upload.delete('receipt');
             await ctx.api.post(ctx.base('/finance'), upload);
             ctx.state.financePage = 1;
             await ctx.loadView();

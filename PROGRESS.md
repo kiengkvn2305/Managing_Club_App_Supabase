@@ -10,6 +10,12 @@ Ngày cập nhật: 2026-11-19
     - `frontend/src/views/`: 7 view modules hiển thị độc lập (dashboard, board, activities, club, profile, auth, dues-page).
     - `frontend/src/controllers/`: 11 controllers tiếp nhận và xử lý hành vi người dùng (club, roster, dues, finance, board, match, inventory, activity, recruitment, poll, discovery).
     - `app.js` và `supabase-api.js`: Đóng vai trò Router & Facade tinh gọn, định dạng chuẩn (thụt lề 2 spaces, không nén hàng).
+- Sửa triệt để lỗi nhập thu chi bị forbid, đồng bộ quyền hạn giữa Ban chủ nhiệm (`club_board_members`) và thành viên (`club_members`):
+  - Migration `20261119000011_fix_finance_permissions_and_board_sync.sql` áp dụng thành công trên local và remote (`dandxiwdedbwxtvokeag`).
+  - Hàm `is_finance_title(text)` nhận diện linh hoạt mọi chức danh liên quan tài chính/quản lý (không phân biệt hoa thường, hỗ trợ "Thủ quỹ", "Chủ nhiệm", "Phó chủ nhiệm", "Kế toán", "Quản lý tài chính", "Cán sự", "Uỷ viên BCN",...).
+  - Mở rộng hàm `can_manage_finance` và `can_view_finance` để tự động kiểm tra cả bảng `club_board_members` thông qua hồ sơ cầu thủ liên kết (`player_profiles`), loại bỏ lỗi phân quyền khi cán sự BCN ghi thu chi.
+  - Cập nhật `record_finance_transaction` tách bạch các lỗi cụ thể (`forbidden`, `invalid_amount`, `invalid_description`) và cơ chế fallback actor an toàn.
+  - Frontend: `club-service.js` đồng bộ kiểm tra `club_board_members` và chuẩn hóa tiền tệ (loại bỏ dấu phân tách hàng nghìn) tại `finance-controller.js`. Định dạng chuẩn layout `finance-page.js`.
 - Sửa triệt để lỗi thu quỹ và đóng quỹ, phân quyền đồng bộ:
   - Migration `20261119000010_fix_dues_permissions_and_recording.sql` sửa hàm RPC `record_player_dues`, căn chỉnh tham số ghi nhận thanh toán quỹ và nhật ký tài chính.
   - Mở rộng quyền quản lý thu chi (`can_manage_finance`) và xem thu chi (`can_view_finance`) cho các vai trò và chức danh Ban chủ nhiệm (Thủ quỹ, Chủ nhiệm CLB, Phó chủ nhiệm CLB, Quản lý tài chính, HLV).
@@ -29,7 +35,7 @@ Ngày cập nhật: 2026-11-19
 ## Đã kiểm chứng local & remote
 
 - Docker daemon và Supabase local stack đang chạy ổn định.
-- Remote project `dandxiwdedbwxtvokeag` đã nhận đầy đủ 11 migrations (từ `20261119000000` đến `20261119000010`).
+- Remote project `dandxiwdedbwxtvokeag` đã nhận đầy đủ 12 migrations (từ `20261119000000` đến `20261119000011`).
 - Database lint (`npx supabase db lint`): sạch, 0 lỗi schema.
 - Database tests (`npx supabase test db`): 72/72 PASS trên 6 file pgTAP (`board_dues_precedence`, `finance_workflows`, `operational_deletes`, `permissions_catalog`, `schema_rls_finance`, `team_manager_workflow`).
 - Integration tests (`scripts/qa-integration.mjs`): 57/57 PASS với 5 tài khoản và 2 CLB thực tế, bao gồm:
