@@ -77,6 +77,13 @@ test('financial workflow RPCs cover periods, approvals, reversals and partial pa
   }
 });
 
+test('team manager edits use the atomic RPC instead of direct link writes', () => {
+  const managerMigration = readFileSync(join(root, 'supabase', 'migrations', '20261119000005_sync_team_managers.sql'), 'utf8');
+  assert.match(managerMigration, /create or replace function public\.sync_team_managers/);
+  assert.match(frontend, /rpc\("sync_team_managers"/);
+  assert.doesNotMatch(frontend, /from\("team_managers"\)\.(insert|update|delete)/);
+});
+
 test('Cloudflare frontend uses public Supabase config and never service-role credentials', () => {
   assert.match(frontend, /VITE_SUPABASE_URL/);
   assert.match(frontend, /VITE_SUPABASE_ANON_KEY/);

@@ -136,6 +136,7 @@ export function createSupabaseApiClient({ onUnauthorized = () => {} } = {}) {
     if (team && method === "PATCH") {
       const teamId = Number(team[1]); const patch = { ...(data.name !== undefined ? { name: data.name } : {}), ...(data.format !== undefined ? { format: data.format } : {}), ...(data.captain_id !== undefined ? { captain_id: numeric(data.captain_id) } : {}) };
       const row = Object.keys(patch).length ? check(await supabase.from("teams").update(patch).eq("club_id", clubId).eq("id", teamId).select().single()) : check(await supabase.from("teams").select("*").eq("club_id", clubId).eq("id", teamId).single());
+      if (data.membership_ids !== undefined) check(await supabase.rpc("sync_team_managers", { p_club_id: clubId, p_team_id: teamId, p_membership_ids: (data.membership_ids || []).map(Number) }));
       if (data.dues_amount !== undefined) check(await supabase.from("team_dues_rates").upsert({ club_id: clubId, team_id: teamId, effective_month: `${data.dues_month}-01`, amount: Number(data.dues_amount) }, { onConflict: "team_id,effective_month" }));
       return { data: row };
     }
