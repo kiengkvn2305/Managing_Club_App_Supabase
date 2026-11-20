@@ -203,20 +203,21 @@ const navItems = [
 
 const nav = () =>
   navItems
-    .filter(
-      ([route]) =>
-        route !== 'club-members' ||
-        currentRole() === 'owner' ||
-        canManageClub(currentRole()) ||
-        currentClub()?.can_manage_finance
-    )
-    .filter(
-      ([route]) =>
-        !['finance', 'dues'].includes(route) || currentClub()?.can_view_finance
-    )
-    .filter(
-      ([route]) => route !== 'inventory' || currentClub()?.can_view_inventory
-    )
+    .filter(([route]) => {
+      const c = currentClub();
+      if (!c) return true;
+      if (c.is_system_admin || c.membership_role === 'owner') return true;
+      if (route === 'club-members') {
+        return canManageClub(c) || c.can_manage_finance || c.can_manage_roster;
+      }
+      if (['finance', 'dues'].includes(route)) {
+        return Boolean(c.can_view_finance);
+      }
+      if (route === 'inventory') {
+        return Boolean(c.can_view_inventory);
+      }
+      return true;
+    })
     .map(
       ([route, name, glyph]) =>
         `<a href="#${route}" class="nav-link ${s.route === route ? 'active' : ''}" ${s.route === route ? 'aria-current="page"' : ''}>${icon(glyph)}<span>${name}</span></a>`
@@ -449,7 +450,7 @@ async function loadView() {
           { signal }
         ),
       ];
-      if (tenant && canManageClub(currentRole())) {
+      if (tenant && canManageClub(currentClub())) {
         tasks.push(
           api.get(
             base(`/friendlies?${new URLSearchParams({ page: s.friendlyPage })}`),
@@ -500,10 +501,10 @@ async function loadView() {
       if (route === 'dashboard') {
         tasks.push(api.get(base('/dashboard'), { signal }));
       }
-      if (route === 'lineups' && canManageRoster(currentRole())) {
+      if (route === 'lineups' && canManageRoster(currentClub())) {
         tasks.push(api.get(base('/lineups'), { signal }));
       }
-      if (route === 'matches' && canManageRoster(currentRole())) {
+      if (route === 'matches' && canManageRoster(currentClub())) {
         if (!s.matchesMonth) {
           const now = new Date();
           s.matchesMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -532,7 +533,7 @@ async function loadView() {
           )
         );
       }
-      if (route === 'recruitment' && canManageRoster(currentRole())) {
+      if (route === 'recruitment' && canManageRoster(currentClub())) {
         tasks.push(
           api.get(
             base(
@@ -545,8 +546,9 @@ async function loadView() {
       if (
         route === 'club-members' &&
         (currentRole() === 'owner' ||
-          canManageClub(currentRole()) ||
-          currentClub()?.can_manage_finance)
+          canManageClub(currentClub()) ||
+          currentClub()?.can_manage_finance ||
+          currentClub()?.can_manage_roster)
       ) {
         tasks.push(api.get(base('/board-members'), { signal }));
         tasks.push(api.get(base('/club-memberships'), { signal }));
@@ -847,7 +849,7 @@ root.addEventListener('change', (event) => {
     s.pollsPage = 1;
     s.recruitmentPage = 1;
     s.recruitmentStatus = '';
-    s.filters = { q: '', team_id: '', status: '', academic_year: '', page: 1 };
+    s.filters = { q: '', team_id: '', status: '', page: 1 };
     loadView();
   }
 });

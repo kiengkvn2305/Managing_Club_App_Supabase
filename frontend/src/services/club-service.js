@@ -31,8 +31,9 @@ export function createClubService({ supabase, authService }) {
 
   async function resource(row, userId) {
     const club = row.club || row;
-    const currentUser = await authService.user().catch(() => null);
-    const isSystemAdmin = currentUser?.is_system_admin === true;
+    const currentProfile = await authService.profile(false).catch(() => null);
+    const isSystemAdmin = currentProfile?.is_system_admin === true;
+    const userEmail = currentProfile?.email || '';
 
     let membership = row.role
       ? row
@@ -59,15 +60,17 @@ export function createClubService({ supabase, authService }) {
     let boardTitle = '';
     const boardMemberResult = await supabase
       .from('club_board_members')
-      .select('title, player:player_profiles!inner(user_id)')
+      .select('title, player:player_profiles!inner(user_id, email)')
       .eq('club_id', club.id)
-      .eq('player.user_id', userId)
-      .is('archived_at', null)
-      .maybeSingle();
+      .is('archived_at', null);
 
-    if (boardMemberResult?.data) {
+    const matchingBoardMember = (boardMemberResult?.data || []).find(
+      (bm) => bm.player?.user_id === userId || (bm.player?.email && userEmail && bm.player.email.toLowerCase() === userEmail.toLowerCase())
+    );
+
+    if (matchingBoardMember) {
       isBoardMember = true;
-      boardTitle = (boardMemberResult.data.title || '').trim();
+      boardTitle = (matchingBoardMember.title || '').trim();
     }
 
     const isOwner = role === 'owner' || isSystemAdmin;
@@ -117,9 +120,10 @@ export function createClubService({ supabase, authService }) {
   }
 
   async function clubs() {
-    const current = await authService.user();
+    const currentProfile = await authService.profile(false).catch(() => null);
+    if (!currentProfile) return { data: [] };
     let activeRows = [];
-    if (current?.is_system_admin) {
+    if (currentProfile.is_system_admin) {
       const allClubs = check(await supabase.from('clubs').select('*').is('deleted_at', null).order('id')) || [];
       activeRows = allClubs.map((club) => ({
         club,
@@ -133,14 +137,14 @@ export function createClubService({ supabase, authService }) {
           await supabase
             .from('club_members')
             .select('role,title,permissions,club:clubs(*)')
-            .eq('user_id', current.id)
+            .eq('user_id', currentProfile.id)
             .eq('status', 'active')
         ) || [];
       activeRows = rows.filter((x) => x.club && !x.club.deleted_at);
     }
 
     const mapped = await Promise.all(
-      activeRows.map((x) => resource(x, current.id))
+      activeRows.map((x) => resource(x, currentProfile.id))
     );
     return { data: mapped };
   }

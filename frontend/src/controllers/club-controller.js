@@ -8,6 +8,7 @@ export function createClubController(ctx) {
       ctx.field('name', 'Tên câu lạc bộ', c.name, 'text', true) +
       ctx.field('city', 'Thành phố', c.city) +
       ctx.field('home_ground', 'Sân nhà', c.home_ground) +
+      ctx.field('activity_start_date', 'Ngày bắt đầu hoạt động CLB', c.activity_start_date || (c.created_at ? c.created_at.slice(0, 10) : ''), 'date') +
       `<fieldset class="field format-options"><legend>Loại sân *</legend>${['5', '7', '11'].map((v) => `<label><input type="checkbox" name="formats" value="${v}" ${(c.formats || [c.format || '7']).includes(v) ? 'checked' : ''}> Sân ${v} người</label>`).join('')}</fieldset>` +
       (edit
         ? ctx.select(
@@ -34,6 +35,7 @@ export function createClubController(ctx) {
           if (!data.formats.length) {
             throw new Error('Vui lòng chọn ít nhất một loại sân.');
           }
+          data.activity_start_date = data.activity_start_date || null;
           const result = edit
             ? await ctx.api.patch(ctx.base(), data)
             : await ctx.api.post('/clubs', data);

@@ -9,22 +9,24 @@ import { button, empty } from '../components/ui.js';
 
 export function boardPage() {
   const c = currentClub();
+  const isOwner = c?.membership_role === 'owner' || c?.is_system_admin;
   const canManage =
-    c?.membership_role === 'owner' ||
-    canManageClub(c?.membership_role) ||
-    c?.can_manage_finance;
+    isOwner ||
+    canManageClub(c) ||
+    c?.can_manage_finance ||
+    c?.can_manage_roster;
 
   if (!canManage) {
     return `
       <div class="page-top">
         <div>
           <div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div>
-          <h1>Thành viên BCN</h1>
+          <h1>Thành viên BCN & Phân quyền</h1>
           <p>Thông tin ban chủ nhiệm được bảo vệ theo quyền quản lý.</p>
         </div>
       </div>
       <section class="panel">
-        ${empty('Quyền truy cập được bảo vệ', 'Chỉ ban quản lý câu lạc bộ có quyền quản lý BCN.')}
+        ${empty('Quyền truy cập được bảo vệ', 'Chỉ ban quản lý câu lạc bộ có quyền quản lý BCN và phân quyền.')}
       </section>
     `;
   }
@@ -70,8 +72,6 @@ export function boardPage() {
         'Thiết lập mức quỹ ưu đãi cho từng đội.'
       );
 
-  const isOwner = c?.membership_role === 'owner' || c?.is_system_admin;
-
   const permissionSummary = (m) => {
     if (m.role === 'owner') return '<span class="badge" style="background:#ddf5e9;color:#126047;">Toàn quyền (Chủ sở hữu)</span>';
     const perms = m.permissions || {};
@@ -97,8 +97,8 @@ export function boardPage() {
             <div style="margin-top:4px;">${permissionSummary(m)}</div>
           </div>
           <div class="team-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
-            ${isOwner && m.role !== 'owner' ? `<button class="text-button" data-action="edit-permissions" data-id="${m.id}">Phân quyền</button>` : ''}
-            ${isOwner ? `<button class="text-button" data-action="edit-title" data-id="${m.id}">Chức danh</button>` : ''}
+            ${isOwner && m.role !== 'owner' ? `<button class="text-button" data-action="edit-permissions" data-id="${m.id}">Chức vụ & Phân quyền</button>` : ''}
+            ${isOwner && m.role === 'owner' ? `<span class="badge" style="background:#ddf5e9;color:#126047;">Chủ nhiệm tối cao</span>` : ''}
             ${isOwner && m.role !== 'owner' ? `<button class="text-button danger" data-action="transfer-ownership" data-id="${m.user_id}" data-name="${e(m.name || m.email)}">Trao quyền Chủ nhiệm</button>` : ''}
           </div>
         </div>`
@@ -114,6 +114,7 @@ export function boardPage() {
         <p>Danh sách ban chủ nhiệm và quản lý quyền hạn của từng tài khoản thành viên trong CLB.</p>
       </div>
       <div class="page-actions">
+        ${button('invite', 'Mời tài khoản', 'mail', 'secondary')}
         ${button('board-new', 'Thêm BCN')}
       </div>
     </div>

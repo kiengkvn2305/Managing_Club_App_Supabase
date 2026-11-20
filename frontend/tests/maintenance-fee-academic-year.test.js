@@ -71,29 +71,27 @@ test('duesPage displays maintenance fee settings, amount, and suspended badges',
   assert.match(html, />\(Phí duy trì\)<\/div>/);
 });
 
-test('parseMembers supports both 8-column legacy and 9-column format with academic_year', async () => {
-  // Test 9 columns
-  const headers9 = ['full_name', 'email', 'phone', 'date_of_birth', 'position', 'preferred_foot', 'status', 'notes', 'academic_year'];
-  const book9 = new ExcelJS.Workbook();
-  const sheet9 = book9.addWorksheet('Thanh vien');
-  sheet9.addRow(headers9);
-  sheet9.addRow(['Lê Cường', 'cuong@test.com', '0901234567', '2002-03-15', 'PIVOT', 'left', 'graduated', 'Đã tốt nghiệp', '2025-2026']);
-  const buf9 = await book9.xlsx.writeBuffer();
-  const file9 = { name: 'members9.xlsx', size: buf9.byteLength, arrayBuffer: async () => buf9 };
+test('parseMembers supports 8-column format and buildMembersWorkbook exports club activity_start_date', async () => {
+  const headers = ['full_name', 'email', 'phone', 'date_of_birth', 'position', 'preferred_foot', 'status', 'notes'];
+  const book = new ExcelJS.Workbook();
+  const sheet = book.addWorksheet('Thanh vien');
+  sheet.addRow(headers);
+  sheet.addRow(['Lê Cường', 'cuong@test.com', '0901234567', '2002-03-15', 'PIVOT', 'left', 'graduated', 'Đã tốt nghiệp']);
+  const buf = await book.xlsx.writeBuffer();
+  const file = { name: 'members.xlsx', size: buf.byteLength, arrayBuffer: async () => buf };
 
-  const parsed9 = await parseMembers(file9);
-  assert.equal(parsed9.length, 1);
-  assert.equal(parsed9[0].full_name, 'Lê Cường');
-  assert.equal(parsed9[0].status, 'graduated');
-  assert.equal(parsed9[0].academic_year, '2025-2026');
+  const parsed = await parseMembers(file);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0].full_name, 'Lê Cường');
+  assert.equal(parsed[0].status, 'graduated');
 
-  // Test buildMembersWorkbook exports academic_year
-  const exportBook = await buildMembersWorkbook(parsed9);
+  // Test buildMembersWorkbook exports activity_start_date
+  const exportBook = await buildMembersWorkbook(parsed, '', { activity_start_date: '2025-09-01' });
   const exportSheet = exportBook.worksheets[0];
   const row1 = exportSheet.getRow(1).values.slice(1);
-  assert.ok(row1.includes('Niên khóa'));
+  assert.ok(row1.includes('Ngày bắt đầu hoạt động CLB'));
   const row2 = exportSheet.getRow(2);
-  assert.equal(row2.getCell(row1.length).value, '2025-2026');
+  assert.equal(row2.getCell(row1.length).value, '01/09/2025');
 });
 
 test('duesService charges maintenance fee for inactive members and skips graduated members', async () => {
@@ -200,11 +198,11 @@ test('duesService charges maintenance fee for inactive members and skips graduat
   assert.equal(graduated, undefined);
 });
 
-test('rosterService filters members by academic_year', async () => {
+test('rosterService filters members without academic_year requirement', async () => {
   const mockMembers = [
-    { id: 1, full_name: 'SV Năm 1', academic_year: '2025-2026', status: 'active', team_players: [] },
-    { id: 2, full_name: 'SV Năm 2', academic_year: '2024-2025', status: 'active', team_players: [] },
-    { id: 3, full_name: 'SV Năm 3', academic_year: '2025-2026', status: 'graduated', team_players: [] },
+    { id: 1, full_name: 'SV Năm 1', status: 'active', team_players: [] },
+    { id: 2, full_name: 'SV Năm 2', status: 'inactive', team_players: [] },
+    { id: 3, full_name: 'SV Năm 3', status: 'graduated', team_players: [] },
   ];
 
   const mockSupabase = {
@@ -230,8 +228,7 @@ test('rosterService filters members by academic_year', async () => {
   };
 
   const rosterService = createRosterService({ supabase: mockSupabase });
-  const res = await rosterService.members(1, new URLSearchParams('academic_year=2025-2026'));
-  assert.equal(res.data.length, 2);
+  const res = await rosterService.members(1, new URLSearchParams('status=active'));
+  assert.equal(res.data.length, 1);
   assert.equal(res.data[0].full_name, 'SV Năm 1');
-  assert.equal(res.data[1].full_name, 'SV Năm 3');
 });

@@ -20,7 +20,7 @@ function calendarMarkup() {
 }
 
 export function matchesPage() {
-  if (!canManageRoster(currentClub()?.membership_role)) {
+  if (!canManageRoster(currentClub())) {
     return `<div class="page-top"><div><div class="eyebrow">BÓNG ĐÁ</div><h1>Lịch trận đấu</h1><p>Thông tin được bảo vệ theo quyền truy cập.</p></div></div><section class="panel">${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem lịch trận đấu.')}</section>`;
   }
   const { data = [], meta = {} } = s.matches;

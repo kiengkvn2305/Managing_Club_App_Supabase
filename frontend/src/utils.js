@@ -46,16 +46,37 @@ export function currentAcademicYear(date = new Date()) {
   const year = d.getFullYear();
   return month >= 9 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 }
-export const canManageRoster = (role) =>
-  [
+export const canManageRoster = (target) => {
+  if (!target) return false;
+  if (typeof target === 'object') {
+    if (target.is_system_admin || target.membership_role === 'owner') return true;
+    if (target.can_manage_roster !== undefined) return Boolean(target.can_manage_roster);
+    return [
+      "owner",
+      "co_owner",
+      "general_manager",
+      "hr_manager",
+      "sporting_manager",
+    ].includes(target.membership_role);
+  }
+  return [
     "owner",
     "co_owner",
     "general_manager",
     "hr_manager",
     "sporting_manager",
-  ].includes(role);
-export const canManageClub = (role) =>
-  ["owner", "co_owner", "general_manager"].includes(role);
+  ].includes(target);
+};
+
+export const canManageClub = (target) => {
+  if (!target) return false;
+  if (typeof target === 'object') {
+    if (target.is_system_admin || target.membership_role === 'owner') return true;
+    if (target.can_manage_club !== undefined) return Boolean(target.can_manage_club);
+    return ["owner", "co_owner", "general_manager"].includes(target.membership_role);
+  }
+  return ["owner", "co_owner", "general_manager"].includes(target);
+};
 export function validDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);

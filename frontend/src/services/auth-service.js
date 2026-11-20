@@ -18,7 +18,7 @@ export function createAuthService({ supabase, onUnauthorized = () => {} }) {
     if (!current) return null;
     const result = await supabase
       .from('profiles')
-      .select('id,name,email,avatar_path,created_at,updated_at')
+      .select('id,name,email,is_system_admin,avatar_path,created_at,updated_at')
       .eq('id', current.id)
       .maybeSingle();
     const row =
@@ -26,8 +26,13 @@ export function createAuthService({ supabase, onUnauthorized = () => {} }) {
         id: current.id,
         name: current.user_metadata?.name || '',
         email: current.email,
+        is_system_admin: false,
       };
-    return { ...row, avatar_version: row.avatar_path || null };
+    return {
+      ...row,
+      is_system_admin: Boolean(row.is_system_admin),
+      avatar_version: row.avatar_path || null,
+    };
   }
 
   async function uploadPrivateImage(path, file) {

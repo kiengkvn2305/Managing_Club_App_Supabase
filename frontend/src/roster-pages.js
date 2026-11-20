@@ -9,32 +9,23 @@ const val = (v) => e(v || '—');
 const badge = (v) => `<span class="badge ${e(v)}">${e(statusLabel(v))}</span>`;
 const pagination = (meta, prefix = '') => `<div class="table-footer"><span>${number(meta.total)} thành viên</span><div><button class="icon-button" data-action="${prefix}prev" aria-label="Trang trước" ${meta.current_page <= 1 ? 'disabled' : ''}>←</button> ${meta.current_page} / ${meta.last_page} <button class="icon-button" data-action="${prefix}next" aria-label="Trang sau" ${meta.current_page >= meta.last_page ? 'disabled' : ''}>→</button></div></div>`;
 const sharedHeaders = '<th>Họ tên</th><th>Ngày sinh</th><th>Email</th><th>Điện thoại</th><th>Chân thuận</th><th>Ghi chú</th>';
-const sharedCells = (m) => `<td><div class="person">${avatar(m.full_name, imageUrl('player', m.id, m.avatar_version, s.clubId))}<button class="text-button" data-action="view-member" data-id="${m.id}">${e(m.full_name)}</button>${m.academic_year ? `<span class="pill" style="font-size:9px;padding:2px 6px;" title="Niên khóa / Năm học">${e(m.academic_year)}</span>` : ''}</div></td><td class="tabular-nums">${val(formatDate(m.date_of_birth))}</td><td>${val(m.email)}</td><td class="tabular-nums">${val(m.phone)}</td><td>${e(foot(m.preferred_foot))}</td><td class="truncate" style="max-width:180px;" title="${e(m.notes || '')}">${val(m.notes)}</td>`;
+const sharedCells = (m) => `<td><div class="person">${avatar(m.full_name, imageUrl('player', m.id, m.avatar_version, s.clubId))}<button class="text-button" data-action="view-member" data-id="${m.id}">${e(m.full_name)}</button></div></td><td class="tabular-nums">${val(formatDate(m.date_of_birth))}</td><td>${val(m.email)}</td><td class="tabular-nums">${val(m.phone)}</td><td>${e(foot(m.preferred_foot))}</td><td class="truncate" style="max-width:180px;" title="${e(m.notes || '')}">${val(m.notes)}</td>`;
 
 export function clubDirectoryPage() {
-  if (!canManageRoster(currentClub().membership_role)) {
+  if (!canManageRoster(currentClub())) {
     return (
       heading('Thành viên CLB', 'Thông tin được bảo vệ theo quyền truy cập.') +
       `<section class="panel">${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem danh sách thành viên.')}</section>`
     );
   }
   const f = s.filters, meta = s.meta;
-  const currentAY = currentAcademicYear();
-  const yearsSet = new Set(s.members.map((m) => m.academic_year).filter(Boolean));
-  yearsSet.add(currentAY);
-  const [curStart] = currentAY.split('-').map(Number);
-  if (!Number.isNaN(curStart)) {
-    for (let y = curStart - 3; y <= curStart + 1; y++) yearsSet.add(`${y}-${y + 1}`);
-  }
-  const academicYears = Array.from(yearsSet).sort().reverse();
-
-  const filters = `<form data-form="filters" class="filters" role="search"><input name="q" type="search" placeholder="Tìm tên, ghi chú, email…" aria-label="Tìm thành viên" value="${e(f.q)}"><select name="academic_year" aria-label="Lọc niên khóa"><option value="">Tất cả các năm</option>${academicYears.map((y) => `<option value="${y}" ${y === f.academic_year ? 'selected' : ''}>${y}</option>`).join('')}</select><select name="team_id" aria-label="Lọc đội"><option value="">Tất cả đội</option>${s.teams.map((t) => `<option value="${t.id}" ${String(t.id) === String(f.team_id) ? 'selected' : ''}>${e(t.name)}</option>`).join('')}</select><select name="status" aria-label="Trạng thái"><option value="">Mọi trạng thái</option>${['active','inactive','injured','graduated'].map((v) => `<option value="${v}" ${v === f.status ? 'selected' : ''}>${e(statusLabel(v))}</option>`).join('')}</select><label>Sắp xếp <select name="sort"><option value="full_name">Tên</option><option value="date_of_birth" ${f.sort === 'date_of_birth' ? 'selected' : ''}>Năm sinh</option><option value="preferred_foot" ${f.sort === 'preferred_foot' ? 'selected' : ''}>Chân thuận</option><option value="notes" ${f.sort === 'notes' ? 'selected' : ''}>Ghi chú</option></select></label><label>Thứ tự <select name="direction"><option value="asc">Tăng dần</option><option value="desc" ${f.direction === 'desc' ? 'selected' : ''}>Giảm dần</option></select></label><button class="button secondary">Lọc</button><button class="text-button" type="button" data-action="reset">Xóa lọc</button></form>`;
+  const filters = `<form data-form="filters" class="filters" role="search"><input name="q" type="search" placeholder="Tìm tên, ghi chú, email…" aria-label="Tìm thành viên" value="${e(f.q)}"><select name="team_id" aria-label="Lọc đội"><option value="">Tất cả đội</option>${s.teams.map((t) => `<option value="${t.id}" ${String(t.id) === String(f.team_id) ? 'selected' : ''}>${e(t.name)}</option>`).join('')}</select><select name="status" aria-label="Trạng thái"><option value="">Mọi trạng thái</option>${['active','inactive','injured','graduated'].map((v) => `<option value="${v}" ${v === f.status ? 'selected' : ''}>${e(statusLabel(v))}</option>`).join('')}</select><label>Sắp xếp <select name="sort"><option value="full_name">Tên</option><option value="date_of_birth" ${f.sort === 'date_of_birth' ? 'selected' : ''}>Năm sinh</option><option value="preferred_foot" ${f.sort === 'preferred_foot' ? 'selected' : ''}>Chân thuận</option><option value="notes" ${f.sort === 'notes' ? 'selected' : ''}>Ghi chú</option></select></label><label>Thứ tự <select name="direction"><option value="asc">Tăng dần</option><option value="desc" ${f.direction === 'desc' ? 'selected' : ''}>Giảm dần</option></select></label><button class="button secondary">Lọc</button><button class="text-button" type="button" data-action="reset">Xóa lọc</button></form>`;
   const actions = button('import-members', 'Nhập Excel', 'arrow', 'secondary') + button('export-members', 'Xuất Excel', 'arrow', 'secondary') + button('new-member', 'Thêm thành viên');
   return heading('Thành viên CLB', 'Hồ sơ cầu thủ và các đội bóng tham gia.', actions) + `<section class="panel">${filters}${s.members.length ? `<div class="table-wrap"><table><thead><tr>${sharedHeaders}<th>Đội tham gia</th><th class="text-center">Trạng thái</th><th class="text-right">Thao tác</th></tr></thead><tbody>${s.members.map((m) => `<tr>${sharedCells(m)}<td>${e((m.teams || []).map((t) => t.name).join(', ') || 'Chưa xếp đội')}</td><td class="text-center">${badge(m.status)}</td><td class="text-right"><div class="row-actions"><button class="icon-button" data-action="edit-member" data-id="${m.id}" aria-label="Sửa ${e(m.full_name)}">${icon('edit')}</button><button class="icon-button danger" data-action="delete-member" data-id="${m.id}" aria-label="Xóa ${e(m.full_name)}">${icon('trash')}</button></div></td></tr>`).join('')}</tbody></table></div>${pagination(meta)}` : empty('Chưa có thành viên phù hợp', 'Thêm hồ sơ hoặc thay đổi bộ lọc.')}</section>`;
 }
 
 export function teamRosterPage() {
-  if (!canManageRoster(currentClub().membership_role)) {
+  if (!canManageRoster(currentClub())) {
     return (
       heading('Thành viên đội', 'Thông tin được bảo vệ theo quyền truy cập.') +
       `<section class="panel">${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem thành viên đội bóng.')}</section>`

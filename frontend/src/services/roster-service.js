@@ -112,7 +112,6 @@ export function createRosterService({ supabase, authService }) {
     const q = (params.get('q') || '').toLowerCase();
     const teamId = params.get('team_id');
     const status = params.get('status');
-    const academicYear = params.get('academic_year');
 
     rows = rows.filter(
       (x) =>
@@ -121,7 +120,6 @@ export function createRosterService({ supabase, authService }) {
             String(v || '').toLowerCase().includes(q)
           )) &&
         (!status || x.status === status) &&
-        (!academicYear || x.academic_year === academicYear) &&
         (!teamId ||
           (x.team_players || []).some(
             (t) => String(t.team_id) === String(teamId)
@@ -472,7 +470,6 @@ export function createRosterService({ supabase, authService }) {
               email: data.email || null,
               phone: data.phone || null,
               date_of_birth: data.date_of_birth || null,
-              academic_year: data.academic_year || null,
               jersey_number: numeric(data.jersey_number),
               position: data.position || null,
               preferred_foot: data.preferred_foot || null,
@@ -493,7 +490,7 @@ export function createRosterService({ supabase, authService }) {
         let query = supabase
           .from('player_profiles')
           .select(
-            'id,full_name,email,phone,date_of_birth,academic_year,position,preferred_foot,status,notes,team_players(team_id,team:teams(id,name))'
+            'id,full_name,email,phone,date_of_birth,position,preferred_foot,status,notes,team_players(team_id,team:teams(id,name))'
           )
           .eq('club_id', clubId);
 

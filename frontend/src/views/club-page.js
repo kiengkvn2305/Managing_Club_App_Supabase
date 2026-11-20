@@ -14,7 +14,7 @@ export function clubPage() {
 
   const actions =
     button('new-club', 'Tạo CLB mới', 'plus', 'secondary') +
-    (canManageClub(c.membership_role)
+    (canManageClub(c)
       ? button('edit-club', 'Chỉnh sửa', 'edit') +
         button('edit-club-avatar', 'Ảnh đại diện', 'edit', 'secondary') +
         button('edit-club-background', 'Ảnh nền', 'edit', 'secondary') +
@@ -48,6 +48,7 @@ export function clubPage() {
           ${[
             ['Thành phố', c.city],
             ['Sân nhà', c.home_ground],
+            ['Ngày bắt đầu hoạt động CLB', formatDate(c.activity_start_date || c.created_at?.slice(0, 10))],
             [
               'Loại sân',
               (c.formats || [c.format]).map((v) => `Sân ${v}`).join(', '),

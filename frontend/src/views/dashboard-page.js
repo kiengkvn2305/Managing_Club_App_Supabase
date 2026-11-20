@@ -14,7 +14,7 @@ const badge = (status) =>
 export function dashboardPage() {
   const c = currentClub();
   const d = s.dashboard;
-  const allowed = canManageRoster(c.membership_role);
+  const allowed = canManageRoster(c);
 
   const stats = [
     ['Tổng thành viên', d.members_count, 'users'],

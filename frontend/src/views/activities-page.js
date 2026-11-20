@@ -143,7 +143,7 @@ export function activitiesPage() {
         <div class="panel-head">
           <h2>Lịch tập & điểm danh</h2>
           <div class="team-actions">
-            ${canManageRoster(currentClub().membership_role) ? button('attendance-report', 'Tiến độ điểm danh', 'check', 'secondary') : ''}
+            ${canManageRoster(currentClub()) ? button('attendance-report', 'Tiến độ điểm danh', 'check', 'secondary') : ''}
             ${button('new-training', 'Tạo lịch tập')}
           </div>
         </div>
@@ -154,7 +154,7 @@ export function activitiesPage() {
                   row(
                     `${t.team_name} · ${formatDate(t.training_date)} ${t.training_time}`,
                     `${t.location} · ${{ scheduled: 'Theo kế hoạch', cancelled: 'Không tập', postponed: 'Hoãn' }[t.training_status] || 'Theo kế hoạch'} · Đã điểm danh ${(t.attendance || []).length}`,
-                    `${canManageRoster(currentClub().membership_role) && t.team_id && t.training_status === 'scheduled' && t.approval_status === 'approved' ? `<button class="text-button" data-action="attendance" data-id="${t.id}">Điểm danh</button>` : ''}${controls('trainings', t)}`,
+                    `${canManageRoster(currentClub()) && t.team_id && t.training_status === 'scheduled' && t.approval_status === 'approved' ? `<button class="text-button" data-action="attendance" data-id="${t.id}">Điểm danh</button>` : ''}${controls('trainings', t)}`,
                     t.approval_status === 'pending'
                   )
                 )

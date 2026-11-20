@@ -1,6 +1,6 @@
 import { formatDate, validDate, formatVietnamDateTime } from './utils.js';
 const BASE_HEADERS = ['full_name', 'email', 'phone', 'date_of_birth', 'position', 'preferred_foot', 'status', 'notes'];
-const HEADERS = [...BASE_HEADERS, 'academic_year'];
+const HEADERS = [...BASE_HEADERS];
 async function workbook() {
   let module;
   try { module = await import('exceljs'); }
@@ -32,7 +32,6 @@ export async function downloadMemberTemplate() {
     ['preferred_foot', 'Không bắt buộc; right, left hoặc both'],
     ['status', 'Không bắt buộc; active, inactive, injured hoặc graduated; để trống là active'],
     ['notes', 'Không bắt buộc; tối đa 5000 ký tự'],
-    ['academic_year', 'Không bắt buộc; niên khóa dạng YYYY-YYYY, ví dụ 2025-2026'],
     ['Lưu ý', 'Một dòng một người; không đổi tên cột, không dùng công thức. Mỗi lần tối đa 500 dòng.'],
     ['Lưu ý', 'Sau khi nhập, chọn thành viên vào đội và thiết lập số áo theo từng đội.'],
   ]) help.addRow(row);
@@ -107,10 +106,11 @@ export async function exportFinance(items, summary, adjustments = []) {
   changes.columns.forEach((c) => { c.width = 24; }); changes.getColumn(8).width = 45;
   await download(book, 'so-thu-chi.xlsx');
 }
-export async function buildMembersWorkbook(items, teamId = '') {
+export async function buildMembersWorkbook(items, teamId = '', club = null) {
   const book = await workbook(), sheet = book.addWorksheet('Thanh vien');
-  sheet.addRow(['Họ và tên', 'Ngày sinh', 'Điện thoại', 'Email', ...(teamId ? ['Vị trí', 'Số áo'] : ['Đội tham gia']), 'Chân thuận', 'Trạng thái', 'Ghi chú', 'Niên khóa']);
+  sheet.addRow(['Họ và tên', 'Ngày sinh', 'Điện thoại', 'Email', ...(teamId ? ['Vị trí', 'Số áo'] : ['Đội tham gia']), 'Chân thuận', 'Trạng thái', 'Ghi chú', 'Ngày bắt đầu hoạt động CLB']);
   sheet.getRow(1).font = { bold: true };
+  const clubStartDate = club?.activity_start_date ? formatDate(club.activity_start_date) : (club?.created_at ? formatDate(club.created_at.slice(0, 10)) : '');
   for (const item of items) {
     const team = (item.teams || []).find((t) => String(t.id) === String(teamId));
     sheet.addRow([
@@ -122,7 +122,7 @@ export async function buildMembersWorkbook(items, teamId = '') {
       sanitizeCell(item.preferred_foot),
       sanitizeCell(item.status),
       sanitizeCell(item.notes),
-      sanitizeCell(item.academic_year || '')
+      sanitizeCell(clubStartDate)
     ]);
   }
   sheet.columns.forEach((column) => { column.width = 24; });
@@ -130,7 +130,7 @@ export async function buildMembersWorkbook(items, teamId = '') {
   sheet.autoFilter = { from: 'A1', to: teamId ? 'J1' : 'I1' };
   return book;
 }
-export async function exportMembers(items, teamId = '') {
-  const book = await buildMembersWorkbook(items, teamId);
+export async function exportMembers(items, teamId = '', club = null) {
+  const book = await buildMembersWorkbook(items, teamId, club);
   await download(book, teamId ? 'thanh-vien-doi-bong.xlsx' : 'thanh-vien-clb.xlsx');
 }

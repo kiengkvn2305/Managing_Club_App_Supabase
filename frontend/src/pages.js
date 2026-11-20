@@ -56,7 +56,7 @@ function teams() {
     heading(
       'Đội bóng',
       'Tổ chức đội hình cho từng sân chơi và mục tiêu.',
-      canManageRoster(c.membership_role) ? button('new-team', 'Tạo đội bóng') : ''
+      canManageRoster(c) ? button('new-team', 'Tạo đội bóng') : ''
     ) +
     (s.teams.length
       ? `<div class="team-grid">${s.teams
@@ -73,7 +73,7 @@ function teams() {
                 : ''
             }
             ${
-              canManageRoster(c.membership_role)
+              canManageRoster(c)
                 ? `<p>Đội trưởng: ${e(t.captain_name || 'Chưa chọn')}<br>Quản lý: ${e((t.managers || []).map((m) => m.name).join(', ') || 'Chưa chọn')}</p>
                    <div class="team-actions">
                      <button class="text-button" data-action="team-members" data-id="${t.id}">Xem thành viên →</button>
@@ -83,7 +83,7 @@ function teams() {
                 : ''
             }
             ${
-              c?.can_manage_finance && !canManageRoster(c.membership_role)
+              c?.can_manage_finance && !canManageRoster(c)
                 ? `<button class="text-button" data-action="edit-dues-rate" data-id="${t.id}">Chỉnh sửa quỹ</button>`
                 : ''
             }
@@ -95,7 +95,7 @@ function teams() {
 }
 
 function lineups() {
-  if (!canManageRoster(currentClub().membership_role)) {
+  if (!canManageRoster(currentClub())) {
     return (
       heading(
         'Đội hình trận đấu',
@@ -246,12 +246,12 @@ export function page() {
       pollsPage({
         polls: s.polls,
         canCreate:
-          canManageClub(currentClub()?.membership_role) &&
+          canManageClub(currentClub()) &&
           currentClub()?.status === 'active',
         canVote: currentClub()?.status === 'active',
       }),
     recruitment: () =>
-      canManageRoster(currentClub()?.membership_role)
+      canManageRoster(currentClub())
         ? recruitmentPage({
             recruitment: s.recruitment,
             canManage: currentClub()?.status === 'active',

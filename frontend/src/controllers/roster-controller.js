@@ -15,7 +15,6 @@ export function createRosterController(ctx) {
       ctx.field('email', 'Email', member.email, 'email') +
       ctx.field('phone', 'Số điện thoại', member.phone, 'tel') +
       ctx.field('date_of_birth', 'Ngày sinh', member.date_of_birth, 'date') +
-      ctx.field('academic_year', 'Niên khóa / Năm học', member.academic_year || currentAcademicYear(), 'text') +
       ctx.select(
         'preferred_foot',
         'Chân thuận',
@@ -471,12 +470,39 @@ export function createRosterController(ctx) {
       );
       if (!member) return true;
       const perms = member.permissions || {};
+      const currentTitle = member.title || (member.role === 'owner' ? 'Chủ nhiệm CLB' : 'Thành viên');
+
+      const presetTitles = [
+        'Phó chủ nhiệm CLB',
+        'Thủ quỹ',
+        'Trưởng ban chuyên môn / HLV',
+        'Phụ trách hậu cần / Trang thiết bị',
+        'Ủy viên BCN / Cán sự',
+        'Thành viên',
+      ];
+
+      const isKnownTitle = presetTitles.includes(currentTitle);
+
+      const titleSelectHtml = `
+        <div class="field" style="grid-column:1/-1;">
+          <label for="f-perm-title">Chức vụ / Vai trò</label>
+          <select id="f-perm-title" name="title_choice">
+            ${presetTitles.map((t) => `<option value="${ctx.e(t)}" ${t === currentTitle ? 'selected' : ''}>${ctx.e(t)}</option>`).join('')}
+            <option value="__custom__" ${!isKnownTitle && currentTitle ? 'selected' : ''}>Chức danh khác (tự nhập)…</option>
+          </select>
+          <div id="f-perm-custom-wrap" class="field" style="margin-top:8px;${isKnownTitle || !currentTitle ? 'display:none;' : ''}">
+            <label for="f-perm-custom-title">Tên chức danh khác</label>
+            <input id="f-perm-custom-title" name="custom_title" type="text" value="${ctx.e(!isKnownTitle ? currentTitle : '')}" placeholder="Nhập tên chức danh...">
+          </div>
+          <small id="preset-hint-msg" style="color:var(--primary);display:block;margin-top:6px;">Khi chọn chức vụ, các quyền mẫu sẽ được tự động chọn. Bạn có thể tự do tick/bỏ tick để điều chỉnh.</small>
+        </div>
+      `;
 
       const permFields = `
+        ${titleSelectHtml}
         <fieldset class="field" style="grid-column:1/-1;">
-          <legend>Cấp quyền cho ${ctx.e(member.name)}</legend>
-          <p class="muted" style="margin-bottom:12px;">Chủ nhiệm CLB có thể bật/tắt từng quyền cụ thể. Khi tắt, thành viên sẽ không được phép thực hiện chức năng tương ứng.</p>
-          <div style="display:grid;gap:10px;">
+          <legend>Quyền hạn tài khoản của ${ctx.e(member.name)}</legend>
+          <div style="display:grid;gap:10px;margin-top:8px;">
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
               <input type="checkbox" name="can_view_finance" ${perms.can_view_finance ? 'checked' : ''}>
               <span><strong>Xem quỹ & thu chi</strong> <small style="display:block;color:var(--muted);">Xem số dư quỹ, các khoản thu chi và báo cáo tài chính</small></span>
@@ -505,12 +531,21 @@ export function createRosterController(ctx) {
         </fieldset>
       `;
 
-      return ctx.dialog(
-        'Phân quyền thành viên',
-        `Thiết lập quyền hạn chi tiết cho tài khoản ${ctx.e(member.name)} (${ctx.e(member.email)}).`,
+      const modal = ctx.dialog(
+        'Phân quyền & Chức vụ',
+        `Thiết lập chức vụ và quyền hạn cho ${ctx.e(member.name)} (${ctx.e(member.email)}).`,
         permFields,
         (form) =>
           ctx.submit(form, 'member-permissions', async () => {
+            const titleChoice = form.elements.title_choice.value;
+            const chosenTitle = (titleChoice === '__custom__'
+              ? form.elements.custom_title?.value
+              : titleChoice)?.trim() || 'Thành viên';
+
+            await ctx.api.patch(ctx.base(`/club-memberships/${member.id}`), {
+              title: chosenTitle,
+            });
+
             const updatedPerms = {
               can_view_finance: form.elements.can_view_finance.checked,
               can_manage_finance: form.elements.can_manage_finance.checked,
@@ -525,9 +560,80 @@ export function createRosterController(ctx) {
             );
             await ctx.loadApp();
             await ctx.loadView();
-            ctx.toast(`Đã cập nhật quyền hạn cho ${member.name}.`);
-          })
+            ctx.toast(`Đã cập nhật chức vụ và quyền hạn cho ${member.name}.`);
+          }),
+        'Lưu phân quyền'
       );
+
+      const titleSelect = modal.querySelector('[name="title_choice"]');
+      const customWrap = modal.querySelector('#f-perm-custom-wrap');
+      const hintMsg = modal.querySelector('#preset-hint-msg');
+
+      const TITLE_PRESETS = {
+        'Phó chủ nhiệm CLB': {
+          can_view_finance: true,
+          can_manage_finance: false,
+          can_manage_roster: true,
+          can_manage_inventory: true,
+          can_manage_activities: true,
+          can_manage_club: true,
+        },
+        'Thủ quỹ': {
+          can_view_finance: true,
+          can_manage_finance: true,
+          can_manage_roster: false,
+          can_manage_inventory: false,
+          can_manage_activities: false,
+          can_manage_club: false,
+        },
+        'Trưởng ban chuyên môn / HLV': {
+          can_view_finance: false,
+          can_manage_finance: false,
+          can_manage_roster: true,
+          can_manage_inventory: false,
+          can_manage_activities: true,
+          can_manage_club: false,
+        },
+        'Phụ trách hậu cần / Trang thiết bị': {
+          can_view_finance: false,
+          can_manage_finance: false,
+          can_manage_roster: false,
+          can_manage_inventory: true,
+          can_manage_activities: true,
+          can_manage_club: false,
+        },
+        'Ủy viên BCN / Cán sự': {
+          can_view_finance: false,
+          can_manage_finance: false,
+          can_manage_roster: false,
+          can_manage_inventory: false,
+          can_manage_activities: true,
+          can_manage_club: false,
+        },
+        'Thành viên': {
+          can_view_finance: false,
+          can_manage_finance: false,
+          can_manage_roster: false,
+          can_manage_inventory: false,
+          can_manage_activities: false,
+          can_manage_club: false,
+        },
+      };
+
+      titleSelect.addEventListener('change', () => {
+        const val = titleSelect.value;
+        customWrap.style.display = val === '__custom__' ? 'block' : 'none';
+        if (TITLE_PRESETS[val]) {
+          const p = TITLE_PRESETS[val];
+          Object.keys(p).forEach((k) => {
+            const cb = modal.querySelector(`[name="${k}"]`);
+            if (cb) cb.checked = p[k];
+          });
+          hintMsg.textContent = `✓ Đã tự động áp dụng các quyền mẫu của "${val}". Bạn có thể tick/bỏ tick để điều chỉnh thêm.`;
+        }
+      });
+
+      return modal;
     }
 
     if (a === 'transfer-ownership') {
@@ -634,7 +740,7 @@ export function createRosterController(ctx) {
     }
 
     if (a === 'reset') {
-      ctx.state.filters = { q: '', team_id: '', status: '', academic_year: '', page: 1 };
+      ctx.state.filters = { q: '', team_id: '', status: '', page: 1 };
       await ctx.loadView();
       return true;
     }
@@ -838,8 +944,7 @@ export function createRosterController(ctx) {
     if (a === 'import-members') {
       if (!ctx.requirePermission(ctx.canManageRoster(), 'Nhập thành viên từ Excel')) return true;
       let pendingImport;
-      const defaultAY = currentAcademicYear();
-      const info = `<div class="lineup-editor"><p>Chỉ dùng file .xlsx theo mẫu, tối đa 500 dòng và 5 MB. Cột <strong>full_name</strong> bắt buộc; email không được trùng; ngày sinh theo dd/mm/yyyy. Số điện thoại đặt dạng Text. Không đổi thứ tự cột hoặc dùng công thức.</p><p>Tải mẫu để xem đầy đủ vị trí, chân thuận và trạng thái hợp lệ. Sau khi nhập, hãy chọn thành viên vào đội và đặt số áo tại đội.</p><button type="button" class="button secondary" data-download-template>Tải mẫu Excel</button><div class="field"><label for="import-academic-year">Niên khóa / Năm học đợt này</label><input id="import-academic-year" name="import_academic_year" value="${ctx.e(defaultAY)}" placeholder="Ví dụ: 2025-2026"></div><div class="field"><label for="member-file">File thành viên (.xlsx)</label><input id="member-file" type="file" name="member_file" accept=".xlsx" required></div></div>`;
+      const info = `<div class="lineup-editor"><p>Chỉ dùng file .xlsx theo mẫu, tối đa 500 dòng và 5 MB. Cột <strong>full_name</strong> bắt buộc; email không được trùng; ngày sinh theo dd/mm/yyyy. Số điện thoại đặt dạng Text. Không đổi thứ tự cột hoặc dùng công thức.</p><p>Tải mẫu để xem đầy đủ vị trí, chân thuận và trạng thái hợp lệ. Sau khi nhập, hãy chọn thành viên vào đội và đặt số áo tại đội.</p><button type="button" class="button secondary" data-download-template>Tải mẫu Excel</button><div class="field"><label for="member-file">File thành viên (.xlsx)</label><input id="member-file" type="file" name="member_file" accept=".xlsx" required></div></div>`;
 
       const modal = ctx.dialog(
         'Nhập thành viên từ Excel',
@@ -853,10 +958,6 @@ export function createRosterController(ctx) {
               const rows = await parseMembers(
                 form.elements.member_file.files[0]
               );
-              const batchYear = form.elements.import_academic_year?.value?.trim() || defaultAY;
-              for (const r of rows) {
-                if (!r.academic_year && batchYear) r.academic_year = batchYear;
-              }
               try {
                 const result = await ctx.api.post(
                   ctx.base('/members/import/preview'),
@@ -915,11 +1016,11 @@ export function createRosterController(ctx) {
       const rows = ctx.unpackList(
         await ctx.api.get(ctx.base(`/members?${q}`))
       ).rows;
-      await exportMembers(rows, {
-        team: ctx.state.teams.find(
-          (t) => String(t.id) === ctx.state.teamRosterId
-        ),
-      });
+      await exportMembers(
+        rows,
+        ctx.state.teamRosterId || '',
+        ctx.currentClub()
+      );
       ctx.toast('Đã xuất danh sách thành viên.');
       return true;
     }
