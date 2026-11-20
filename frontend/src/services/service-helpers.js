@@ -66,10 +66,22 @@ export function check(result) {
       status = 403;
     } else if (msg.includes('cannot_restrict_owner')) {
       msg = 'Không thể giới hạn quyền của Chủ nhiệm CLB.';
+    } else if (msg.includes('already_owner_cannot_demote')) {
+      msg = 'Bạn hiện đã là Chủ nhiệm CLB này, không cần chấp nhận mã mời thành viên.';
     } else if (msg.includes('already_owner')) {
       msg = 'Thành viên này hiện đã là Chủ nhiệm CLB.';
     } else if (msg.includes('target_member_not_found_or_inactive')) {
       msg = 'Không tìm thấy thành viên nhận quyền hoặc thành viên không còn hoạt động.';
+    } else if (msg.includes('invalid_or_expired_invitation')) {
+      msg = 'Mã lời mời không hợp lệ, đã hết hạn hoặc đã được sử dụng trước đó.';
+    } else if (msg.includes('email_mismatch')) {
+      msg = 'Mã lời mời này dành cho một địa chỉ email cụ thể khác với tài khoản của bạn.';
+    } else if (msg.includes('already_member')) {
+      msg = 'Bạn đã là thành viên trong câu lạc bộ này.';
+    } else if (msg.includes('inactive_club')) {
+      msg = 'Câu lạc bộ này hiện không ở trạng thái hoạt động.';
+    } else if (msg.includes('not_authenticated')) {
+      msg = 'Vui lòng đăng nhập để thực hiện thao tác này.';
     }
     throw new SupabaseApiError(msg, status, { database: [msg] });
   }

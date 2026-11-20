@@ -5,6 +5,7 @@ import { createClubService } from '../src/services/club-service.js';
 import { state } from '../src/state.js';
 import { adminPage } from '../src/views/admin-page.js';
 import { clubPage } from '../src/views/club-page.js';
+import { check } from '../src/services/service-helpers.js';
 
 test('TITLE_PRESETS defines expected permissions for all club roles', () => {
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_club, true);
@@ -292,4 +293,39 @@ test('clubPage renders invitations list table with invite code and test badge', 
   assert.ok(html.includes('Dùng chung (Test)'));
   assert.ok(html.includes('Phó chủ nhiệm CLB'));
   assert.ok(html.includes('Đang chờ'));
+});
+
+test('check() translates invitation and owner protection errors into friendly Vietnamese', () => {
+
+  assert.throws(
+    () => check({ error: { message: 'invalid_or_expired_invitation' } }),
+    (err) => {
+      assert.equal(err.message, 'Mã lời mời không hợp lệ, đã hết hạn hoặc đã được sử dụng trước đó.');
+      return true;
+    }
+  );
+
+  assert.throws(
+    () => check({ error: { message: 'already_owner_cannot_demote' } }),
+    (err) => {
+      assert.equal(err.message, 'Bạn hiện đã là Chủ nhiệm CLB này, không cần chấp nhận mã mời thành viên.');
+      return true;
+    }
+  );
+
+  assert.throws(
+    () => check({ error: { message: 'email_mismatch' } }),
+    (err) => {
+      assert.equal(err.message, 'Mã lời mời này dành cho một địa chỉ email cụ thể khác với tài khoản của bạn.');
+      return true;
+    }
+  );
+
+  assert.throws(
+    () => check({ error: { message: 'already_member' } }),
+    (err) => {
+      assert.equal(err.message, 'Bạn đã là thành viên trong câu lạc bộ này.');
+      return true;
+    }
+  );
 });

@@ -131,8 +131,8 @@ drop function if exists public.accept_club_invitation(uuid) cascade;
 create or replace function public.accept_club_invitation(p_token text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
-  v_clean text := trim(p_token);
-  v_hash text := encode(extensions.digest(v_clean, 'sha256'), 'hex');
+  v_clean text := trim(coalesce(p_token, ''));
+  v_hash text;
   v_inv public.club_invitations;
   v_club public.clubs;
   v_user_profile public.profiles;
@@ -148,12 +148,20 @@ begin
     raise exception 'profile_not_found';
   end if;
 
+  -- If user pasted a full URL or query parameter (e.g. #accept?token=INV-XXXXXX or token=INV-XXXXXX)
+  if v_clean ~* 'token=' then
+    v_clean := regexp_replace(v_clean, '^.*[?&#]token=([^&#]+).*$', '\1');
+  end if;
+  v_clean := trim(v_clean);
+  v_hash := encode(extensions.digest(v_clean, 'sha256'), 'hex');
+
   -- Match either by invite_code, token_hash, or direct token
   select * into v_inv from public.club_invitations
   where (
     invite_code = upper(v_clean)
     or token_hash = v_hash
     or invite_code = v_clean
+    or token_hash = encode(extensions.digest(upper(v_clean), 'sha256'), 'hex')
   )
   and status = 'pending'
   and expires_at > now()
@@ -163,6 +171,14 @@ begin
 
   if v_inv.id is null then
     raise exception 'invalid_or_expired_invitation';
+  end if;
+
+  -- Check if user is already the owner of this club
+  if exists (
+    select 1 from public.club_members
+    where club_id = v_inv.club_id and user_id = auth.uid() and role = 'owner' and status = 'active'
+  ) then
+    raise exception 'already_owner_cannot_demote';
   end if;
 
   -- Check club status

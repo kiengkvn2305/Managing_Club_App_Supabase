@@ -36,6 +36,10 @@ export function createAuthService({ supabase, onUnauthorized = () => {} }) {
 
     return {
       ...row,
+      email_verified_at:
+        current.email_confirmed_at ||
+        current.confirmed_at ||
+        (current.email ? current.created_at : null),
       is_system_admin: isSysAdmin,
       avatar_version: row.avatar_path || null,
     };

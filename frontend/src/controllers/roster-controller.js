@@ -447,8 +447,23 @@ export function createRosterController(ctx) {
           'Hoàn tất'
         );
         resultModal.querySelectorAll('[data-copy-val]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            navigator.clipboard.writeText(btn.dataset.copyVal);
+          btn.addEventListener('click', async () => {
+            try {
+              if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(btn.dataset.copyVal);
+              } else {
+                throw new Error('No clipboard API');
+              }
+            } catch {
+              const temp = document.createElement('textarea');
+              temp.value = btn.dataset.copyVal;
+              temp.style.position = 'fixed';
+              temp.style.opacity = '0';
+              document.body.appendChild(temp);
+              temp.select();
+              document.execCommand('copy');
+              temp.remove();
+            }
             const orig = btn.textContent;
             btn.textContent = '✓ Đã sao chép!';
             setTimeout(() => (btn.textContent = orig), 2000);

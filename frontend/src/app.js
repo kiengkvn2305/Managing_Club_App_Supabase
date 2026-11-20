@@ -72,8 +72,13 @@ function values(form) {
 async function submit(form, kind, handler) {
   const data = values(form);
   const errors = validate(kind, data);
-  if (kind === 'accept' && !String(data.token || '').trim()) {
-    errors.token = 'Vui lòng nhập mã lời mời.';
+  if (kind === 'accept') {
+    let token = String(data.token || '').trim();
+    const match = token.match(/token=([^&#]+)/);
+    if (match) token = decodeURIComponent(match[1]).trim();
+    if (!token) {
+      errors.token = 'Vui lòng nhập mã lời mời.';
+    }
   }
 
   showErrors(form, errors);
@@ -1105,8 +1110,12 @@ root.addEventListener('submit', (event) => {
       toast('Đã cập nhật tài khoản.');
     }
     if (kind === 'accept') {
+      let token = String(data.token || '').trim();
+      const match = token.match(/token=([^&#]+)/);
+      if (match) token = decodeURIComponent(match[1]).trim();
+
       const response = await api.post('/invitations/accept', {
-        token: data.token,
+        token,
       });
       s.invite = '';
       s.clubId = response.data.id;

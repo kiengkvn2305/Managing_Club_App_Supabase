@@ -97,10 +97,9 @@ export function acceptPage() {
     </div>
     <section class="panel profile-panel">
       <div class="panel-body">
-        ${!s.user.email_verified_at ? verification() : ''}
         <p class="muted">Tài khoản đang đăng nhập: <strong>${e(s.user.name || '')}</strong> (${e(s.user.email)})</p>
         <div class="notice" style="margin-bottom:1.25rem;">
-          💡 <strong>Hướng dẫn:</strong> Dán mã mời (ví dụ: <code>INV-A8F2K9</code>) hoặc liên kết từ ban quản lý CLB chia sẻ. Sau khi xác nhận, bạn sẽ được tự động kết nạp vào CLB với chức vụ và quyền hạn tương ứng.
+          💡 <strong>Hướng dẫn:</strong> Dán mã mời (ví dụ: <code>INV-A8F2K9</code>) hoặc liên kết từ ban quản lý CLB chia sẻ. Sau khi bấm xác nhận, bạn sẽ được tự động kết nạp vào CLB với chức vụ và quyền hạn tương ứng.
         </div>
         <form data-form="accept" novalidate>
           <div class="form-error" data-form-error role="alert"></div>
