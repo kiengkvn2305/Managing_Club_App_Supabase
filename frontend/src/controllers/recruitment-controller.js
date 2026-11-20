@@ -11,11 +11,8 @@ export function createRecruitmentController(ctx) {
       return true;
     }
 
-    if (
-      a === 'recruitment-new' &&
-      ctx.canManageRoster(ctx.currentRole()) &&
-      ctx.currentClub()?.status === 'active'
-    ) {
+    if (a === 'recruitment-new') {
+      if (!ctx.requirePermission(ctx.canManageRoster() && ctx.currentClub()?.status === 'active', 'Tạo bài tuyển quân')) return true;
       return openRecruitmentPost({
         api: ctx.api,
         base: ctx.base,
@@ -23,10 +20,8 @@ export function createRecruitmentController(ctx) {
       });
     }
 
-    if (
-      ['recruitment-edit', 'recruitment-applications'].includes(a) &&
-      ctx.canManageRoster(ctx.currentRole())
-    ) {
+    if (['recruitment-edit', 'recruitment-applications'].includes(a)) {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Quản lý tuyển quân')) return true;
       const post = ctx.state.recruitment.data.find(
         (p) => String(p.id) === el.dataset.id
       );

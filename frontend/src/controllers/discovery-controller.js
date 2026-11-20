@@ -12,7 +12,8 @@ export function createDiscoveryController(ctx) {
       return true;
     }
 
-    if (a === 'invite-friendly' && ctx.canManageClub(ctx.currentRole())) {
+    if (a === 'invite-friendly') {
+      if (!ctx.requirePermission(ctx.canManageClub(), 'Mời giao hữu')) return true;
       const target = ctx.state.discovery.data.find(
         (c) => String(c.id) === el.dataset.id
       );
@@ -44,7 +45,8 @@ export function createDiscoveryController(ctx) {
       );
     }
 
-    if (a === 'friendly-response' && ctx.canManageClub(ctx.currentRole())) {
+    if (a === 'friendly-response') {
+      if (!ctx.requirePermission(ctx.canManageClub(), 'Phản hồi lời mời giao hữu')) return true;
       const item = ctx.state.friendlies.data.find(
         (x) => String(x.id) === el.dataset.id
       );

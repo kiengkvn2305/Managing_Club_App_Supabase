@@ -30,7 +30,8 @@ export function createActivityController(ctx) {
       });
     }
 
-    if (a === 'attendance-report' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'attendance-report') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Xem tiến độ điểm danh')) return true;
       return openAttendanceReport({
         teams: ctx.state.teams,
         trainings: ctx.state.activities.trainings || [],
@@ -39,7 +40,8 @@ export function createActivityController(ctx) {
       });
     }
 
-    if (a === 'edit-birthday' && ctx.currentRole() === 'owner') {
+    if (a === 'edit-birthday') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Sửa thông tin thành viên')) return true;
       const member = (
         await ctx.api.get(ctx.base(`/members/${el.dataset.id}`))
       ).data;

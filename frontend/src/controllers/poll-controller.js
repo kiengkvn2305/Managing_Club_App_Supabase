@@ -8,11 +8,8 @@ export function createPollController(ctx) {
       return true;
     }
 
-    if (
-      a === 'poll-new' &&
-      ctx.canManageClub(ctx.currentRole()) &&
-      ctx.currentClub()?.status === 'active'
-    ) {
+    if (a === 'poll-new') {
+      if (!ctx.requirePermission(ctx.canManageClub() && ctx.currentClub()?.status === 'active', 'Tạo biểu quyết')) return true;
       return openPollCreate({
         api: ctx.api,
         base: ctx.base,

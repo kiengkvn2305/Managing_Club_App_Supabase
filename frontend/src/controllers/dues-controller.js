@@ -1,6 +1,7 @@
 export function createDuesController(ctx) {
   async function handleAction(a, el) {
-    if (a === 'record-dues' && ctx.currentClub()?.can_manage_finance) {
+    if (a === 'record-dues') {
+      if (!ctx.requirePermission(ctx.currentClub()?.can_manage_finance, 'Ghi quỹ')) return true;
       const person = ctx.state.dues.find(
         (x) => String(x.player_id) === el.dataset.id
       );
@@ -36,7 +37,8 @@ export function createDuesController(ctx) {
       );
     }
 
-    if (a === 'correct-dues' && ctx.currentClub()?.can_manage_finance) {
+    if (a === 'correct-dues') {
+      if (!ctx.requirePermission(ctx.currentClub()?.can_manage_finance, 'Sửa trạng thái quỹ')) return true;
       const person = ctx.state.dues.find(
         (x) => String(x.player_id) === el.dataset.id
       );
@@ -78,7 +80,8 @@ export function createDuesController(ctx) {
       );
     }
 
-    if (a === 'record-team-dues' && ctx.currentClub()?.can_manage_finance) {
+    if (a === 'record-team-dues') {
+      if (!ctx.requirePermission(ctx.currentClub()?.can_manage_finance, 'Ghi quỹ thành viên')) return true;
       const person = ctx.state.members.find(
         (x) => String(x.id) === el.dataset.id
       );
@@ -112,7 +115,8 @@ export function createDuesController(ctx) {
       );
     }
 
-    if (a === 'edit-dues-rate' && ctx.currentClub()?.can_manage_finance) {
+    if (a === 'edit-dues-rate') {
+      if (!ctx.requirePermission(ctx.currentClub()?.can_manage_finance, 'Chỉnh sửa quỹ đội')) return true;
       const team = ctx.state.teams.find((t) => String(t.id) === el.dataset.id);
       if (!team) return true;
 
@@ -140,7 +144,8 @@ export function createDuesController(ctx) {
       );
     }
 
-    if (a === 'maintenance-fee-settings' && ctx.currentClub()?.can_manage_finance) {
+    if (a === 'maintenance-fee-settings') {
+      if (!ctx.requirePermission(ctx.currentClub()?.can_manage_finance, 'Cài đặt phí duy trì')) return true;
       const club = ctx.currentClub();
       const currentFee = club.maintenance_fee ?? 50000;
 

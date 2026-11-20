@@ -7,10 +7,8 @@ import {
 
 export function createMatchController(ctx) {
   async function handleAction(a, el) {
-    if (
-      (a === 'new-match' || a === 'edit-match') &&
-      ctx.canManageRoster(ctx.currentRole())
-    ) {
+    if (a === 'new-match' || a === 'edit-match') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Quản lý lịch trận')) return true;
       return openMatch({
         match:
           a === 'edit-match'
@@ -26,7 +24,8 @@ export function createMatchController(ctx) {
       });
     }
 
-    if (a === 'match-attendance' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'match-attendance') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Điểm danh trận đấu')) return true;
       const match = [
         ...ctx.state.matches.data,
         ...ctx.state.matchCalendar,
@@ -36,7 +35,8 @@ export function createMatchController(ctx) {
       }
     }
 
-    if (a === 'match-player-stats' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'match-player-stats') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Nhập thống kê cầu thủ')) return true;
       const match = [
         ...ctx.state.matches.data,
         ...ctx.state.matchCalendar,
@@ -46,7 +46,8 @@ export function createMatchController(ctx) {
       }
     }
 
-    if (a === 'stats-summary' && ctx.canManageRoster(ctx.currentRole())) {
+    if (a === 'stats-summary') {
+      if (!ctx.requirePermission(ctx.canManageRoster(), 'Xem tổng kết thống kê')) return true;
       return openPlayerStatsSummary({
         api: ctx.api,
         base: ctx.base,
