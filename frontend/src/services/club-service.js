@@ -202,6 +202,61 @@ export function createClubService({ supabase, authService }) {
       };
     }
 
+    // System Admin Portal APIs
+    if (clean === '/admin/stats' && method === 'GET') {
+      return {
+        data: check(await supabase.rpc('admin_get_system_stats')),
+      };
+    }
+
+    if (clean === '/admin/clubs' && method === 'GET') {
+      return {
+        data: check(await supabase.rpc('admin_list_all_clubs')),
+      };
+    }
+
+    const adminClubStatusMatch = clean.match(/^\/admin\/clubs\/(\d+)\/status$/);
+    if (adminClubStatusMatch && method === 'PATCH') {
+      return {
+        data: check(
+          await supabase.rpc('admin_toggle_club_status', {
+            p_club_id: Number(adminClubStatusMatch[1]),
+            p_status: data.status,
+          })
+        ),
+      };
+    }
+
+    if (clean === '/admin/users' && method === 'GET') {
+      return {
+        data: check(await supabase.rpc('admin_list_all_users')),
+      };
+    }
+
+    const adminUserAdminMatch = clean.match(/^\/admin\/users\/([^/]+)\/admin$/);
+    if (adminUserAdminMatch && method === 'PATCH') {
+      return {
+        data: check(
+          await supabase.rpc('admin_set_user_admin', {
+            p_user_id: adminUserAdminMatch[1],
+            p_is_admin: Boolean(data.is_admin),
+          })
+        ),
+      };
+    }
+
+    const adminUserActiveMatch = clean.match(/^\/admin\/users\/([^/]+)\/active$/);
+    if (adminUserActiveMatch && method === 'PATCH') {
+      return {
+        data: check(
+          await supabase.rpc('admin_toggle_user_active', {
+            p_user_id: adminUserActiveMatch[1],
+            p_is_active: Boolean(data.is_active),
+          })
+        ),
+      };
+    }
+
     if (clean === '/discover/clubs') {
       let b = supabase
         .from('clubs')
@@ -284,8 +339,31 @@ export function createClubService({ supabase, authService }) {
         data: check(
           await supabase.rpc('create_club_invitation', {
             p_club_id: clubId,
-            p_email: data.email,
-            p_role: data.role,
+            p_email: data.email || null,
+            p_role: data.role || 'member',
+            p_title: data.title || 'Thành viên',
+            p_permissions: data.permissions || {},
+          })
+        ),
+      };
+    }
+
+    if (clean === `/clubs/${clubId}/invitations` && method === 'GET') {
+      return {
+        data: check(
+          await supabase.rpc('list_club_invitations', {
+            p_club_id: clubId,
+          })
+        ),
+      };
+    }
+
+    const revokeMatch = clean.match(/^\/clubs\/\d+\/invitations\/(\d+)$/);
+    if (revokeMatch && method === 'DELETE') {
+      return {
+        data: check(
+          await supabase.rpc('revoke_club_invitation', {
+            p_invitation_id: Number(revokeMatch[1]),
           })
         ),
       };

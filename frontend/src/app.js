@@ -198,12 +198,16 @@ const navItems = [
   ['inventory', 'Kho trang bị', 'layers'],
   ['activities', 'Hoạt động CLB', 'flag'],
   ['club', 'Câu lạc bộ', 'shield'],
+  ['admin', 'Quản trị hệ thống 👑', 'shield'],
   ['profile', 'Tài khoản', 'user'],
 ];
 
 const nav = () =>
   navItems
     .filter(([route]) => {
+      if (route === 'admin') {
+        return Boolean(s.user?.is_system_admin);
+      }
       const c = currentClub();
       if (!c) return true;
       if (c.is_system_admin || c.membership_role === 'owner') return true;
@@ -285,6 +289,13 @@ function render() {
             <img src="/icons/crest.svg" alt="">FCMS <small>PRO</small>
           </a>
           <div class="header-actions">
+            ${
+              s.user?.is_system_admin
+                ? `<a href="#admin" class="button secondary" style="padding:0.35rem 0.75rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.35rem;text-decoration:none;" title="Chuyển sang Trang Quản Trị Hệ Thống">
+                    👑 <span>Quản trị hệ thống</span>
+                  </a>`
+                : ''
+            }
             <button class="icon-button" data-action="theme" aria-label="Đổi giao diện sáng tối">
               ${icon('moon')}
             </button>
@@ -466,6 +477,29 @@ async function loadView() {
       s.friendlies = results[1] || { data: [], meta: {} };
     }
 
+    if (route === 'admin') {
+      if (!s.user?.is_system_admin) {
+        toast('Bạn không có quyền truy cập trang quản trị.', true);
+        s.route = 'dashboard';
+        location.hash = '#dashboard';
+        s.loading = false;
+        render();
+        return;
+      }
+      const [statsRes, clubsRes, usersRes] = await Promise.all([
+        api.get('/admin/stats', { signal }).catch(() => ({ data: null })),
+        api.get('/admin/clubs', { signal }).catch(() => ({ data: [] })),
+        api.get('/admin/users', { signal }).catch(() => ({ data: [] })),
+      ]);
+      if (signal.aborted || !s.user || route !== s.route) return;
+      s.adminStats = statsRes.data;
+      s.adminClubs = clubsRes.data || [];
+      s.adminUsers = usersRes.data || [];
+      s.loading = false;
+      render();
+      return;
+    }
+
     if (tenant && ['finance', 'dues'].includes(route) && !currentClub()?.can_view_finance) {
       toast(
         'Bạn không có quyền xem thông tin tài chính của câu lạc bộ. Vui lòng liên hệ Chủ nhiệm CLB để được cấp quyền.',
@@ -552,6 +586,7 @@ async function loadView() {
       ) {
         tasks.push(api.get(base('/board-members'), { signal }));
         tasks.push(api.get(base('/club-memberships'), { signal }));
+        tasks.push(api.get(base('/invitations'), { signal }).catch(() => ({ data: [] })));
       }
       if (route === 'finance' && currentClub()?.can_view_finance) {
         if (!s.financeMonth) {
@@ -595,6 +630,9 @@ async function loadView() {
       }
       if (route === 'profile') {
         tasks.push(api.get(base('/my-player'), { signal }));
+      }
+      if (route === 'club') {
+        tasks.push(api.get(base('/invitations'), { signal }).catch(() => ({ data: [] })));
       }
       if (
         (route === 'dashboard' ||
@@ -640,6 +678,7 @@ async function loadView() {
         s.boardMembers = unpackList(results[1]).rows;
         s.boardSharedRates = results[1].shared_rates || [];
         s.clubMemberships = results[2] ? unpackList(results[2]).rows : [];
+        s.clubInvitations = results[3]?.data || [];
       }
       if (route === 'finance' && results[1]) s.finance = results[1];
       if (route === 'finance' && results[2]) {
@@ -654,6 +693,7 @@ async function loadView() {
         s.canClaimPlayer = Boolean(results[1]?.eligible);
       }
       if (route === 'dashboard') s.dashboard = results[1].data;
+      if (route === 'club') s.clubInvitations = results[1]?.data || [];
 
       const list = [
         'lineups',
@@ -666,6 +706,7 @@ async function loadView() {
         'dues',
         'activities',
         'profile',
+        'club',
       ].includes(route)
         ? null
         : results[route === 'dashboard' ? 2 : 1];
@@ -793,6 +834,83 @@ async function action(el) {
         ? 'Email đã được xác minh.'
         : 'Email chưa được xác minh.'
     );
+    return;
+  }
+
+  if (a === 'copy-code') {
+    const code = el.dataset.code;
+    if (code) {
+      await navigator.clipboard.writeText(code);
+      toast(`Đã sao chép mã mời: ${code}`);
+    }
+    return;
+  }
+
+  if (a === 'revoke-invitation') {
+    const id = el.dataset.id;
+    if (confirm('Bạn có chắc chắn muốn hủy mã mời này không?')) {
+      await api.delete(base(`/invitations/${id}`));
+      toast('Đã hủy mã mời.');
+      await loadView();
+    }
+    return;
+  }
+
+  if (a === 'admin-tab') {
+    s.adminTab = el.dataset.tab;
+    render();
+    return;
+  }
+
+  if (a === 'admin-enter-club') {
+    const clubId = Number(el.dataset.id);
+    s.clubId = clubId;
+    s.route = 'dashboard';
+    history.replaceState(null, '', location.pathname + '#dashboard');
+    await loadApp();
+    toast('Đã chuyển sang không gian câu lạc bộ.');
+    return;
+  }
+
+  if (a === 'admin-toggle-club') {
+    const clubId = Number(el.dataset.id);
+    const newStatus = el.dataset.status;
+    const actionName = newStatus === 'archived' ? 'lưu trữ' : 'kích hoạt lại';
+    if (confirm(`Bạn có chắc muốn ${actionName} câu lạc bộ này?`)) {
+      await api.patch(`/admin/clubs/${clubId}/status`, { status: newStatus });
+      toast(`Đã ${actionName} câu lạc bộ.`);
+      await loadView();
+    }
+    return;
+  }
+
+  if (a === 'admin-toggle-user-admin') {
+    const userId = el.dataset.id;
+    const name = el.dataset.name;
+    const newIsAdmin = el.dataset.admin === 'true';
+    const msg = newIsAdmin
+      ? `Cấp quyền Quản trị viên hệ thống (System Admin) cho "${name}"?`
+      : `Thu hồi quyền Quản trị viên hệ thống của "${name}"?`;
+    if (confirm(msg)) {
+      await api.patch(`/admin/users/${userId}/admin`, { is_admin: newIsAdmin });
+      toast(newIsAdmin ? `Đã cấp quyền Quản trị viên cho ${name}.` : `Đã hạ quyền của ${name}.`);
+      await loadView();
+    }
+    return;
+  }
+
+  if (a === 'admin-toggle-user-active') {
+    const userId = el.dataset.id;
+    const name = el.dataset.name;
+    const newIsActive = el.dataset.active === 'true';
+    const msg = newIsActive
+      ? `Mở khóa tài khoản "${name}"?`
+      : `Khóa tài khoản "${name}"? Tài khoản này sẽ không thể đăng nhập.`;
+    if (confirm(msg)) {
+      await api.patch(`/admin/users/${userId}/active`, { is_active: newIsActive });
+      toast(newIsActive ? `Đã kích hoạt tài khoản ${name}.` : `Đã khóa tài khoản ${name}.`);
+      await loadView();
+    }
     return;
   }
 
@@ -974,6 +1092,10 @@ root.addEventListener('submit', (event) => {
       s.user = (
         await api.post(`/auth/${kind}`, data, { silentUnauthorized: true })
       ).data;
+      if (s.user?.is_system_admin) {
+        s.route = 'admin';
+        history.replaceState(null, '', location.pathname + '#admin');
+      }
       await loadApp();
       toast('Chào mừng bạn đến với FCMS PRO!');
     }
@@ -991,12 +1113,24 @@ root.addEventListener('submit', (event) => {
       s.route = 'dashboard';
       history.replaceState(null, '', location.pathname + '#dashboard');
       await loadApp();
-      toast('Đã tham gia câu lạc bộ.');
+      const clubName = response.data.club_name || 'Câu lạc bộ';
+      const roleTitle = response.data.title || 'Thành viên';
+      toast(`Đã tham gia ${clubName} với vai trò ${roleTitle}!`);
     }
   });
 });
 
 root.addEventListener('input', (event) => {
+  if (event.target.hasAttribute('data-admin-search')) {
+    s.adminQuery = event.target.value;
+    render();
+    const searchInput = root.querySelector('[data-admin-search]');
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.setSelectionRange(s.adminQuery.length, s.adminQuery.length);
+    }
+    return;
+  }
   if (event.target.name !== 'q') return;
   clearTimeout(searchTimer);
   const text = event.target.value;
@@ -1032,6 +1166,13 @@ api
   .get('/auth/user', { silentUnauthorized: true })
   .then((response) => {
     s.user = response.data;
+    if (
+      s.user?.is_system_admin &&
+      (!location.hash || location.hash === '#dashboard' || location.hash === '#')
+    ) {
+      s.route = 'admin';
+      history.replaceState(null, '', location.pathname + '#admin');
+    }
     return loadApp();
   })
   .catch(() => {

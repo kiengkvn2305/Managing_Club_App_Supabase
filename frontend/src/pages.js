@@ -18,6 +18,7 @@ import { dashboardPage } from './views/dashboard-page.js';
 import { boardPage } from './views/board-page.js';
 import { activitiesPage } from './views/activities-page.js';
 import { clubPage } from './views/club-page.js';
+import { adminPage } from './views/admin-page.js';
 import { profilePage, acceptPage } from './views/profile-page.js';
 import { authPage } from './views/auth-page.js';
 
@@ -37,6 +38,7 @@ export const titles = {
   profile: 'Tài khoản',
   accept: 'Nhận lời mời',
   roadmap: 'Lộ trình',
+  admin: 'Quản trị hệ thống',
 };
 
 const heading = (title, text, actions = '') => `
@@ -210,6 +212,7 @@ export function page() {
   if (s.route === 'accept') return acceptPage();
   if (s.route === 'roadmap') return roadmap();
   if (s.route === 'discover') return discoveryPage();
+  if (s.route === 'admin') return adminPage();
 
   if (!currentClub()) {
     return (

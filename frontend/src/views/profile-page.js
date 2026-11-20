@@ -92,19 +92,22 @@ export function acceptPage() {
       <div>
         <div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div>
         <h1>Kết nối cùng câu lạc bộ</h1>
-        <p>Một lời mời, một hành trình mới.</p>
+        <p>Nhập mã mời hoặc dán liên kết để gia nhập câu lạc bộ.</p>
       </div>
     </div>
     <section class="panel profile-panel">
       <div class="panel-body">
         ${!s.user.email_verified_at ? verification() : ''}
-        <p class="muted">Đang sử dụng email: <strong>${e(s.user.email)}</strong></p>
+        <p class="muted">Tài khoản đang đăng nhập: <strong>${e(s.user.name || '')}</strong> (${e(s.user.email)})</p>
+        <div class="notice" style="margin-bottom:1.25rem;">
+          💡 <strong>Hướng dẫn:</strong> Dán mã mời (ví dụ: <code>INV-A8F2K9</code>) hoặc liên kết từ ban quản lý CLB chia sẻ. Sau khi xác nhận, bạn sẽ được tự động kết nạp vào CLB với chức vụ và quyền hạn tương ứng.
+        </div>
         <form data-form="accept" novalidate>
           <div class="form-error" data-form-error role="alert"></div>
-          ${field('token', 'Mã lời mời', s.invite, 'text', true)}
+          ${field('token', 'Mã lời mời (Mã code hoặc Token)', s.invite, 'text', true)}
           <div class="form-actions">
-            <button class="button" type="submit" ${!s.user.email_verified_at ? 'disabled' : ''}>
-              Chấp nhận lời mời
+            <button class="button" type="submit">
+              Xác nhận tham gia câu lạc bộ
             </button>
           </div>
         </form>

@@ -23,6 +23,12 @@ export const state = {
   recruitmentPage: 1,
   recruitmentStatus: '',
   clubMemberships: [],
+  clubInvitations: [],
+  adminStats: null,
+  adminClubs: [],
+  adminUsers: [],
+  adminTab: 'overview',
+  adminQuery: '',
   activities: {
     celebrations: [],
     birthdays: [],

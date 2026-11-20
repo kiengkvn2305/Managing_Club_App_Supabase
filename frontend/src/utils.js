@@ -109,7 +109,7 @@ export function validate(kind, data) {
       errors[key] = `${label} không được để trống.`;
   };
   if (["register", "profile"].includes(kind)) required("name", "Họ tên");
-  if (["login", "register", "profile", "invitation"].includes(kind))
+  if (["login", "register", "profile"].includes(kind))
     required("email", "Email");
   if (["login", "register"].includes(kind)) required("password", "Mật khẩu");
   if (kind === "register" && data.password && data.password.length < 8)
@@ -148,3 +148,54 @@ export function unpackList(payload) {
     return { rows: payload.data.data, meta: payload.data };
   return { rows: [], meta: {} };
 }
+
+export const TITLE_PRESETS = {
+  'Phó chủ nhiệm CLB': {
+    can_view_finance: true,
+    can_manage_finance: false,
+    can_manage_roster: true,
+    can_manage_inventory: true,
+    can_manage_activities: true,
+    can_manage_club: true,
+  },
+  'Thủ quỹ': {
+    can_view_finance: true,
+    can_manage_finance: true,
+    can_manage_roster: false,
+    can_manage_inventory: false,
+    can_manage_activities: false,
+    can_manage_club: false,
+  },
+  'Trưởng ban chuyên môn / HLV': {
+    can_view_finance: false,
+    can_manage_finance: false,
+    can_manage_roster: true,
+    can_manage_inventory: false,
+    can_manage_activities: true,
+    can_manage_club: false,
+  },
+  'Phụ trách hậu cần / Trang thiết bị': {
+    can_view_finance: false,
+    can_manage_finance: false,
+    can_manage_roster: false,
+    can_manage_inventory: true,
+    can_manage_activities: true,
+    can_manage_club: false,
+  },
+  'Ủy viên BCN / Cán sự': {
+    can_view_finance: false,
+    can_manage_finance: false,
+    can_manage_roster: false,
+    can_manage_inventory: false,
+    can_manage_activities: true,
+    can_manage_club: false,
+  },
+  'Thành viên': {
+    can_view_finance: false,
+    can_manage_finance: false,
+    can_manage_roster: false,
+    can_manage_inventory: false,
+    can_manage_activities: false,
+    can_manage_club: false,
+  },
+};

@@ -253,37 +253,202 @@ export function createRosterController(ctx) {
     if (ctx.currentRole() === 'owner') roles.push('co_owner');
 
     let created;
+    const titleOptions = [
+      ['Thành viên', 'Thành viên (Mặc định)'],
+      ['Phó chủ nhiệm CLB', 'Phó chủ nhiệm CLB'],
+      ['Thủ quỹ', 'Thủ quỹ'],
+      ['Trưởng ban chuyên môn / HLV', 'Trưởng ban chuyên môn / HLV'],
+      ['Phụ trách hậu cần / Trang thiết bị', 'Phụ trách hậu cần / Trang thiết bị'],
+      ['Ủy viên BCN / Cán sự', 'Ủy viên BCN / Cán sự'],
+      ['__custom__', 'Chức danh khác (Tự nhập)...'],
+    ];
+
+    const fields =
+      `<div class="form-notice" style="margin-bottom:1rem;padding:0.75rem 1rem;background:var(--accent-surface,#f0f7ff);border:1px solid var(--accent-border,#cce4ff);border-radius:8px;font-size:0.9rem;">
+        <strong>💡 Mẹo test phân quyền:</strong> Bạn có thể <em>để trống ô Email</em> để tạo <strong>Mã mời dùng chung</strong>. Bất kỳ tài khoản nào nhập mã mời này đều sẽ nhận đúng chức vụ và quyền hạn đã chọn để bạn test ngay lập tức!
+      </div>` +
+      ctx.field('email', 'Email người nhận (Không bắt buộc nếu tạo mã test)', '', 'email') +
+      ctx.select('title_choice', 'Chức vụ dự kiến trao', titleOptions, 'Thành viên') +
+      `<div id="f-invite-custom-title-wrap" style="display:none;">${ctx.field('custom_title', 'Tên chức danh tùy chỉnh', '', 'text')}</div>` +
+      `<fieldset class="field" style="margin-top:1rem;border:1px solid var(--border);padding:1rem;border-radius:8px;">
+        <legend style="font-weight:600;padding:0 0.5rem;">Cấp quyền hạn chi tiết (Tự động tick theo chức vụ)</legend>
+        <div id="invite-preset-hint" style="margin-bottom:0.75rem;font-size:0.85rem;color:var(--muted);">Chọn chức vụ ở trên để tự động tick quyền mẫu, hoặc tùy chỉnh bên dưới:</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:0.5rem;">
+          <label><input type="checkbox" name="can_view_finance"> <strong>Xem sổ thu chi</strong><br><small class="muted">Xem giao dịch, quỹ và số dư</small></label>
+          <label><input type="checkbox" name="can_manage_finance"> <strong>Quản lý thu chi & quỹ</strong><br><small class="muted">Tạo giao dịch, thu quỹ, sửa quỹ</small></label>
+          <label><input type="checkbox" name="can_manage_roster"> <strong>Quản lý thành viên & đội</strong><br><small class="muted">Thêm/sửa thành viên, xếp đội bóng</small></label>
+          <label><input type="checkbox" name="can_manage_inventory"> <strong>Quản lý kho trang bị</strong><br><small class="muted">Nhập/xuất, bàn giao thiết bị</small></label>
+          <label><input type="checkbox" name="can_manage_activities"> <strong>Quản lý hoạt động CLB</strong><br><small class="muted">Lịch tập, điểm danh, khen thưởng</small></label>
+          <label><input type="checkbox" name="can_manage_club"> <strong>Quản trị thông tin CLB</strong><br><small class="muted">Đổi thông tin, ảnh, cài đặt công khai</small></label>
+        </div>
+      </fieldset>`;
+
     const el = ctx.dialog(
-      'Mời tham gia câu lạc bộ',
-      'Tạo liên kết và chia sẻ riêng với người nhận. Không gửi email tự động.',
-      ctx.field('email', 'Email người nhận', '', 'email', true) +
-        ctx.select(
-          'role',
-          'Vai trò',
-          roles.map((r) => [r, ctx.roleLabel(r)]),
-          'member'
-        ),
+      'Mời tham gia câu lạc bộ & Phân quyền',
+      'Tạo mã mời và cấp quyền hạn cho thành viên mới.',
+      fields,
       (form) =>
         ctx.submit(form, 'invitation', async (data) => {
-          created = (await ctx.api.post(ctx.base('/invitations'), data)).data;
+          const titleChoice = form.querySelector('[name="title_choice"]')?.value || 'Thành viên';
+          const title =
+            titleChoice === '__custom__'
+              ? (form.querySelector('[name="custom_title"]')?.value || 'Thành viên').trim()
+              : titleChoice;
+          const permissions = {
+            can_view_finance: Boolean(form.elements.can_view_finance?.checked),
+            can_manage_finance: Boolean(form.elements.can_manage_finance?.checked),
+            can_manage_roster: Boolean(form.elements.can_manage_roster?.checked),
+            can_manage_inventory: Boolean(form.elements.can_manage_inventory?.checked),
+            can_manage_activities: Boolean(form.elements.can_manage_activities?.checked),
+            can_manage_club: Boolean(form.elements.can_manage_club?.checked),
+          };
+          let role = 'member';
+          if (permissions.can_manage_club) role = 'co_owner';
+          else if (
+            permissions.can_manage_finance ||
+            permissions.can_manage_roster ||
+            permissions.can_manage_inventory
+          )
+            role = 'general_manager';
+
+          created = (
+            await ctx.api.post(ctx.base('/invitations'), {
+              email: data.email ? String(data.email).trim().toLowerCase() : null,
+              role,
+              title,
+              permissions,
+            })
+          ).data;
         }),
-      'Tạo lời mời'
+      'Tạo mã mời'
     );
+
+    const titleSelect = el.querySelector('[name="title_choice"]');
+    const customWrap = el.querySelector('#f-invite-custom-title-wrap');
+    const hintMsg = el.querySelector('#invite-preset-hint');
+
+    const TITLE_PRESETS_LOCAL = {
+      'Phó chủ nhiệm CLB': {
+        can_view_finance: true,
+        can_manage_finance: false,
+        can_manage_roster: true,
+        can_manage_inventory: true,
+        can_manage_activities: true,
+        can_manage_club: true,
+      },
+      'Thủ quỹ': {
+        can_view_finance: true,
+        can_manage_finance: true,
+        can_manage_roster: false,
+        can_manage_inventory: false,
+        can_manage_activities: false,
+        can_manage_club: false,
+      },
+      'Trưởng ban chuyên môn / HLV': {
+        can_view_finance: false,
+        can_manage_finance: false,
+        can_manage_roster: true,
+        can_manage_inventory: false,
+        can_manage_activities: true,
+        can_manage_club: false,
+      },
+      'Phụ trách hậu cần / Trang thiết bị': {
+        can_view_finance: false,
+        can_manage_finance: false,
+        can_manage_roster: false,
+        can_manage_inventory: true,
+        can_manage_activities: true,
+        can_manage_club: false,
+      },
+      'Ủy viên BCN / Cán sự': {
+        can_view_finance: false,
+        can_manage_finance: false,
+        can_manage_roster: false,
+        can_manage_inventory: false,
+        can_manage_activities: true,
+        can_manage_club: false,
+      },
+      'Thành viên': {
+        can_view_finance: false,
+        can_manage_finance: false,
+        can_manage_roster: false,
+        can_manage_inventory: false,
+        can_manage_activities: false,
+        can_manage_club: false,
+      },
+    };
+
+    titleSelect?.addEventListener('change', () => {
+      const val = titleSelect.value;
+      if (customWrap) customWrap.style.display = val === '__custom__' ? 'block' : 'none';
+      if (TITLE_PRESETS_LOCAL[val]) {
+        const p = TITLE_PRESETS_LOCAL[val];
+        Object.keys(p).forEach((k) => {
+          const cb = el.querySelector(`[name="${k}"]`);
+          if (cb) cb.checked = p[k];
+        });
+        if (hintMsg) {
+          hintMsg.textContent = `✓ Đã tự động áp dụng các quyền mẫu của "${val}". Bạn có thể điều chỉnh thêm bên dưới.`;
+        }
+      }
+    });
 
     el.addEventListener(
       'close',
       () => {
         if (!created) return;
-        const link = `${location.origin}${location.pathname}#accept?token=${encodeURIComponent(created.token)}`;
-        const result = ctx.dialog(
-          'Lời mời đã sẵn sàng',
-          'Sao chép liên kết này và gửi riêng cho người nhận. Hiệu lực 7 ngày.',
-          ctx.field('link', 'Liên kết nhận lời mời', link),
+        const code = created.invite_code || created.token;
+        const link = `${location.origin}${location.pathname}#accept?token=${encodeURIComponent(code)}`;
+        const permsList = Object.entries(created.permissions || {})
+          .filter(([, v]) => v)
+          .map(([k]) => {
+            const labels = {
+              can_view_finance: 'Xem thu chi',
+              can_manage_finance: 'Quản lý thu chi & quỹ',
+              can_manage_roster: 'Quản lý thành viên & đội',
+              can_manage_inventory: 'Quản lý kho trang bị',
+              can_manage_activities: 'Quản lý hoạt động',
+              can_manage_club: 'Quản trị CLB',
+            };
+            return labels[k] || k;
+          });
+
+        const resultHtml = `
+          <div style="text-align:center;padding:1rem 0;">
+            <div style="font-size:0.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem;">MÃ MỜI THAM GIA CLB</div>
+            <div style="font-size:2rem;font-weight:700;letter-spacing:2px;color:var(--primary,#0066cc);padding:0.75rem;background:var(--surface,#f5f5f5);border:2px dashed var(--border,#ccc);border-radius:8px;user-select:all;margin-bottom:1rem;">
+              ${ctx.e(code)}
+            </div>
+            <p style="margin-bottom:1rem;color:var(--text);">Chức vụ: <strong>${ctx.e(created.title || 'Thành viên')}</strong>${permsList.length ? `<br><small class="muted">Quyền được cấp: ${ctx.e(permsList.join(', '))}</small>` : ''}</p>
+            <div class="field" style="text-align:left;margin-bottom:1rem;">
+              <label>Liên kết nhận lời mời trực tiếp:</label>
+              <input type="text" readonly value="${ctx.e(link)}" style="width:100%;" onclick="this.select()">
+            </div>
+            <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;">
+              <button type="button" class="button" data-copy-val="${ctx.e(code)}">Sao chép mã mời</button>
+              <button type="button" class="button secondary" data-copy-val="${ctx.e(link)}">Sao chép liên kết</button>
+            </div>
+            <p style="margin-top:1.25rem;font-size:0.85rem;color:var(--muted);background:var(--accent-surface,#f0f7ff);padding:0.75rem;border-radius:6px;">
+              💡 <strong>Cách test phân quyền:</strong> Mở trình duyệt ẩn danh (Incognito) hoặc đăng nhập tài khoản khác, vào mục <strong>"Nhập mã tham gia" (#accept)</strong> và dán mã <strong>${ctx.e(code)}</strong> vào là xong!
+            </p>
+          </div>
+        `;
+        const resultModal = ctx.dialog(
+          'Mã mời đã sẵn sàng!',
+          'Chia sẻ mã mời hoặc liên kết này cho người nhận.',
+          resultHtml,
           async () => true,
-          'Đóng'
+          'Hoàn tất'
         );
-        result.querySelector('input').readOnly = true;
-        result.querySelector('input').select();
+        resultModal.querySelectorAll('[data-copy-val]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            navigator.clipboard.writeText(btn.dataset.copyVal);
+            const orig = btn.textContent;
+            btn.textContent = '✓ Đã sao chép!';
+            setTimeout(() => (btn.textContent = orig), 2000);
+          });
+        });
+        ctx.loadView();
       },
       { once: true }
     );
@@ -371,8 +536,12 @@ export function createRosterController(ctx) {
       return modal;
     }
 
-    if (a === 'invite-member') {
-      if (!ctx.requirePermission(ctx.canManageClub(), 'Mời thành viên')) return true;
+    if (a === 'invite' || a === 'invite-member') {
+      const allowed =
+        ctx.currentRole() === 'owner' ||
+        ctx.currentClub()?.is_system_admin ||
+        ctx.canManageClub();
+      if (!ctx.requirePermission(allowed, 'Mời thành viên')) return true;
       return invite();
     }
 

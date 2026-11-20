@@ -132,6 +132,74 @@ export function boardPage() {
     <section class="panel">
       <div class="panel-head">
         <div>
+          <h2>Mã mời & Lời mời tham gia CLB (${(s.clubInvitations || []).length})</h2>
+          <p class="muted">Mã mời được tạo sẵn kèm chức vụ và quyền hạn. Người nhận chỉ cần nhập mã tại mục "Nhận lời mời" (#accept).</p>
+        </div>
+        ${button('invite', 'Tạo mã mời mới', 'plus', 'secondary')}
+      </div>
+      ${(() => {
+        const list = s.clubInvitations || [];
+        if (!list.length) {
+          return '<div class="panel-body"><p class="muted">Chưa có mã mời nào. Bấm "Tạo mã mời mới" để tạo mã và cấp sẵn quyền hạn để test.</p></div>';
+        }
+        return `
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Mã mời</th>
+                  <th>Email nhận</th>
+                  <th>Chức vụ & Quyền</th>
+                  <th class="tabular-nums">Hạn dùng</th>
+                  <th class="text-center">Trạng thái</th>
+                  <th class="text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list
+                  .map((inv) => {
+                    const code = inv.invite_code || inv.token || 'INV';
+                    const permsCount = Object.values(inv.permissions || {}).filter(
+                      Boolean
+                    ).length;
+                    const statusMap = {
+                      pending: '<span class="badge active">Đang chờ</span>',
+                      accepted: '<span class="badge">Đã tham gia</span>',
+                      expired: '<span class="badge muted">Hết hạn</span>',
+                      revoked: '<span class="badge injured">Đã hủy</span>',
+                    };
+                    const statusBadge =
+                      statusMap[inv.status] || `<span class="badge">${e(inv.status)}</span>`;
+                    return `
+                    <tr>
+                      <td><strong style="font-family:monospace;letter-spacing:1px;font-size:1rem;color:var(--primary);">${e(code)}</strong></td>
+                      <td>${inv.email ? `<span>${e(inv.email)}</span>` : '<span class="badge secondary" style="font-size:0.75rem;">Dùng chung (Test)</span>'}</td>
+                      <td>
+                        <strong>${e(inv.title || 'Thành viên')}</strong>
+                        ${permsCount ? `<br><small class="muted">${permsCount} quyền tùy chỉnh</small>` : ''}
+                      </td>
+                      <td class="tabular-nums">${e(formatDate(String(inv.expires_at || '').slice(0, 10)))}</td>
+                      <td class="text-center">${statusBadge}</td>
+                      <td class="text-right">
+                        <div style="display:inline-flex;gap:0.35rem;justify-content:flex-end;">
+                          <button type="button" class="text-button" data-action="copy-code" data-code="${e(code)}" title="Sao chép mã">Chép mã</button>
+                          ${inv.status === 'pending' ? `<button type="button" class="text-button danger" data-action="revoke-invitation" data-id="${inv.id}" title="Hủy mã này">Hủy</button>` : ''}
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                  })
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      })()}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
           <h2>Ban chủ nhiệm</h2>
           <p>Chức danh dùng để ghi nhận nhân sự, không tự cấp quyền đăng nhập.</p>
         </div>
