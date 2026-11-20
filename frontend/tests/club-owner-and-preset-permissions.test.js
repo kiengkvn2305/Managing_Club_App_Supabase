@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canManageClub, canManageRoster } from '../src/utils.js';
 import { createClubService } from '../src/services/club-service.js';
+import { createAuthService } from '../src/services/auth-service.js';
 import { buildMembersWorkbook, downloadMemberTemplate } from '../src/spreadsheets.js';
 
 test('canManageRoster and canManageClub grant complete access to owner and system admin', () => {
@@ -183,4 +184,33 @@ test('exportMembers exports Ngày bắt đầu hoạt động CLB and template e
   const row2 = sheet.getRow(2);
   const dateCellIndex = headers.indexOf('Ngày bắt đầu hoạt động CLB') + 1;
   assert.equal(row2.getCell(dateCellIndex).value, '01/10/2024');
+});
+
+test('authService profile does not crash on missing column or database error and falls back gracefully', async () => {
+  const mockSupabase = {
+    auth: {
+      getUser: async () => ({
+        data: { user: { id: 'usr-1', email: 'user@test.com', user_metadata: { name: 'Người Dùng' } } },
+        error: null,
+      }),
+    },
+    from(table) {
+      return {
+        select() { return this; },
+        eq() { return this; },
+        maybeSingle: async () => ({
+          data: null,
+          error: { code: '42501', message: 'permission denied for column is_system_admin' },
+        }),
+      };
+    },
+    rpc: async () => ({ data: false, error: null }),
+  };
+
+  const authService = createAuthService({ supabase: mockSupabase });
+  const prof = await authService.profile();
+  assert.equal(prof.id, 'usr-1');
+  assert.equal(prof.name, 'Người Dùng');
+  assert.equal(prof.email, 'user@test.com');
+  assert.equal(prof.is_system_admin, false);
 });

@@ -10,6 +10,39 @@ grant select, insert, update, delete on public.player_profiles to authenticated;
 grant delete on public.teams to authenticated;
 grant delete on public.board_tasks to authenticated;
 
+-- Đảm bảo authenticated có toàn quyền SELECT trên profiles và sequence
+grant select on public.profiles to authenticated;
+grant select (id,name,email,is_system_admin,is_active,avatar_path,created_at,updated_at) on table public.profiles to authenticated;
+
+-- Đảm bảo mọi tài khoản auth.users đều có hồ sơ trong public.profiles
+insert into public.profiles (id, name, email, is_active)
+select u.id, coalesce(u.raw_user_meta_data->>'name', ''), lower(u.email), true
+from auth.users u
+left join public.profiles p on p.id = u.id
+where p.id is null
+on conflict (id) do nothing;
+
+-- Tự động xác minh email cho toàn bộ tài khoản để không bị chặn đăng nhập
+update auth.users
+set email_confirmed_at = coalesce(email_confirmed_at, now())
+where email_confirmed_at is null;
+
+-- Tự động xác minh email cho mọi người dùng đăng ký mới
+create or replace function public.auto_confirm_new_user()
+returns trigger language plpgsql security definer set search_path = auth, public as $$
+begin
+  if new.email_confirmed_at is null then
+    new.email_confirmed_at := now();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_auto_confirm on auth.users;
+create trigger on_auth_user_auto_confirm
+  before insert on auth.users
+  for each row execute function public.auto_confirm_new_user();
+
 -- 2. Cập nhật commit_member_import loại bỏ academic_year, không ghi nhận ngày bắt đầu hoạt động CLB khi import
 create or replace function public.commit_member_import(
   p_club_id bigint,

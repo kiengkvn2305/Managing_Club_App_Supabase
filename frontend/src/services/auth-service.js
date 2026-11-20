@@ -18,19 +18,25 @@ export function createAuthService({ supabase, onUnauthorized = () => {} }) {
     if (!current) return null;
     const result = await supabase
       .from('profiles')
-      .select('id,name,email,is_system_admin,avatar_path,created_at,updated_at')
+      .select('id,name,email,avatar_path,created_at,updated_at')
       .eq('id', current.id)
       .maybeSingle();
     const row =
-      check(result) || {
+      (result && !result.error && result.data) || {
         id: current.id,
         name: current.user_metadata?.name || '',
         email: current.email,
-        is_system_admin: false,
       };
+
+    let isSysAdmin = false;
+    try {
+      const adminRpc = await supabase.rpc('is_system_admin');
+      if (!adminRpc.error && adminRpc.data) isSysAdmin = Boolean(adminRpc.data);
+    } catch {}
+
     return {
       ...row,
-      is_system_admin: Boolean(row.is_system_admin),
+      is_system_admin: isSysAdmin,
       avatar_version: row.avatar_path || null,
     };
   }
@@ -71,10 +77,11 @@ export function createAuthService({ supabase, onUnauthorized = () => {} }) {
     }
 
     if (clean === '/auth/register' && method === 'POST') {
+      const email = String(data.email || '').trim().toLowerCase();
       const result = await supabase.auth.signUp({
-        email: String(data.email).toLowerCase(),
+        email,
         password: data.password,
-        options: { data: { name: data.name } },
+        options: { data: { name: String(data.name || '').trim() } },
       });
       if (result.error) throw new SupabaseApiError(result.error.message, 422);
       if (!result.data.session) {
@@ -87,13 +94,22 @@ export function createAuthService({ supabase, onUnauthorized = () => {} }) {
     }
 
     if (clean === '/auth/login' && method === 'POST') {
+      const email = String(data.email || '').trim().toLowerCase();
       const result = await supabase.auth.signInWithPassword({
-        email: String(data.email).toLowerCase(),
+        email,
         password: data.password,
       });
       if (result.error) {
-        throw new SupabaseApiError('Thông tin đăng nhập không chính xác.', 422, {
-          email: ['Thông tin đăng nhập không chính xác.'],
+        let msg = 'Thông tin đăng nhập không chính xác.';
+        if (result.error.message?.includes('Email not confirmed')) {
+          msg = 'Tài khoản chưa được kích hoạt hoặc chưa xác minh email. Vui lòng kiểm tra email của bạn.';
+        } else if (result.error.message?.includes('Invalid login credentials')) {
+          msg = 'Email hoặc mật khẩu không chính xác.';
+        } else if (result.error.message) {
+          msg = result.error.message;
+        }
+        throw new SupabaseApiError(msg, 422, {
+          email: [msg],
         });
       }
       return { data: await profile() };

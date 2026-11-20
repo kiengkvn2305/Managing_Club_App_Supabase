@@ -137,7 +137,7 @@ export function validate(kind, data) {
   if (["club", "team"].includes(kind)) required("name", "Tên");
   if (kind === "team" && !["5", "7", "11"].includes(String(data.format)))
     errors.format = "Chọn loại sân 5, 7 hoặc 11 người.";
-  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))
+  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email).trim()))
     errors.email = "Nhập địa chỉ email hợp lệ.";
   return errors;
 }
