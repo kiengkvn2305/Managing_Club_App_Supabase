@@ -240,6 +240,12 @@ export function createRosterController(ctx) {
   }
 
   function invite() {
+    const club = ctx.currentClub();
+    if (!club) {
+      ctx.toast('Vui lòng chọn hoặc tạo câu lạc bộ trước khi tạo mã mời.', true);
+      return false;
+    }
+
     let roles = ['member'];
     if (['owner', 'co_owner'].includes(ctx.currentRole())) {
       roles.push(
@@ -452,6 +458,8 @@ export function createRosterController(ctx) {
       },
       { once: true }
     );
+
+    return el;
   }
 
   async function handleAction(a, el) {
@@ -540,9 +548,12 @@ export function createRosterController(ctx) {
       const allowed =
         ctx.currentRole() === 'owner' ||
         ctx.currentClub()?.is_system_admin ||
-        ctx.canManageClub();
+        ctx.state.user?.is_system_admin ||
+        ctx.canManageClub() ||
+        ctx.canManageRoster();
       if (!ctx.requirePermission(allowed, 'Mời thành viên')) return true;
-      return invite();
+      invite();
+      return true;
     }
 
     if (a === 'new-team') {

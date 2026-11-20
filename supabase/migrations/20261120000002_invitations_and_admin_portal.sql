@@ -22,6 +22,8 @@ create unique index if not exists club_invitations_invite_code_idx
   on public.club_invitations (invite_code) where invite_code is not null;
 
 -- 2. RPC: create_club_invitation
+drop function if exists public.create_club_invitation(bigint, text, public.club_role, text, jsonb) cascade;
+drop function if exists public.create_club_invitation(bigint, text, public.club_role) cascade;
 create or replace function public.create_club_invitation(
   p_club_id bigint,
   p_email text default null,
@@ -124,6 +126,8 @@ revoke all on function public.create_club_invitation(bigint, text, public.club_r
 grant execute on function public.create_club_invitation(bigint, text, public.club_role) to authenticated;
 
 -- 3. RPC: accept_club_invitation (accepts code, hex token, or plain token)
+drop function if exists public.accept_club_invitation(text) cascade;
+drop function if exists public.accept_club_invitation(uuid) cascade;
 create or replace function public.accept_club_invitation(p_token text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare

@@ -72,8 +72,8 @@ function values(form) {
 async function submit(form, kind, handler) {
   const data = values(form);
   const errors = validate(kind, data);
-  if (kind === 'accept' && data.token?.length !== 64) {
-    errors.token = 'Mã lời mời phải có 64 ký tự.';
+  if (kind === 'accept' && !String(data.token || '').trim()) {
+    errors.token = 'Vui lòng nhập mã lời mời.';
   }
 
   showErrors(form, errors);

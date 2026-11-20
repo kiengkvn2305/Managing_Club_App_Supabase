@@ -5,12 +5,14 @@ import { avatar, imageUrl } from '../images.js';
 
 export function clubPage() {
   const c = currentClub();
-  const canInvite = [
-    'owner',
-    'co_owner',
-    'general_manager',
-    'hr_manager',
-  ].includes(c.membership_role);
+  const canInvite =
+    !c ||
+    c.is_system_admin ||
+    s.user?.is_system_admin ||
+    c.membership_role === 'owner' ||
+    ['owner', 'co_owner', 'general_manager', 'hr_manager'].includes(c.membership_role) ||
+    canManageClub(c) ||
+    Boolean(c.can_manage_roster);
 
   const actions =
     button('new-club', 'Tạo CLB mới', 'plus', 'secondary') +
@@ -78,7 +80,8 @@ export function clubPage() {
               return `
                 <div class="empty-state" style="padding:1.5rem;text-align:center;color:var(--muted);">
                   <p>Chưa có mã mời nào được tạo cho CLB này.</p>
-                  <p style="font-size:0.875rem;">Bấm <strong>"Tạo mã mời mới"</strong> ở trên để tạo mã mời và chọn quyền hạn test.</p>
+                  <p style="font-size:0.875rem;margin-bottom:1rem;">Tạo mã mời có sẵn chức vụ và quyền hạn để chia sẻ hoặc test ngay lập tức.</p>
+                  ${canInvite ? button('invite', 'Tạo mã mời mới ngay', 'plus') : ''}
                 </div>
               `;
             }
