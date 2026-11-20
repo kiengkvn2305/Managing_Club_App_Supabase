@@ -10,6 +10,7 @@ returns boolean language plpgsql security definer set search_path = public as $$
 declare
   v_role public.club_role;
   v_member_id bigint;
+  v_other_member_id uuid;
 begin
   if auth.uid() is null then
     raise exception 'not_authenticated';
@@ -22,9 +23,25 @@ begin
     raise exception 'not_a_member';
   end if;
 
-  -- Chủ nhiệm không thể rời CLB nếu chưa chuyển quyền hoặc xóa CLB
+  -- Nếu Chủ nhiệm rời CLB:
   if v_role = 'owner' then
-    raise exception 'owner_cannot_leave';
+    -- Tìm thành viên hoạt động khác để tự động kế thừa chức danh Chủ nhiệm
+    select user_id into v_other_member_id
+    from public.club_members
+    where club_id = p_club_id and user_id <> auth.uid() and status = 'active'
+    order by (role in ('co_owner', 'general_manager', 'treasurer')) desc, created_at asc
+    limit 1;
+
+    if v_other_member_id is not null then
+      update public.club_members
+      set role = 'owner', updated_at = now()
+      where club_id = p_club_id and user_id = v_other_member_id;
+    else
+      -- Nếu không còn ai khác trong CLB, lưu trữ CLB
+      update public.clubs
+      set deleted_at = now(), status = 'archived', updated_at = now()
+      where id = p_club_id;
+    end if;
   end if;
 
   -- Xóa người dùng khỏi danh sách thành viên quyền hạn của CLB
@@ -38,7 +55,7 @@ begin
 
   -- Ghi nhận audit log
   insert into public.audit_logs (club_id, actor_id, action, subject_type, subject_id)
-  values (p_club_id, auth.uid(), 'member.left', 'ClubMember', v_member_id);
+  values (p_club_id, auth.uid(), 'member.left', 'ClubMember', coalesce(v_member_id, p_club_id));
 
   return true;
 end $$;

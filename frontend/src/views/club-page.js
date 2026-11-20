@@ -26,9 +26,7 @@ export function clubPage() {
       ? button('transfer-ownership', 'Chuyển quyền Chủ nhiệm', 'user', 'secondary') +
         button('delete-club', 'Xóa CLB', 'trash', 'secondary')
       : '') +
-    (c && c.membership_role !== 'owner' && !c.is_system_admin
-      ? button('leave-club', 'Rời câu lạc bộ', 'arrow', 'secondary')
-      : '');
+    (c ? button('leave-club', 'Rời câu lạc bộ', 'arrow', 'secondary') : '');
 
   return `
     <div class="page-top">
