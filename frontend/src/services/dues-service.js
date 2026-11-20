@@ -13,11 +13,12 @@ export function createDuesService({ supabase }) {
       boardMembersResult,
       sharedBoardRatesResult,
       boardRatesResult,
+      clubResult,
     ] = await Promise.all([
       supabase
         .from('team_dues_entries')
         .select(
-          '*,player:player_profiles(id,full_name,date_of_birth,email,notes),team:teams(id,name)'
+          '*,player:player_profiles(id,full_name,date_of_birth,email,notes,status),team:teams(id,name)'
         )
         .eq('club_id', clubId)
         .eq('month', targetMonth),
@@ -31,7 +32,7 @@ export function createDuesService({ supabase }) {
         .from('player_profiles')
         .select('id,full_name,date_of_birth,email,notes,status,team_id')
         .eq('club_id', clubId)
-        .eq('status', 'active')
+        .in('status', ['active', 'inactive'])
         .not('team_id', 'is', null),
       supabase
         .from('teams')
@@ -60,6 +61,11 @@ export function createDuesService({ supabase }) {
         .eq('club_id', clubId)
         .lte('effective_month', targetMonth)
         .order('effective_month', { ascending: false }),
+      supabase
+        .from('clubs')
+        .select('maintenance_fee')
+        .eq('id', clubId)
+        .maybeSingle(),
     ]);
 
     const rows = check(entriesResult) || [];
@@ -70,6 +76,8 @@ export function createDuesService({ supabase }) {
     const boardMembers = check(boardMembersResult) || [];
     const sharedBoardRates = check(sharedBoardRatesResult) || [];
     const boardRates = check(boardRatesResult) || [];
+    const clubData = check(clubResult);
+    const maintenanceFee = Number(clubData?.maintenance_fee ?? 50000);
 
     const teamsMap = new Map(clubTeams.map((t) => [t.id, t]));
 
@@ -98,7 +106,12 @@ export function createDuesService({ supabase }) {
       }
     }
 
-    function resolveRate(playerId, teamId) {
+    function resolveRate(player, teamId) {
+      if (!player || player.status === 'graduated') return null;
+      if (player.status === 'inactive') {
+        return maintenanceFee;
+      }
+      const playerId = player.id;
       if (boardPlayerIds.has(playerId)) {
         const personal = boardRates.find(
           (r) =>
@@ -123,6 +136,7 @@ export function createDuesService({ supabase }) {
         date_of_birth: row.player?.date_of_birth,
         email: row.player?.email,
         notes: row.player?.notes,
+        status: row.player?.status,
         teams: [],
         total: 0,
         debt: 0,
@@ -140,8 +154,8 @@ export function createDuesService({ supabase }) {
     }
 
     for (const tp of combinedPlayers) {
-      if (tp.player?.status !== 'active') continue;
-      const rateAmount = resolveRate(tp.player_id, tp.team_id);
+      if (tp.player?.status !== 'active' && tp.player?.status !== 'inactive') continue;
+      const rateAmount = resolveRate(tp.player, tp.team_id);
       if (rateAmount == null) continue;
 
       const item = grouped.get(tp.player_id) || {
@@ -150,6 +164,7 @@ export function createDuesService({ supabase }) {
         date_of_birth: tp.player?.date_of_birth,
         email: tp.player?.email,
         notes: tp.player?.notes,
+        status: tp.player?.status,
         teams: [],
         total: 0,
         debt: 0,
@@ -162,6 +177,7 @@ export function createDuesService({ supabase }) {
             name: tp.team?.name,
             amount: 0,
             status: 'exempt',
+            is_maintenance: tp.player?.status === 'inactive',
           });
         } else {
           item.teams.push({
@@ -169,6 +185,7 @@ export function createDuesService({ supabase }) {
             name: tp.team?.name,
             amount: rateAmount,
             status: 'unpaid',
+            is_maintenance: tp.player?.status === 'inactive',
           });
           item.total += rateAmount;
           item.debt += rateAmount;

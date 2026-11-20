@@ -1,7 +1,7 @@
 import { formatDate } from './utils.js';
 import { state as s, currentClub } from './state.js';
 import { escapeHtml as e, number, compareVietnameseNames } from './utils.js';
-import { empty } from './components/ui.js';
+import { empty, button } from './components/ui.js';
 
 export function duesPage() {
   if (!currentClub()?.can_view_finance) {
@@ -52,13 +52,21 @@ export function duesPage() {
         a.team.name.localeCompare(b.team.name, 'vi')
     );
 
+  const club = currentClub();
+  const maintenanceFee = club?.maintenance_fee ?? 50000;
+
   return `
     <div class="page-top">
       <div>
         <div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div>
         <h1>Đóng quỹ</h1>
-        <p>Theo dõi, ghi đóng và điều chỉnh quỹ từng đội theo tháng.</p>
+        <p>Theo dõi, ghi đóng và điều chỉnh quỹ từng đội theo tháng. Phí duy trì (thành viên tạm ngưng): ${number(maintenanceFee)} đ/tháng.</p>
       </div>
+      ${
+        club?.can_manage_finance
+          ? `<div class="page-actions">${button('maintenance-fee-settings', 'Cài đặt phí duy trì', 'shield', 'secondary')}</div>`
+          : ''
+      }
     </div>
     <section class="panel">
       <form class="filters" data-form="dues-filter">
@@ -114,10 +122,24 @@ export function duesPage() {
                     .map(
                       ({ person, team }) => `
                     <tr>
-                      <td><strong>${e(person.name)}</strong></td>
+                      <td>
+                        <strong>${e(person.name)}</strong>
+                        ${
+                          person.status === 'inactive' || team.is_maintenance
+                            ? `<span class="badge inactive" style="margin-left:4px;font-size:10px;vertical-align:middle;">Tạm ngưng</span>`
+                            : ''
+                        }
+                      </td>
                       <td class="tabular-nums">${e(formatDate(person.date_of_birth) || '—')}</td>
                       <td>${e(person.email || '—')}</td>
-                      <td>${e(team.name)}</td>
+                      <td>
+                        ${e(team.name)}
+                        ${
+                          person.status === 'inactive' || team.is_maintenance
+                            ? `<div class="field-help" style="font-size:11px;color:var(--text-muted);">(Phí duy trì)</div>`
+                            : ''
+                        }
+                      </td>
                       <td class="text-right tabular-nums">${number(team.amount)} đ</td>
                       <td class="text-right tabular-nums font-bold">${number(person.total)} đ</td>
                       <td class="text-center">

@@ -1,5 +1,6 @@
 import { formatDate, validDate, formatVietnamDateTime } from './utils.js';
-const HEADERS = ['full_name', 'email', 'phone', 'date_of_birth', 'position', 'preferred_foot', 'status', 'notes'];
+const BASE_HEADERS = ['full_name', 'email', 'phone', 'date_of_birth', 'position', 'preferred_foot', 'status', 'notes'];
+const HEADERS = [...BASE_HEADERS, 'academic_year'];
 async function workbook() {
   let module;
   try { module = await import('exceljs'); }
@@ -29,8 +30,9 @@ export async function downloadMemberTemplate() {
     ['date_of_birth', 'Không bắt buộc; ghi dd/mm/yyyy, ví dụ 31/01/2002'],
     ['position', 'Không bắt buộc; GK, FIXO, ALA, PIVOT, CB, LB, RB, CDM, CM, CAM, LM, RM, LW, RW, ST hoặc CF'],
     ['preferred_foot', 'Không bắt buộc; right, left hoặc both'],
-    ['status', 'Không bắt buộc; active, inactive hoặc injured; để trống là active'],
+    ['status', 'Không bắt buộc; active, inactive, injured hoặc graduated; để trống là active'],
     ['notes', 'Không bắt buộc; tối đa 5000 ký tự'],
+    ['academic_year', 'Không bắt buộc; niên khóa dạng YYYY-YYYY, ví dụ 2025-2026'],
     ['Lưu ý', 'Một dòng một người; không đổi tên cột, không dùng công thức. Mỗi lần tối đa 500 dòng.'],
     ['Lưu ý', 'Sau khi nhập, chọn thành viên vào đội và thiết lập số áo theo từng đội.'],
   ]) help.addRow(row);
@@ -45,25 +47,37 @@ export async function parseMembers(file) {
   const sheet = book.worksheets[0];
   if (!sheet) throw new Error('File không có trang dữ liệu.');
   if (sheet.rowCount > 501 || sheet.columnCount > HEADERS.length) throw new Error('File tối đa 500 dòng và không thêm cột ngoài mẫu.');
-  const headers = HEADERS.map((_, index) => String(sheet.getRow(1).getCell(index + 1).value || '').trim());
-  if (headers.join('|') !== HEADERS.join('|')) throw new Error('Tên hoặc thứ tự cột không đúng; hãy tải mẫu và giữ nguyên hàng đầu.');
+  const firstRowHeaders = [];
+  for (let c = 1; c <= Math.max(BASE_HEADERS.length, sheet.columnCount); c++) {
+    const val = String(sheet.getRow(1).getCell(c).value || '').trim();
+    if (val) firstRowHeaders.push(val);
+  }
+  let activeHeaders = null;
+  if (firstRowHeaders.join('|') === HEADERS.join('|')) {
+    activeHeaders = HEADERS;
+  } else if (firstRowHeaders.join('|') === BASE_HEADERS.join('|')) {
+    activeHeaders = BASE_HEADERS;
+  } else {
+    throw new Error('Tên hoặc thứ tự cột không đúng; hãy tải mẫu và giữ nguyên hàng đầu.');
+  }
   const rows = [];
   rows.sourceRows = [];
   for (let index = 2; index <= sheet.rowCount; index++) {
     const row = sheet.getRow(index), result = {};
-    for (let col = 0; col < HEADERS.length; col++) {
+    for (let col = 0; col < activeHeaders.length; col++) {
+      const header = activeHeaders[col];
       const value = row.getCell(col + 1).value;
-      if (value && typeof value === 'object' && !(value instanceof Date)) throw new Error(`Dòng ${index}, cột ${HEADERS[col]}: không dùng công thức hoặc liên kết.`);
+      if (value && typeof value === 'object' && !(value instanceof Date)) throw new Error(`Dòng ${index}, cột ${header}: không dùng công thức hoặc liên kết.`);
       if (value instanceof Date) {
-        if (HEADERS[col] !== 'date_of_birth' || Number.isNaN(value.getTime())) throw new Error(`Dòng ${index}: định dạng ngày không hợp lệ.`);
-        result[HEADERS[col]] = value.toISOString().slice(0, 10);
+        if (header !== 'date_of_birth' || Number.isNaN(value.getTime())) throw new Error(`Dòng ${index}: định dạng ngày không hợp lệ.`);
+        result[header] = value.toISOString().slice(0, 10);
       } else {
-        if (HEADERS[col] === 'phone' && typeof value === 'number') throw new Error(`Dòng ${index}: đặt số điện thoại dạng Text để giữ số 0 đầu.`);
-        result[HEADERS[col]] = value == null || String(value).trim() === '' ? null : String(value).trim();
-        if (HEADERS[col] === 'date_of_birth' && result[HEADERS[col]]) {
-          const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(result[HEADERS[col]]);
-          if (match) result[HEADERS[col]] = `${match[3]}-${match[2]}-${match[1]}`;
-          if (!validDate(result[HEADERS[col]])) throw new Error(`Dòng ${index}: ngày sinh không hợp lệ; dùng dd/mm/yyyy.`);
+        if (header === 'phone' && typeof value === 'number') throw new Error(`Dòng ${index}: đặt số điện thoại dạng Text để giữ số 0 đầu.`);
+        result[header] = value == null || String(value).trim() === '' ? null : String(value).trim();
+        if (header === 'date_of_birth' && result[header]) {
+          const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(result[header]);
+          if (match) result[header] = `${match[3]}-${match[2]}-${match[1]}`;
+          if (!validDate(result[header])) throw new Error(`Dòng ${index}: ngày sinh không hợp lệ; dùng dd/mm/yyyy.`);
         }
       }
     }
@@ -95,7 +109,7 @@ export async function exportFinance(items, summary, adjustments = []) {
 }
 export async function buildMembersWorkbook(items, teamId = '') {
   const book = await workbook(), sheet = book.addWorksheet('Thanh vien');
-  sheet.addRow(['Họ và tên', 'Ngày sinh', 'Điện thoại', 'Email', ...(teamId ? ['Vị trí', 'Số áo'] : ['Đội tham gia']), 'Chân thuận', 'Trạng thái', 'Ghi chú']);
+  sheet.addRow(['Họ và tên', 'Ngày sinh', 'Điện thoại', 'Email', ...(teamId ? ['Vị trí', 'Số áo'] : ['Đội tham gia']), 'Chân thuận', 'Trạng thái', 'Ghi chú', 'Niên khóa']);
   sheet.getRow(1).font = { bold: true };
   for (const item of items) {
     const team = (item.teams || []).find((t) => String(t.id) === String(teamId));
@@ -107,12 +121,13 @@ export async function buildMembersWorkbook(items, teamId = '') {
       ...(teamId ? [sanitizeCell(team?.position), sanitizeCell(team?.jersey_number)] : [sanitizeCell((item.teams || []).map((t) => t.name).join(', '))]),
       sanitizeCell(item.preferred_foot),
       sanitizeCell(item.status),
-      sanitizeCell(item.notes)
+      sanitizeCell(item.notes),
+      sanitizeCell(item.academic_year || '')
     ]);
   }
   sheet.columns.forEach((column) => { column.width = 24; });
   sheet.getColumn(teamId ? 9 : 8).width = 45;
-  sheet.autoFilter = { from: 'A1', to: teamId ? 'I1' : 'H1' };
+  sheet.autoFilter = { from: 'A1', to: teamId ? 'J1' : 'I1' };
   return book;
 }
 export async function exportMembers(items, teamId = '') {

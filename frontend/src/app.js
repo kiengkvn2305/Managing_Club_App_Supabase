@@ -847,7 +847,7 @@ root.addEventListener('change', (event) => {
     s.pollsPage = 1;
     s.recruitmentPage = 1;
     s.recruitmentStatus = '';
-    s.filters = { q: '', team_id: '', status: '', page: 1 };
+    s.filters = { q: '', team_id: '', status: '', academic_year: '', page: 1 };
     loadView();
   }
 });

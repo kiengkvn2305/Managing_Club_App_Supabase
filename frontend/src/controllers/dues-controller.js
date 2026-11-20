@@ -140,6 +140,25 @@ export function createDuesController(ctx) {
       );
     }
 
+    if (a === 'maintenance-fee-settings' && ctx.currentClub()?.can_manage_finance) {
+      const club = ctx.currentClub();
+      const currentFee = club.maintenance_fee ?? 50000;
+
+      return ctx.dialog(
+        'Cài đặt phí duy trì',
+        'Mức phí hàng tháng áp dụng cho các thành viên ở trạng thái Tạm ngưng sinh hoạt. Mặc định là 50.000 đ/tháng.',
+        ctx.field('maintenance_fee', 'Mức phí duy trì mỗi tháng (đồng)', currentFee, 'number', true)
+          .replace('min="0" max="999"', 'min="0" max="1000000000"'),
+        (form) =>
+          ctx.submit(form, 'maintenance-fee', async (data) => {
+            await ctx.api.patch(ctx.base(''), { maintenance_fee: Number(data.maintenance_fee) });
+            club.maintenance_fee = Number(data.maintenance_fee);
+            await ctx.loadView();
+            ctx.toast('Đã cập nhật mức phí duy trì.');
+          })
+      );
+    }
+
     return false;
   }
 

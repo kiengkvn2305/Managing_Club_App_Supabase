@@ -6,6 +6,7 @@ import {
 } from '../spreadsheets.js';
 import { reviewImport } from '../import-review.js';
 import { avatar, imageUrl } from '../images.js';
+import { currentAcademicYear } from '../utils.js';
 
 export function createRosterController(ctx) {
   function editMember(member = { status: 'active' }) {
@@ -14,6 +15,7 @@ export function createRosterController(ctx) {
       ctx.field('email', 'Email', member.email, 'email') +
       ctx.field('phone', 'Số điện thoại', member.phone, 'tel') +
       ctx.field('date_of_birth', 'Ngày sinh', member.date_of_birth, 'date') +
+      ctx.field('academic_year', 'Niên khóa / Năm học', member.academic_year || currentAcademicYear(), 'text') +
       ctx.select(
         'preferred_foot',
         'Chân thuận',
@@ -28,12 +30,13 @@ export function createRosterController(ctx) {
       ctx.select(
         'status',
         'Trạng thái',
-        ['active', 'inactive', 'injured'].map((x) => [
+        ['active', 'inactive', 'injured', 'graduated'].map((x) => [
           x,
           {
             active: 'Đang hoạt động',
             inactive: 'Tạm ngưng',
             injured: 'Chấn thương',
+            graduated: 'Đã ra trường',
           }[x],
         ]),
         member.status
@@ -631,7 +634,7 @@ export function createRosterController(ctx) {
     }
 
     if (a === 'reset') {
-      ctx.state.filters = { q: '', team_id: '', status: '', page: 1 };
+      ctx.state.filters = { q: '', team_id: '', status: '', academic_year: '', page: 1 };
       await ctx.loadView();
       return true;
     }
@@ -835,7 +838,8 @@ export function createRosterController(ctx) {
     if (a === 'import-members') {
       if (!ctx.requirePermission(ctx.canManageRoster(), 'Nhập thành viên từ Excel')) return true;
       let pendingImport;
-      const info = `<div class="lineup-editor"><p>Chỉ dùng file .xlsx theo mẫu, tối đa 500 dòng và 5 MB. Cột <strong>full_name</strong> bắt buộc; email không được trùng; ngày sinh theo dd/mm/yyyy. Số điện thoại đặt dạng Text. Không đổi thứ tự cột hoặc dùng công thức.</p><p>Tải mẫu để xem đầy đủ vị trí, chân thuận và trạng thái hợp lệ. Sau khi nhập, hãy chọn thành viên vào đội và đặt số áo tại đội.</p><button type="button" class="button secondary" data-download-template>Tải mẫu Excel</button><div class="field"><label for="member-file">File thành viên (.xlsx)</label><input id="member-file" type="file" name="member_file" accept=".xlsx" required></div></div>`;
+      const defaultAY = currentAcademicYear();
+      const info = `<div class="lineup-editor"><p>Chỉ dùng file .xlsx theo mẫu, tối đa 500 dòng và 5 MB. Cột <strong>full_name</strong> bắt buộc; email không được trùng; ngày sinh theo dd/mm/yyyy. Số điện thoại đặt dạng Text. Không đổi thứ tự cột hoặc dùng công thức.</p><p>Tải mẫu để xem đầy đủ vị trí, chân thuận và trạng thái hợp lệ. Sau khi nhập, hãy chọn thành viên vào đội và đặt số áo tại đội.</p><button type="button" class="button secondary" data-download-template>Tải mẫu Excel</button><div class="field"><label for="import-academic-year">Niên khóa / Năm học đợt này</label><input id="import-academic-year" name="import_academic_year" value="${ctx.e(defaultAY)}" placeholder="Ví dụ: 2025-2026"></div><div class="field"><label for="member-file">File thành viên (.xlsx)</label><input id="member-file" type="file" name="member_file" accept=".xlsx" required></div></div>`;
 
       const modal = ctx.dialog(
         'Nhập thành viên từ Excel',
@@ -849,6 +853,10 @@ export function createRosterController(ctx) {
               const rows = await parseMembers(
                 form.elements.member_file.files[0]
               );
+              const batchYear = form.elements.import_academic_year?.value?.trim() || defaultAY;
+              for (const r of rows) {
+                if (!r.academic_year && batchYear) r.academic_year = batchYear;
+              }
               try {
                 const result = await ctx.api.post(
                   ctx.base('/members/import/preview'),

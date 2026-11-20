@@ -74,7 +74,7 @@ export const state = {
   resetToken: '',
   resetEmail: '',
   invite: "",
-  filters: { q: "", team_id: "", status: "", page: 1 },
+  filters: { q: "", team_id: "", status: "", academic_year: "", page: 1 },
 };
 export const currentClub = () =>
   state.clubs.find((x) => String(x.id) === String(state.clubId));

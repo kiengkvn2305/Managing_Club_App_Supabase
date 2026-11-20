@@ -33,9 +33,19 @@ export const roleLabel = (role) =>
     member: "Thành viên",
   })[role] || "Thành viên";
 export const statusLabel = (status) =>
-  ({ active: "Đang hoạt động", inactive: "Tạm ngưng", injured: "Chấn thương" })[
-    status
-  ] || status;
+  ({
+    active: "Đang hoạt động",
+    inactive: "Tạm ngưng",
+    injured: "Chấn thương",
+    graduated: "Đã ra trường",
+  })[status] || status;
+
+export function currentAcademicYear(date = new Date()) {
+  const d = typeof date === "string" ? new Date(date) : (date || new Date());
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear();
+  return month >= 9 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+}
 export const canManageRoster = (role) =>
   [
     "owner",
