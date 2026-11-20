@@ -96,9 +96,12 @@ function teams() {
 
 function lineups() {
   if (!canManageRoster(currentClub().membership_role)) {
-    return heading(
-      'Đội hình trận đấu',
-      'Thông tin dành cho ban quản lý đội bóng.'
+    return (
+      heading(
+        'Đội hình trận đấu',
+        'Thông tin được bảo vệ theo quyền truy cập.'
+      ) +
+      `<section class="panel">${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền quản lý đội hình trận đấu.')}</section>`
     );
   }
   return (
@@ -223,10 +226,7 @@ export function page() {
 
   const routes = {
     dashboard: dashboardPage,
-    members: () =>
-      (canManageRoster(currentClub().membership_role)
-        ? `<div class="page-actions">${button('import-members', 'Nhập Excel', 'arrow', 'secondary')}</div>`
-        : '') + clubDirectoryPage(),
+    members: clubDirectoryPage,
     'team-roster': teamRosterPage,
     teams,
     lineups,
@@ -240,7 +240,8 @@ export function page() {
             lowStock: s.inventoryLowStock,
             archived: s.inventoryArchived,
           })
-        : heading('Kho trang bị', 'Bạn không có quyền xem kho.'),
+        : heading('Kho trang bị', 'Thông tin được bảo vệ theo quyền truy cập.') +
+          `<section class="panel">${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem kho trang bị.')}</section>`,
     polls: () =>
       pollsPage({
         polls: s.polls,
@@ -256,7 +257,8 @@ export function page() {
             canManage: currentClub()?.status === 'active',
             status: s.recruitmentStatus,
           })
-        : heading('Tuyển dụng', 'Bạn không có quyền xem tuyển dụng.'),
+        : heading('Tuyển dụng', 'Thông tin được bảo vệ theo quyền truy cập.') +
+          `<section class="panel">${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem tuyển dụng.')}</section>`,
     finance: financePage,
     dues: duesPage,
     activities: activitiesPage,

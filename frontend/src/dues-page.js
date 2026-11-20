@@ -5,7 +5,18 @@ import { empty } from './components/ui.js';
 
 export function duesPage() {
   if (!currentClub()?.can_view_finance) {
-    return '<h1>Đóng quỹ</h1><p>Bạn không có quyền xem thông tin quỹ.</p>';
+    return `
+      <div class="page-top">
+        <div>
+          <div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div>
+          <h1>Đóng quỹ</h1>
+          <p>Thông tin được bảo vệ theo quyền truy cập.</p>
+        </div>
+      </div>
+      <section class="panel">
+        ${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem thông tin quỹ.')}
+      </section>
+    `;
   }
 
   const labels = {
@@ -91,10 +102,10 @@ export function duesPage() {
                     <th>Ngày sinh</th>
                     <th>Email</th>
                     <th>Đội</th>
-                    <th>Quỹ đội</th>
-                    <th>Tổng các đội trong tháng</th>
-                    <th>Trạng thái</th>
-                    <th>Nợ lũy kế đến nay</th>
+                    <th class="text-right">Quỹ đội</th>
+                    <th class="text-right">Tổng các đội trong tháng</th>
+                    <th class="text-center">Trạng thái</th>
+                    <th class="text-right">Nợ lũy kế đến nay</th>
                     <th>Thao tác</th>
                   </tr>
                 </thead>
@@ -103,18 +114,18 @@ export function duesPage() {
                     .map(
                       ({ person, team }) => `
                     <tr>
-                      <td>${e(person.name)}</td>
-                      <td>${e(formatDate(person.date_of_birth) || '—')}</td>
+                      <td><strong>${e(person.name)}</strong></td>
+                      <td class="tabular-nums">${e(formatDate(person.date_of_birth) || '—')}</td>
                       <td>${e(person.email || '—')}</td>
                       <td>${e(team.name)}</td>
-                      <td>${number(team.amount)} đ</td>
-                      <td>${number(person.total)} đ</td>
-                      <td>
+                      <td class="text-right tabular-nums">${number(team.amount)} đ</td>
+                      <td class="text-right tabular-nums font-bold">${number(person.total)} đ</td>
+                      <td class="text-center">
                         <span class="dues-status ${['debt', 'unpaid'].includes(team.status) ? 'owing' : ['paid', 'exempt'].includes(team.status) ? 'settled' : ''}">
                           ${e(labels[team.status] || team.status)}
                         </span>
                       </td>
-                      <td>
+                      <td class="text-right tabular-nums">
                         ${
                           team.debt_months
                             ? `<span class="dues-status owing">${number(team.debt_months)} tháng · ${number(team.debt_total)} đ</span>`
@@ -124,8 +135,7 @@ export function duesPage() {
                       <td>
                         ${
                           currentClub()?.can_manage_finance && team.amount > 0
-                            ? `<button class="text-button" data-action="correct-dues" data-id="${person.player_id}" data-team="${team.team_id}">Sửa trạng thái</button>
-                               <button class="text-button" data-action="record-dues" data-id="${person.player_id}">Ghi đóng / miễn</button>`
+                            ? `<div class="team-actions"><button class="text-button" data-action="correct-dues" data-id="${person.player_id}" data-team="${team.team_id}">Sửa trạng thái</button><button class="text-button" data-action="record-dues" data-id="${person.player_id}">Ghi đóng / miễn</button></div>`
                             : '—'
                         }
                       </td>

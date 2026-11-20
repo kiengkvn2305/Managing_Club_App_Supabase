@@ -102,10 +102,10 @@ function chartMarkup(chart) {
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Thời gian</th><th>Thu</th><th>Chi</th></tr>
+            <tr><th>Thời gian</th><th class="text-right">Thu</th><th class="text-right">Chi</th></tr>
           </thead>
           <tbody>
-            ${entries.map(([p, v]) => `<tr><td>${e(p)}</td><td>${e(money(v.income))}</td><td>${e(money(v.expense))}</td></tr>`).join('')}
+            ${entries.map(([p, v]) => `<tr><td class="tabular-nums">${e(p)}</td><td class="text-right tabular-nums">${e(money(v.income))}</td><td class="text-right tabular-nums">${e(money(v.expense))}</td></tr>`).join('')}
           </tbody>
         </table>
       </div>
@@ -115,7 +115,18 @@ function chartMarkup(chart) {
 
 export function financePage() {
   if (!currentClub()?.can_view_finance) {
-    return '<h1>Sổ thu chi</h1><p>Bạn không có quyền xem sổ thu chi.</p>';
+    return `
+      <div class="page-top">
+        <div>
+          <div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div>
+          <h1>Sổ thu chi CLB</h1>
+          <p>Thông tin được bảo vệ theo quyền truy cập.</p>
+        </div>
+      </div>
+      <section class="panel">
+        ${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem sổ thu chi.')}
+      </section>
+    `;
   }
 
   const ledger = s.finance;
@@ -206,9 +217,9 @@ export function financePage() {
                 <th>Danh mục</th>
                 <th>Người thu / chi</th>
                 <th>Ghi chú</th>
-                <th>Loại</th>
-                <th>Số tiền</th>
-                <th>Ảnh xác nhận</th>
+                <th class="text-center">Loại</th>
+                <th class="text-right">Số tiền</th>
+                <th class="text-center">Ảnh xác nhận</th>
               </tr>
             </thead>
             <tbody>
@@ -216,14 +227,14 @@ export function financePage() {
                 .map(
                   (item) => `
                 <tr>
-                  <td>${e(formatDate(item.occurred_on))}</td>
-                  <td>${e(item.description)}</td>
+                  <td class="tabular-nums">${e(formatDate(item.occurred_on))}</td>
+                  <td><strong>${e(item.description)}</strong></td>
                   <td>${e(item.category || '—')}</td>
                   <td>${e(item.paid_by || '—')}</td>
-                  <td>${e(item.notes || '—')}</td>
-                  <td>${item.type === 'income' ? 'Thu' : 'Chi'}</td>
-                  <td>${e(money(item.amount))}</td>
-                  <td>${item.receipt_url ? `<a class="text-link" href="${e(item.receipt_url)}" target="_blank" rel="noopener noreferrer">Xem ảnh</a>` : '—'}</td>
+                  <td class="truncate" style="max-width:180px;" title="${e(item.notes || '')}">${e(item.notes || '—')}</td>
+                  <td class="text-center"><span class="badge ${item.type === 'income' ? 'active' : 'injured'}">${item.type === 'income' ? 'Thu' : 'Chi'}</span></td>
+                  <td class="text-right tabular-nums font-bold">${e(money(item.amount))}</td>
+                  <td class="text-center">${item.receipt_url ? `<a class="text-link" href="${e(item.receipt_url)}" target="_blank" rel="noopener noreferrer">Xem ảnh</a>` : '—'}</td>
                 </tr>`
                 )
                 .join('')}
@@ -253,9 +264,9 @@ export function financePage() {
                 <th>Ngày điều chỉnh</th>
                 <th>Thành viên</th>
                 <th>Đội</th>
-                <th>Tháng quỹ</th>
-                <th>Thay đổi</th>
-                <th>Số tiền</th>
+                <th class="text-center">Tháng quỹ</th>
+                <th class="text-center">Thay đổi</th>
+                <th class="text-right">Số tiền</th>
                 <th>Lý do</th>
               </tr>
             </thead>
@@ -264,12 +275,12 @@ export function financePage() {
                 .map(
                   (a) => `
                 <tr>
-                  <td>${e(formatVietnamDateTime(a.created_at))}</td>
-                  <td>${e(a.player_name || '—')}</td>
+                  <td class="tabular-nums">${e(formatVietnamDateTime(a.created_at))}</td>
+                  <td><strong>${e(a.player_name || '—')}</strong></td>
                   <td>${e(a.team_name || '—')}</td>
-                  <td>${e(a.month.slice(0, 7))}</td>
-                  <td>${e(status[a.old_status] || a.old_status)} → ${e(status[a.new_status] || a.new_status)}</td>
-                  <td>${e(money(a.amount))}</td>
+                  <td class="text-center tabular-nums">${e(a.month.slice(0, 7))}</td>
+                  <td class="text-center">${e(status[a.old_status] || a.old_status)} → ${e(status[a.new_status] || a.new_status)}</td>
+                  <td class="text-right tabular-nums font-bold">${e(money(a.amount))}</td>
                   <td>${e(a.reason)}</td>
                 </tr>`
                 )

@@ -809,9 +809,24 @@ textarea {
 .filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--line);
+}
+.filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  margin: 0;
+}
+.filters label select,
+.filters label input {
+  font-weight: normal;
+  color: var(--text);
 }
 .filters input,
 .filters select {
@@ -821,6 +836,7 @@ textarea {
   font-size: 12px;
   padding: 9px 11px;
   background: var(--subtle);
+  color: var(--text);
 }
 .filters input {
   flex: 1;
@@ -829,8 +845,34 @@ textarea {
 .filters select {
   max-width: 180px;
 }
+.filters .button,
+.filters .text-button {
+  align-self: center;
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.text-right {
+  text-align: right;
+}
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.font-bold {
+  font-weight: 700;
+}
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 table {
   width: 100%;
@@ -845,17 +887,25 @@ th {
   letter-spacing: 0.6px;
   padding: 14px 22px;
   font-weight: 600;
+  white-space: nowrap;
 }
 td {
   padding: 17px 22px;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
+  vertical-align: middle;
 }
 tbody tr:last-child td {
   border: 0;
 }
 tbody tr:hover {
   background: var(--subtle);
+}
+th.text-right, td.text-right {
+  text-align: right;
+}
+th.text-center, td.text-center {
+  text-align: center;
 }
 td small {
   display: block;
