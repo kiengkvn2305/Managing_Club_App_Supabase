@@ -214,3 +214,28 @@ test('authService profile does not crash on missing column or database error and
   assert.equal(prof.email, 'user@test.com');
   assert.equal(prof.is_system_admin, false);
 });
+
+test('clubPage renders successfully without throwing ReferenceError for formatDate', async () => {
+  const { state } = await import('../src/state.js');
+  const { clubPage } = await import('../src/views/club-page.js');
+  state.clubId = 'club-demo-1';
+  state.clubs = [
+    {
+      id: 'club-demo-1',
+      name: 'CLB Bóng Đá Phố Núi',
+      membership_role: 'owner',
+      status: 'active',
+      activity_start_date: '2024-09-15',
+      created_at: '2024-09-15T08:00:00Z',
+      city: 'Gia Lai',
+      home_ground: 'Sân Vận Động Pleiku',
+      formats: ['7'],
+      description: 'CLB thể thao phong trào',
+    },
+  ];
+
+  const html = clubPage();
+  assert.ok(html.includes('CLB Bóng Đá Phố Núi'));
+  assert.ok(html.includes('15/09/2024'));
+  assert.ok(html.includes('Ngày bắt đầu hoạt động CLB'));
+});

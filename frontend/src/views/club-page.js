@@ -1,5 +1,5 @@
 import { state as s, currentClub } from '../state.js';
-import { escapeHtml as e, roleLabel, canManageClub } from '../utils.js';
+import { escapeHtml as e, roleLabel, canManageClub, formatDate } from '../utils.js';
 import { icon, button } from '../components/ui.js';
 import { avatar, imageUrl } from '../images.js';
 
