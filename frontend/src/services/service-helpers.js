@@ -80,6 +80,10 @@ export function check(result) {
       msg = 'Bạn đã là thành viên trong câu lạc bộ này.';
     } else if (msg.includes('inactive_club')) {
       msg = 'Câu lạc bộ này hiện không ở trạng thái hoạt động.';
+    } else if (msg.includes('owner_cannot_leave')) {
+      msg = 'Chủ nhiệm không thể tự rời câu lạc bộ. Vui lòng chuyển quyền Chủ nhiệm trước hoặc thực hiện xóa CLB.';
+    } else if (msg.includes('not_a_member')) {
+      msg = 'Bạn không phải là thành viên của câu lạc bộ này.';
     } else if (msg.includes('not_authenticated')) {
       msg = 'Vui lòng đăng nhập để thực hiện thao tác này.';
     }

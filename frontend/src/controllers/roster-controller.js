@@ -256,7 +256,6 @@ export function createRosterController(ctx) {
         'sporting_manager'
       );
     }
-    if (ctx.currentRole() === 'owner') roles.push('co_owner');
 
     let created;
     const titleOptions = [

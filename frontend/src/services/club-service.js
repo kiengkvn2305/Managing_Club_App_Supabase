@@ -369,6 +369,16 @@ export function createClubService({ supabase, authService }) {
       };
     }
 
+    if (clean === `/clubs/${clubId}/leave` && method === 'POST') {
+      return {
+        data: check(
+          await supabase.rpc('leave_club', {
+            p_club_id: clubId,
+          })
+        ),
+      };
+    }
+
     if (clean === `/clubs/${clubId}/friendlies` && method === 'GET') {
       const rows =
         check(

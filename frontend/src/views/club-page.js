@@ -22,9 +22,12 @@ export function clubPage() {
         button('edit-club-background', 'Ảnh nền', 'edit', 'secondary') +
         button('edit-public-settings', 'Trang công khai', 'globe', 'secondary')
       : '') +
-    (c.membership_role === 'owner' || c.is_system_admin
+    (c?.membership_role === 'owner' || c?.is_system_admin
       ? button('transfer-ownership', 'Chuyển quyền Chủ nhiệm', 'user', 'secondary') +
         button('delete-club', 'Xóa CLB', 'trash', 'secondary')
+      : '') +
+    (c && c.membership_role !== 'owner' && !c.is_system_admin
+      ? button('leave-club', 'Rời câu lạc bộ', 'arrow', 'secondary')
       : '');
 
   return `
@@ -135,7 +138,7 @@ export function clubPage() {
                                 </button>
                                 ${
                                   inv.status === 'pending' && canManageClub(c)
-                                    ? `<button type="button" class="text-button danger" data-action="revoke-invitation" data-id="${inv.id}" title="Hủy mã này">Hủy</button>`
+                                    ? `<button type="button" class="text-button danger" data-action="revoke-invitation" data-id="${inv.id}" title="Hủy và xóa vĩnh viễn mã này">Xóa</button>`
                                     : ''
                                 }
                               </div>

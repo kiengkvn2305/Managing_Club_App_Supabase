@@ -853,9 +853,9 @@ async function action(el) {
 
   if (a === 'revoke-invitation') {
     const id = el.dataset.id;
-    if (confirm('Bạn có chắc chắn muốn hủy mã mời này không?')) {
+    if (confirm('Bạn có chắc chắn muốn hủy mã mời này không? Mã mời sẽ bị xóa vĩnh viễn khỏi hệ thống.')) {
       await api.delete(base(`/invitations/${id}`));
-      toast('Đã hủy mã mời.');
+      toast('Đã hủy và xóa vĩnh viễn mã mời.');
       await loadView();
     }
     return;

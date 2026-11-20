@@ -328,4 +328,40 @@ test('check() translates invitation and owner protection errors into friendly Vi
       return true;
     }
   );
+
+  assert.throws(
+    () => check({ error: { message: 'owner_cannot_leave' } }),
+    (err) => {
+      assert.equal(err.message, 'Chủ nhiệm không thể tự rời câu lạc bộ. Vui lòng chuyển quyền Chủ nhiệm trước hoặc thực hiện xóa CLB.');
+      return true;
+    }
+  );
+
+  assert.throws(
+    () => check({ error: { message: 'not_a_member' } }),
+    (err) => {
+      assert.equal(err.message, 'Bạn không phải là thành viên của câu lạc bộ này.');
+      return true;
+    }
+  );
+});
+
+test('clubPage renders leave club button for regular members and omits it for owner', () => {
+  // 1. Owner: shows transfer and delete, does NOT show leave-club
+  state.clubId = 'club-1';
+  state.clubs = [
+    { id: 'club-1', name: 'CLB Hà Nội', membership_role: 'owner', status: 'active' },
+  ];
+  let html = clubPage();
+  assert.ok(!html.includes('data-action="leave-club"'));
+  assert.ok(html.includes('data-action="delete-club"'));
+
+  // 2. Member: shows leave-club, does NOT show delete-club
+  state.clubs = [
+    { id: 'club-1', name: 'CLB Hà Nội', membership_role: 'member', status: 'active' },
+  ];
+  html = clubPage();
+  assert.ok(html.includes('data-action="leave-club"'));
+  assert.ok(html.includes('Rời câu lạc bộ'));
+  assert.ok(!html.includes('data-action="delete-club"'));
 });

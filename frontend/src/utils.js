@@ -23,9 +23,9 @@ export const compareVietnameseNames = (a, b) => {
 };
 export const roleLabel = (role) =>
   ({
-    owner: "Chủ sở hữu",
-    co_owner: "Đồng sở hữu",
-    general_manager: "Tổng quản lý",
+    owner: "Chủ nhiệm CLB",
+    co_owner: "Ban chủ nhiệm",
+    general_manager: "Ban quản lý",
     treasurer: "Thủ quỹ",
     hr_manager: "Quản lý nhân sự",
     equipment_manager: "Quản lý trang bị",

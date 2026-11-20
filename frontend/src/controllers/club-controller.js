@@ -345,6 +345,35 @@ export function createClubController(ctx) {
       );
     }
 
+    if (a === 'leave-club') {
+      const club = ctx.currentClub();
+      if (!club) return true;
+      if (club.membership_role === 'owner') {
+        ctx.toast('Chủ nhiệm không thể tự rời CLB. Hãy chuyển quyền Chủ nhiệm trước hoặc xóa CLB.', true);
+        return true;
+      }
+      return ctx.dialog(
+        'Rời câu lạc bộ?',
+        `Bạn có chắc chắn muốn rời khỏi câu lạc bộ "${ctx.e(club.name)}"? Bạn sẽ không còn quyền truy cập dữ liệu và hoạt động của CLB này nữa.`,
+        '',
+        (form) =>
+          ctx.submit(
+            form,
+            'leave',
+            async () => {
+              await ctx.api.post(ctx.base('/leave'));
+              ctx.state.clubId = null;
+              ctx.state.route = 'dashboard';
+              history.replaceState(null, '', location.pathname + '#dashboard');
+              await ctx.loadApp();
+              ctx.toast(`Đã rời câu lạc bộ "${club.name}".`);
+            },
+            'Xác nhận rời CLB'
+          ),
+        'Xác nhận rời CLB'
+      );
+    }
+
     return false;
   }
 
