@@ -1,6 +1,6 @@
 {
-  "at": "2026-11-19T07:37:49.780Z",
-  "entry": "/assets/index-CXt-9o6N.js",
+  "at": "2026-11-21T06:46:10.761Z",
+  "entry": "/assets/index-DU6pG7Fp.js",
   "safeProfile": true,
   "evidence": [
     {
@@ -12,15 +12,15 @@
       "bytes": 1151
     },
     {
-      "path": "/assets/index-CXt-9o6N.js",
+      "path": "/assets/index-DU6pG7Fp.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
       "html": false,
-      "bytes": 441771
+      "bytes": 555016
     },
     {
-      "path": "/assets/exceljs.min-DwW-vMzD.js",
+      "path": "/assets/exceljs.min-ZGUMFiaG.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
@@ -28,7 +28,7 @@
       "bytes": 928797
     },
     {
-      "path": "/assets/web-C_KUrdNQ.js",
+      "path": "/assets/web-COcFuhiy.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
@@ -36,7 +36,7 @@
       "bytes": 844
     },
     {
-      "path": "/assets/web-5Z1ZM8A8.js",
+      "path": "/assets/web-BKm2Qe2U.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
@@ -44,7 +44,7 @@
       "bytes": 1104
     },
     {
-      "path": "/assets/web--1aa8G65.js",
+      "path": "/assets/web-DzXKcXXc.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=0, must-revalidate",
