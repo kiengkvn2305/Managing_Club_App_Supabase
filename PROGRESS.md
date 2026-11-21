@@ -1,6 +1,18 @@
 # FCMS PRO – Tiến độ hiện tại
 
-Ngày cập nhật: 2026-11-19
+Ngày cập nhật: 2026-11-21
+
+## Rà soát bổ sung 2026-11-21 (đã triển khai Supabase production)
+
+- Không cho Chủ nhiệm tự rời CLB ở cả giao diện lẫn PostgreSQL RPC; cần chuyển quyền Chủ nhiệm trước.
+- Sửa tính tổng sổ thu chi: giao dịch gốc đã đảo vẫn hiển thị lịch sử nhưng không bị cộng lần hai vào số dư/biểu đồ.
+- Thêm idempotency bắt buộc cho ghi thu/chi, thu quỹ và thanh toán; replay cùng mã trả về kết quả ban đầu, không tạo giao dịch mới.
+- Chuyển điểm danh trận sang RPC khóa bản ghi trận; cấm INSERT/UPDATE/DELETE trực tiếp ở `match_attendances` cho role `authenticated`.
+- Chuyển điểm danh tập sang RPC có optimistic locking bằng `updated_at`; cập nhật cũ bị từ chối thay vì ghi đè dữ liệu người khác.
+- Thêm index cho lịch tập, hoạt động, thống kê trận, quỹ, kho; sổ thu chi dùng RPC phân trang/tổng hợp tại PostgreSQL thay vì tải toàn bộ ledger về trình duyệt.
+- Sửa RPC quản trị đổi trạng thái CLB để ép kiểu `club_status` enum đúng cách.
+- Cập nhật token màu semantic cho light/dark, cải thiện thông báo quyền Chủ nhiệm và cache immutable cho assets hash của Cloudflare Pages.
+- Đã kiểm chứng local: `npx supabase db lint` sạch; `npx supabase test db` 91/91 PASS; `npm test` 64/64 PASS; `npm run build` PASS. Các migration `20261120000005` đến `20261120000010` đã áp dụng thành công cho Supabase production `dandxiwdedbwxtvokeag`.
 
 ## Đã triển khai
 

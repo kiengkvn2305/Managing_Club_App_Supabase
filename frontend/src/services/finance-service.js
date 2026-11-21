@@ -1,28 +1,24 @@
 import { check, page, numeric } from './service-helpers.js';
-import { ledgerView, expandPlanned } from '../data-views.js';
+import { expandPlanned } from '../data-views.js';
 
 export function createFinanceService({ supabase, authService }) {
   async function finance(clubId, params) {
-    const from = params.get('from') || '';
+    const from = params.get('from') || '0001-01-01';
     const to = params.get('to') || '9999-12-31';
-
-    const rows =
-      check(
-        await supabase
-          .from('finance_transactions')
-          .select('*')
-          .eq('club_id', clubId)
-          .in('status', ['posted', 'reversed'])
-          .lte('occurred_on', to)
-          .order('occurred_on', { ascending: false })
-      ) || [];
-
-    const view = ledgerView(rows, from, to, params.get('group') || 'day');
-    const result = page(
-      view.data,
-      params,
-      Math.min(100, Number(params.get('per_page') || 20))
+    const result = check(
+      await supabase.rpc('finance_ledger_page', {
+        p_club_id: clubId,
+        p_from: params.get('from') || null,
+        p_to: params.get('to') || null,
+        p_page: Math.max(1, Number(params.get('page') || 1)),
+        p_page_size: Math.min(100, Math.max(1, Number(params.get('per_page') || 20))),
+        p_group: params.get('group') || 'day',
+      })
     );
+
+    result.current_page = result.meta.current_page;
+    result.last_page = result.meta.last_page;
+    result.total = result.meta.total;
 
     result.data = await Promise.all(
       result.data.map(async (row) => {
@@ -53,8 +49,8 @@ export function createFinanceService({ supabase, authService }) {
 
     return {
       ...result,
-      summary: view.summary,
-      chart: view.chart,
+      summary: result.summary,
+      chart: result.chart,
       adjustments: page(
         adjustments
           .filter(

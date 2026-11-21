@@ -38,6 +38,10 @@ export function createFinanceController(ctx) {
             }
             const upload = new FormData(form);
             upload.set('amount', cleanAmount);
+            upload.set(
+              'idempotency_key',
+              form.dataset.idempotencyKey || (form.dataset.idempotencyKey = crypto.randomUUID())
+            );
             if (!form.elements.receipt?.files?.length) upload.delete('receipt');
             await ctx.api.post(ctx.base('/finance'), upload);
             ctx.state.financePage = 1;

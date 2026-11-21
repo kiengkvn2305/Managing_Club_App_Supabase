@@ -346,14 +346,15 @@ test('check() translates invitation and owner protection errors into friendly Vi
   );
 });
 
-test('clubPage renders leave club button for members and owner', () => {
-  // 1. Owner: shows transfer, delete, and leave-club
+test('clubPage never offers self-leave to owner, but permits a regular member to leave', () => {
+  // 1. Owner: must transfer ownership before leaving.
   state.clubId = 'club-1';
   state.clubs = [
     { id: 'club-1', name: 'CLB Hà Nội', membership_role: 'owner', status: 'active' },
   ];
   let html = clubPage();
-  assert.ok(html.includes('data-action="leave-club"'));
+  assert.ok(!html.includes('data-action="leave-club"'));
+  assert.ok(html.includes('chuyển quyền Chủ nhiệm'));
   assert.ok(html.includes('data-action="delete-club"'));
 
   // 2. Member: shows leave-club, does NOT show delete-club

@@ -3,7 +3,7 @@
 -- creating users or financial records.
 begin;
 create extension if not exists pgtap;
-select plan(19);
+select plan(20);
 select ok(to_regclass('public.profiles') is not null, 'profiles exists');
 select ok(to_regclass('public.club_members') is not null, 'club_members exists');
 select ok(to_regclass('public.finance_transactions') is not null, 'finance_transactions exists');
@@ -21,6 +21,7 @@ select ok(to_regprocedure('public.decide_finance_approval(bigint,bigint,text,tex
 select ok(to_regprocedure('public.reverse_finance_transaction(bigint,bigint,text,uuid)') is not null, 'reversal RPC exists');
 select ok(to_regprocedure('public.post_finance_payment(bigint,bigint,numeric,date,text,jsonb,uuid)') is not null, 'payment RPC exists');
 select ok(to_regprocedure('public.finance_summary(bigint,date,date)') is not null, 'finance summary RPC exists');
+select ok(to_regprocedure('public.finance_ledger_page(bigint,date,date,integer,integer,text)') is not null, 'paginated ledger RPC exists');
 select is((select data_type from information_schema.columns where table_schema='public' and table_name='team_dues_entries' and column_name='paid_amount'), 'numeric', 'dues partial payment amount uses numeric');
 select ok(to_regprocedure('public.sync_team_managers(bigint,bigint,bigint[])') is not null, 'team manager sync RPC exists');
 select * from finish();

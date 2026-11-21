@@ -30,6 +30,8 @@ export function createDuesController(ctx) {
               month: ctx.state.duesMonth,
               months: data.months,
               status: data.status,
+              idempotency_key:
+                form.dataset.idempotencyKey || (form.dataset.idempotencyKey = crypto.randomUUID()),
             });
             await ctx.loadView();
             ctx.toast('Đã ghi quỹ.');
@@ -108,6 +110,8 @@ export function createDuesController(ctx) {
               month: data.month,
               months: data.months,
               status: data.status,
+              idempotency_key:
+                form.dataset.idempotencyKey || (form.dataset.idempotencyKey = crypto.randomUUID()),
             });
             await ctx.loadView();
             ctx.toast('Đã ghi quỹ.');

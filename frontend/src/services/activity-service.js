@@ -202,13 +202,12 @@ export function createActivityService({ supabase }) {
     if (trainingAttendance && method === 'PATCH') {
       return {
         data: check(
-          await supabase
-            .from('team_trainings')
-            .update({ attendance: data.players || [] })
-            .eq('club_id', clubId)
-            .eq('id', Number(trainingAttendance[1]))
-            .select()
-            .single()
+          await supabase.rpc('save_training_attendance', {
+            p_club_id: clubId,
+            p_training_id: Number(trainingAttendance[1]),
+            p_attendance: data.players || [],
+            p_expected_updated_at: data.expected_updated_at || null,
+          })
         ),
       };
     }

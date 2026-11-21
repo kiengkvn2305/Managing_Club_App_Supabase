@@ -349,6 +349,10 @@ export function createClubController(ctx) {
       const club = ctx.currentClub();
       if (!club) return true;
       const isOwner = club.membership_role === 'owner';
+      if (isOwner) {
+        ctx.toast('Chủ nhiệm không thể tự rời CLB. Hãy chuyển quyền Chủ nhiệm trước.', true);
+        return true;
+      }
       const promptMsg = isOwner
         ? `Bạn đang là Chủ nhiệm của "${ctx.e(club.name)}". Nếu bạn rời CLB, quyền Chủ nhiệm sẽ được tự động chuyển cho thành viên khác (hoặc CLB sẽ được lưu trữ nếu không còn thành viên nào khác). Bạn có chắc chắn muốn rời CLB không?`
         : `Bạn có chắc chắn muốn rời khỏi câu lạc bộ "${ctx.e(club.name)}"? Bạn sẽ không còn quyền truy cập dữ liệu và hoạt động của CLB này nữa.`;

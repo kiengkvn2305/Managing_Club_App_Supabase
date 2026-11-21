@@ -6,13 +6,15 @@ export function cents(value) {
 }
 const decimal=n=>`${n<0n?'-':''}${(n<0n?-n:n)/100n}.${((n<0n?-n:n)%100n).toString().padStart(2,'0')}`;
 export function ledgerView(rows, from='', to='9999-12-31', group='day') {
- const valid=rows.filter(r=>['posted','reversed'].includes(r.status));
- const period=valid.filter(r=>r.occurred_on>=from && r.occurred_on<=to);
+ const visible=rows.filter(r=>['posted','reversed'].includes(r.status));
+ const accounted=visible.filter(r=>r.status==='posted');
+ const period=visible.filter(r=>r.occurred_on>=from && r.occurred_on<=to);
+ const accountingPeriod=accounted.filter(r=>r.occurred_on>=from && r.occurred_on<=to);
  const sum=(data,type)=>data.filter(r=>r.type===type).reduce((n,r)=>n+cents(r.amount),0n);
- const income=sum(period,'income'),expense=sum(period,'expense');
+ const income=sum(accountingPeriod,'income'),expense=sum(accountingPeriod,'expense');
  const chart=new Map();
- for(const row of period){const p=row.occurred_on.slice(0,group==='month'?7:10),key=p+':'+row.type;const entry=chart.get(key)||{period:p,type:row.type,total:0n};entry.total+=cents(row.amount);chart.set(key,entry);}
- const until=valid.filter(r=>r.occurred_on<=to);
+ for(const row of accountingPeriod){const p=row.occurred_on.slice(0,group==='month'?7:10),key=p+':'+row.type;const entry=chart.get(key)||{period:p,type:row.type,total:0n};entry.total+=cents(row.amount);chart.set(key,entry);}
+ const until=accounted.filter(r=>r.occurred_on<=to);
  return {data:period,summary:{income:decimal(income),expense:decimal(expense),balance:decimal(income-expense),remaining:decimal(sum(until,'income')-sum(until,'expense')),change:null},chart:[...chart.values()].map(r=>({...r,total:decimal(r.total)}))};
 }
 export function expandPlanned(rows,from,to) {

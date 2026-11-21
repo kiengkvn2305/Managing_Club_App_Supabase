@@ -26,7 +26,9 @@ export function clubPage() {
       ? button('transfer-ownership', 'Chuyển quyền Chủ nhiệm', 'user', 'secondary') +
         button('delete-club', 'Xóa CLB', 'trash', 'secondary')
       : '') +
-    (c ? button('leave-club', 'Rời câu lạc bộ', 'arrow', 'secondary') : '');
+    (c && c.membership_role !== 'owner'
+      ? button('leave-club', 'Rời câu lạc bộ', 'arrow', 'secondary')
+      : '');
 
   return `
     <div class="page-top">
@@ -37,6 +39,12 @@ export function clubPage() {
       </div>
       <div class="page-actions">${actions}</div>
     </div>
+
+    ${
+      c?.membership_role === 'owner'
+        ? '<p class="owner-notice">Bạn là Chủ nhiệm CLB. Để rời CLB, hãy chuyển quyền Chủ nhiệm cho một thành viên khác trước.</p>'
+        : ''
+    }
 
     <div class="dashboard-grid">
       <section class="panel">

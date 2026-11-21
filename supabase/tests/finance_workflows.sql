@@ -1,7 +1,7 @@
 -- Runtime transaction tests. Every row is created inside a transaction and rolled back.
 begin;
 create extension if not exists pgtap;
-select plan(15);
+select plan(17);
 
 create temp table finance_test_context (
   user_id uuid,
@@ -48,6 +48,8 @@ select is((select status from public.finance_transactions where id=(select trans
 select lives_ok($$select public.reverse_finance_transaction((select club_id from finance_test_context),(select transaction_id from finance_test_context),'test reversal','00000000-0000-0000-0000-000000000102')$$, 'transaction can be reversed');
 select is((select status from public.finance_transactions where id=(select transaction_id from finance_test_context)),'reversed','original transaction is marked reversed');
 select is((select count(*)::integer from public.finance_transactions where reversal_of_id=(select transaction_id from finance_test_context)),1,'reversal creates one compensating transaction');
+select is((public.finance_ledger_page((select club_id from finance_test_context),null,null,1,20,'day')->'summary'->>'expense'),'0','ledger excludes reversed original from expenses');
+select is((public.finance_ledger_page((select club_id from finance_test_context),null,null,1,20,'day')->'summary'->>'income'),'125.50','ledger includes the posted compensating reversal');
 with created as (
   insert into public.team_dues_entries(club_id,team_id,player_id,month,status,amount,created_by)
   select club_id,team_id,player_id,'2100-01-01','unpaid',100,'00000000-0000-0000-0000-000000000099' from finance_test_context returning id

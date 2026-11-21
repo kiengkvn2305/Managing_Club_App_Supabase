@@ -82,6 +82,14 @@ export function check(result) {
       msg = 'Câu lạc bộ này hiện không ở trạng thái hoạt động.';
     } else if (msg.includes('owner_cannot_leave')) {
       msg = 'Chủ nhiệm không thể tự rời câu lạc bộ. Vui lòng chuyển quyền Chủ nhiệm trước hoặc thực hiện xóa CLB.';
+    } else if (msg.includes('idempotency_key_required')) {
+      msg = 'Yêu cầu lưu thiếu mã chống ghi trùng. Vui lòng tải lại trang rồi thử lại.';
+    } else if (msg.includes('idempotency_conflict')) {
+      msg = 'Yêu cầu này đã được xử lý với dữ liệu khác. Vui lòng tải lại dữ liệu trước khi tiếp tục.';
+    } else if (msg.includes('attendance_stale_reload')) {
+      msg = 'Điểm danh vừa được người khác cập nhật. Hãy tải lại danh sách rồi lưu lại thay đổi của bạn.';
+    } else if (msg.includes('attendance_must_use_rpc')) {
+      msg = 'Điểm danh chỉ được phép lưu qua quy trình an toàn của hệ thống.';
     } else if (msg.includes('not_a_member')) {
       msg = 'Bạn không phải là thành viên của câu lạc bộ này.';
     } else if (msg.includes('not_authenticated')) {

@@ -221,20 +221,18 @@ export function createMatchService({ supabase }) {
       const source = data.player_id
         ? [data]
         : data.players || data.attendance || [];
-      const entries = source.map((row) => ({
-        club_id: clubId,
-        match_id: Number(matchAttendance[1]),
-        player_id: Number(row.player_id),
-        rsvp: row.rsvp || 'pending',
-        attendance: row.attendance || 'unmarked',
-      }));
       return {
-        data:
-          check(
-            await supabase
-              .from('match_attendances')
-              .upsert(entries, { onConflict: 'match_id,player_id' })
-          ) || [],
+        data: check(
+          await supabase.rpc('save_match_attendance', {
+            p_club_id: clubId,
+            p_match_id: Number(matchAttendance[1]),
+            p_entries: source.map((row) => ({
+              player_id: Number(row.player_id),
+              rsvp: row.rsvp || 'pending',
+              attendance: row.attendance || 'unmarked',
+            })),
+          })
+        ),
       };
     }
 
