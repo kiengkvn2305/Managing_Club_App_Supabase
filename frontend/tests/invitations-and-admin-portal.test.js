@@ -461,4 +461,53 @@ test('boardPage hides copy button for revoked/expired invitations and allows rem
   assert.ok(html.includes('data-id="11"'));
   // Owner cannot remove self
   assert.ok(!html.includes('data-action="remove-club-member" data-id="10"'));
+
+  // Sort selects are rendered
+  assert.ok(html.includes('data-board-members-sort'));
+  assert.ok(html.includes('data-memberships-sort'));
+});
+
+test('boardPage sorts board members by title hierarchy, name, and creation order', () => {
+  state.clubId = 'club-1';
+  state.clubs = [
+    { id: 'club-1', name: 'CLB Hà Nội', membership_role: 'owner', status: 'active' },
+  ];
+  state.clubInvitations = [];
+  state.clubMemberships = [];
+  state.boardSharedRates = [];
+  state.boardMembers = [
+    { id: 1, full_name: 'Phạm Văn Dũng', title: 'Hậu cần' },
+    { id: 2, full_name: 'Lê Văn Cường', title: 'Chủ nhiệm CLB' },
+    { id: 3, full_name: 'Trần Văn Bình', title: 'Phó chủ nhiệm CLB' },
+    { id: 4, full_name: 'Nguyễn Văn An', title: 'Thủ quỹ' },
+  ];
+
+  // 1. Default sort: by title hierarchy (Chủ nhiệm -> Phó chủ nhiệm -> Thủ quỹ -> Hậu cần)
+  state.boardSort = 'title';
+  let html = boardPage();
+  const posChair = html.indexOf('Lê Văn Cường');
+  const posVice = html.indexOf('Trần Văn Bình');
+  const posTreasurer = html.indexOf('Nguyễn Văn An');
+  const posLogistics = html.indexOf('Phạm Văn Dũng');
+  assert.ok(posChair < posVice, 'Chủ nhiệm should come before Phó chủ nhiệm');
+  assert.ok(posVice < posTreasurer, 'Phó chủ nhiệm should come before Thủ quỹ');
+  assert.ok(posTreasurer < posLogistics, 'Thủ quỹ should come before Hậu cần');
+
+  // 2. Sort by Vietnamese given name A-Z (An (A) -> Bình (B) -> Cường (C) -> Dũng (D))
+  state.boardSort = 'name_asc';
+  html = boardPage();
+  const posAn = html.indexOf('Nguyễn Văn An');
+  const posBinh = html.indexOf('Trần Văn Bình');
+  const posCuong = html.indexOf('Lê Văn Cường');
+  const posDung = html.indexOf('Phạm Văn Dũng');
+  assert.ok(posAn < posBinh, 'An (A) comes before Binh (B)');
+  assert.ok(posBinh < posCuong, 'Binh (B) comes before Cuong (C)');
+  assert.ok(posCuong < posDung, 'Cuong (C) comes before Dung (D)');
+
+  // 3. Sort by order desc (ID 4 -> 3 -> 2 -> 1)
+  state.boardSort = 'order_desc';
+  html = boardPage();
+  const pos4 = html.indexOf('Nguyễn Văn An'); // id 4
+  const pos1 = html.indexOf('Phạm Văn Dũng'); // id 1
+  assert.ok(pos4 < pos1, 'ID 4 should come before ID 1 in order_desc');
 });

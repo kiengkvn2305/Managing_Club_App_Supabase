@@ -59,6 +59,8 @@ export const state = {
   financeAdjustmentPage: 1,
   birthdayPage: 1,
   boardMembers: [],
+  boardSort: 'title',
+  membershipsSort: 'role',
   boardSharedRates: [],
   boardTasks: [],
   birthdayMonth: '',

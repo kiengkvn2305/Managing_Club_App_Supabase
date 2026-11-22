@@ -4,6 +4,8 @@ import {
   number,
   formatDate,
   canManageClub,
+  compareVietnameseNames,
+  boardTitleRank,
 } from '../utils.js';
 import { button, empty } from '../components/ui.js';
 
@@ -31,14 +33,52 @@ export function boardPage() {
     `;
   }
 
-  const board = s.boardMembers.length
-    ? s.boardMembers
+  const sortBoard = (list, sortType = 'title') => {
+    const copy = [...list];
+    if (sortType === 'name_asc') {
+      return copy.sort(
+        (a, b) =>
+          compareVietnameseNames(a.full_name, b.full_name) ||
+          boardTitleRank(a.title) - boardTitleRank(b.title) ||
+          (a.id || 0) - (b.id || 0)
+      );
+    }
+    if (sortType === 'name_desc') {
+      return copy.sort(
+        (a, b) =>
+          -1 * compareVietnameseNames(a.full_name, b.full_name) ||
+          boardTitleRank(a.title) - boardTitleRank(b.title) ||
+          (b.id || 0) - (a.id || 0)
+      );
+    }
+    if (sortType === 'order_asc') {
+      return copy.sort((a, b) => (a.id || 0) - (b.id || 0));
+    }
+    if (sortType === 'order_desc') {
+      return copy.sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
+    // Default: 'title' (theo chức vụ cao -> thấp, sau đó theo tên A-Z)
+    return copy.sort(
+      (a, b) =>
+        boardTitleRank(a.title) - boardTitleRank(b.title) ||
+        compareVietnameseNames(a.full_name, b.full_name) ||
+        (a.id || 0) - (b.id || 0)
+    );
+  };
+
+  const sortedBoard = sortBoard(s.boardMembers || [], s.boardSort || 'title');
+
+  const board = sortedBoard.length
+    ? sortedBoard
         .map(
           (m) => `
-        <div class="member-row">
+        <div class="member-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line);gap:12px;">
           <div>
             <strong>${e(m.full_name)}</strong>
-            <small>${e(m.title)}${m.date_of_birth ? ` · ${e(formatDate(m.date_of_birth))}` : ''}${m.email ? ` · ${e(m.email)}` : ''}</small>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;">
+              <span class="badge ${boardTitleRank(m.title) <= 2 ? 'active' : ''}">${e(m.title)}</span>
+              <small style="color:var(--muted);">${m.date_of_birth ? `Ngày sinh: ${e(formatDate(m.date_of_birth))}` : ''}${m.email ? ` · ${e(m.email)}` : ''}</small>
+            </div>
           </div>
           <div class="team-actions">
             <button class="text-button" data-action="board-edit" data-id="${m.id}">Sửa</button>
@@ -86,8 +126,38 @@ export function boardPage() {
     return `<span class="badge">${e(granted.join(', '))}</span>`;
   };
 
-  const membershipsList = s.clubMemberships?.length
-    ? s.clubMemberships
+  const sortMemberships = (list, sortType = 'role') => {
+    const copy = [...list];
+    if (sortType === 'name_asc') {
+      return copy.sort((a, b) => compareVietnameseNames(a.name || a.email, b.name || b.email));
+    }
+    if (sortType === 'name_desc') {
+      return copy.sort((a, b) => -1 * compareVietnameseNames(a.name || a.email, b.name || b.email));
+    }
+    if (sortType === 'order_asc') {
+      return copy.sort((a, b) => (a.id || 0) - (b.id || 0));
+    }
+    if (sortType === 'order_desc') {
+      return copy.sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
+    // Default: 'role' (owner trước, sau đó theo chức vụ, số quyền, tên)
+    return copy.sort((a, b) => {
+      const aIsOwner = a.role === 'owner' ? -1 : 0;
+      const bIsOwner = b.role === 'owner' ? -1 : 0;
+      if (aIsOwner !== bIsOwner) return aIsOwner - bIsOwner;
+      const rankDiff = boardTitleRank(a.title) - boardTitleRank(b.title);
+      if (rankDiff !== 0) return rankDiff;
+      const aPerms = Object.values(a.permissions || {}).filter(Boolean).length;
+      const bPerms = Object.values(b.permissions || {}).filter(Boolean).length;
+      if (bPerms !== aPerms) return bPerms - aPerms;
+      return compareVietnameseNames(a.name || a.email, b.name || b.email) || (a.id || 0) - (b.id || 0);
+    });
+  };
+
+  const sortedMemberships = sortMemberships(s.clubMemberships || [], s.membershipsSort || 'role');
+
+  const membershipsList = sortedMemberships.length
+    ? sortedMemberships
         .map(
           (m) => `
         <div class="member-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line);gap:12px;">
@@ -121,10 +191,22 @@ export function boardPage() {
     </div>
 
     <section class="panel">
-      <div class="panel-head">
+      <div class="panel-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
-          <h2>Tài khoản thành viên & Phân quyền chi tiết</h2>
+          <h2>Tài khoản thành viên & Phân quyền chi tiết (${sortedMemberships.length})</h2>
           <p>Chủ nhiệm CLB có toàn quyền cấp hoặc giới hạn từng chức năng cho từng thành viên, hoặc trao lại quyền Chủ nhiệm cho người khác.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;">
+            <span>Sắp xếp:</span>
+            <select data-memberships-sort aria-label="Sắp xếp Tài khoản & Phân quyền" style="margin:0;padding:5px 10px;height:34px;font-size:13px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-weight:500;">
+              <option value="role" ${(s.membershipsSort || 'role') === 'role' ? 'selected' : ''}>Chủ nhiệm & Chức vụ đầu</option>
+              <option value="name_asc" ${s.membershipsSort === 'name_asc' ? 'selected' : ''}>Theo tên (A → Z)</option>
+              <option value="name_desc" ${s.membershipsSort === 'name_desc' ? 'selected' : ''}>Theo tên (Z → A)</option>
+              <option value="order_asc" ${s.membershipsSort === 'order_asc' ? 'selected' : ''}>Theo thứ tự (Cũ → Mới)</option>
+              <option value="order_desc" ${s.membershipsSort === 'order_desc' ? 'selected' : ''}>Theo thứ tự (Mới → Cũ)</option>
+            </select>
+          </label>
         </div>
       </div>
       ${membershipsList}
@@ -208,10 +290,22 @@ export function boardPage() {
     </section>
 
     <section class="panel">
-      <div class="panel-head">
+      <div class="panel-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
         <div>
-          <h2>Ban chủ nhiệm</h2>
+          <h2>Ban chủ nhiệm (${sortedBoard.length})</h2>
           <p>Chức danh dùng để ghi nhận nhân sự, không tự cấp quyền đăng nhập.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap;">
+            <span>Sắp xếp:</span>
+            <select data-board-members-sort aria-label="Sắp xếp danh sách Ban chủ nhiệm" style="margin:0;padding:5px 10px;height:34px;font-size:13px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-weight:500;">
+              <option value="title" ${(s.boardSort || 'title') === 'title' ? 'selected' : ''}>Theo chức vụ (Cao → Thấp)</option>
+              <option value="name_asc" ${s.boardSort === 'name_asc' ? 'selected' : ''}>Theo tên (A → Z)</option>
+              <option value="name_desc" ${s.boardSort === 'name_desc' ? 'selected' : ''}>Theo tên (Z → A)</option>
+              <option value="order_asc" ${s.boardSort === 'order_asc' ? 'selected' : ''}>Theo thứ tự (Cũ → Mới)</option>
+              <option value="order_desc" ${s.boardSort === 'order_desc' ? 'selected' : ''}>Theo thứ tự (Mới → Cũ)</option>
+            </select>
+          </label>
         </div>
       </div>
       ${board}

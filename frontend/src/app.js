@@ -1002,6 +1002,18 @@ root.addEventListener('change', (event) => {
     return;
   }
 
+  if (event.target.matches('[data-board-members-sort]')) {
+    s.boardSort = event.target.value;
+    render();
+    return;
+  }
+
+  if (event.target.matches('[data-memberships-sort]')) {
+    s.membershipsSort = event.target.value;
+    render();
+    return;
+  }
+
   if (event.target.matches('[data-finance-period]')) {
     const form = event.target.closest('form');
     form.querySelector('[data-finance-month]').hidden =
@@ -1027,6 +1039,8 @@ root.addEventListener('change', (event) => {
     s.trainingFilterDate = '';
     s.trainingFilterTeam = '';
     s.trainingSort = 'asc';
+    s.boardSort = 'title';
+    s.membershipsSort = 'role';
     s.filters = { q: '', team_id: '', status: '', page: 1 };
     loadView();
   }

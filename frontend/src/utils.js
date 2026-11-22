@@ -21,6 +21,19 @@ export const compareVietnameseNames = (a, b) => {
   const first = (name) => clean(name).split(/\s+/).pop();
   return first(a).localeCompare(first(b), 'vi') || clean(a).localeCompare(clean(b), 'vi');
 };
+export function boardTitleRank(title = '') {
+  const t = String(title || '').toLowerCase().trim();
+  if (!t) return 99;
+  if ((t.includes('chủ nhiệm') || t.includes('chủ tịch') || t.includes('trưởng clb')) && !t.includes('phó')) return 1;
+  if (t.includes('phó chủ nhiệm') || t.includes('phó chủ tịch') || t.includes('phó ban') || t.includes('phó trưởng')) return 2;
+  if (t.includes('thủ quỹ') || t.includes('kế toán') || t.includes('tài chính')) return 3;
+  if (t.includes('huấn luyện') || t.includes('hlv') || t.includes('chuyên môn')) return 4;
+  if (t.includes('hậu cần') || t.includes('thiết bị') || t.includes('trang bị') || t.includes('kho')) return 5;
+  if (t.includes('thư ký')) return 6;
+  if (t.includes('truyền thông') || t.includes('media') || t.includes('hình ảnh')) return 7;
+  if (t.includes('nhân sự') || t.includes('cán sự') || t.includes('ủy viên') || t.includes('quản lý')) return 8;
+  return 90;
+}
 export const roleLabel = (role) =>
   ({
     owner: "Chủ nhiệm CLB",
