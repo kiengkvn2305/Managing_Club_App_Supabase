@@ -97,27 +97,42 @@ export function createBoardService({ supabase }) {
     }
 
     if (boardMember && method === 'DELETE') {
-      const row = check(
-        await supabase
-          .from('club_board_members')
-          .select('player_id')
-          .eq('club_id', clubId)
-          .eq('id', Number(boardMember[1]))
-          .single()
-      );
-      if (row) {
-        const currentMonth = `${new Date().toISOString().slice(0, 7)}-01`;
-        await supabase
-          .from('board_membership_periods')
-          .update({ ends_before: currentMonth })
-          .eq('club_id', clubId)
-          .eq('player_id', row.player_id)
-          .is('ends_before', null);
-        await supabase
-          .from('club_board_members')
-          .update({ archived_at: new Date().toISOString() })
-          .eq('club_id', clubId)
-          .eq('id', Number(boardMember[1]));
+      const boardMemberId = Number(boardMember[1]);
+      const rpcRes = await supabase.rpc('remove_board_member', {
+        p_club_id: clubId,
+        p_board_member_id: boardMemberId,
+      });
+      if (rpcRes.error) {
+        // Fallback trực tiếp nếu chưa chạy migration RPC
+        const row = check(
+          await supabase
+            .from('club_board_members')
+            .select('player_id')
+            .eq('club_id', clubId)
+            .eq('id', boardMemberId)
+            .single()
+        );
+        if (row) {
+          await supabase
+            .from('board_tasks')
+            .delete()
+            .eq('club_id', clubId)
+            .eq('board_member_id', boardMemberId);
+          await supabase
+            .from('board_membership_periods')
+            .delete()
+            .eq('club_id', clubId)
+            .eq('player_id', row.player_id);
+          check(
+            await supabase
+              .from('club_board_members')
+              .delete()
+              .eq('club_id', clubId)
+              .eq('id', boardMemberId)
+          );
+        }
+      } else {
+        check(rpcRes);
       }
       return {};
     }

@@ -112,13 +112,22 @@ export function clubPage() {
                       .map((inv) => {
                         const code = inv.invite_code || inv.token || 'INV';
                         const permsCount = Object.values(inv.permissions || {}).filter(Boolean).length;
+                        const isExpired =
+                          inv.status === 'expired' ||
+                          (inv.expires_at && new Date(inv.expires_at) < new Date());
+                        const isActive = inv.status === 'pending' && !isExpired;
                         const statusMap = {
-                          pending: '<span class="badge active">Đang chờ</span>',
+                          pending: isExpired
+                            ? '<span class="badge muted">Hết hạn</span>'
+                            : '<span class="badge active">Đang chờ</span>',
                           accepted: '<span class="badge">Đã tham gia</span>',
                           expired: '<span class="badge muted">Hết hạn</span>',
                           revoked: '<span class="badge injured">Đã hủy</span>',
                         };
-                        const statusBadge = statusMap[inv.status] || `<span class="badge">${e(inv.status)}</span>`;
+                        const statusBadge =
+                          isExpired && inv.status === 'pending'
+                            ? '<span class="badge muted">Hết hạn</span>'
+                            : (statusMap[inv.status] || `<span class="badge">${e(inv.status)}</span>`);
                         return `
                           <tr>
                             <td>
@@ -139,12 +148,16 @@ export function clubPage() {
                             </td>
                             <td class="text-right">
                               <div style="display:inline-flex;gap:0.35rem;justify-content:flex-end;">
-                                <button type="button" class="text-button" data-action="copy-code" data-code="${e(code)}" title="Sao chép mã">
-                                  Chép mã
-                                </button>
                                 ${
-                                  inv.status === 'pending' && canManageClub(c)
-                                    ? `<button type="button" class="text-button danger" data-action="revoke-invitation" data-id="${inv.id}" title="Hủy và xóa vĩnh viễn mã này">Xóa</button>`
+                                  isActive
+                                    ? `<button type="button" class="text-button" data-action="copy-code" data-code="${e(code)}" title="Sao chép mã">
+                                  Chép mã
+                                </button>`
+                                    : ''
+                                }
+                                ${
+                                  canManageClub(c)
+                                    ? `<button type="button" class="text-button danger" data-action="revoke-invitation" data-id="${inv.id}" title="${isActive ? 'Hủy và xóa vĩnh viễn mã này' : 'Xóa mã khỏi hệ thống'}">Xóa</button>`
                                     : ''
                                 }
                               </div>

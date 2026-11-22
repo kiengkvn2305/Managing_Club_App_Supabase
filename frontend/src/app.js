@@ -875,9 +875,24 @@ async function action(el) {
 
   if (a === 'revoke-invitation') {
     const id = el.dataset.id;
-    if (confirm('Bạn có chắc chắn muốn hủy mã mời này không? Mã mời sẽ bị xóa vĩnh viễn khỏi hệ thống.')) {
+    if (confirm('Bạn có chắc chắn muốn hủy/xóa mã mời này không? Mã mời sẽ bị xóa vĩnh viễn khỏi hệ thống.')) {
       await api.delete(base(`/invitations/${id}`));
-      toast('Đã hủy và xóa vĩnh viễn mã mời.');
+      toast('Đã xóa vĩnh viễn mã mời.');
+      await loadView();
+    }
+    return;
+  }
+
+  if (a === 'remove-club-member') {
+    const memberId = Number(el.dataset.id);
+    const memberName = el.dataset.name || 'thành viên này';
+    if (
+      confirm(
+        `Bạn có chắc chắn muốn xóa "${memberName}" khỏi câu lạc bộ? Tài khoản này sẽ bị thu hồi toàn bộ chức vụ, quyền hạn và xóa khỏi danh sách CLB & BCN.`
+      )
+    ) {
+      await api.delete(base(`/club-memberships/${memberId}`));
+      toast(`Đã xóa ${memberName} khỏi câu lạc bộ.`);
       await loadView();
     }
     return;

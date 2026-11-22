@@ -149,16 +149,16 @@ export function createBoardController(ctx) {
 
       if (a === 'board-remove') {
         return ctx.dialog(
-          'Bỏ khỏi BCN?',
-          `Bỏ ${ctx.e(member.full_name)} khỏi danh sách BCN; hồ sơ thành viên vẫn được giữ. Ưu đãi quỹ kết thúc từ tháng sau, các khoản đã ghi được giữ nguyên.`,
+          'Xóa khỏi BCN?',
+          `Xóa ${ctx.e(member.full_name)} khỏi danh sách Ban Chủ Nhiệm. Bản ghi BCN sẽ được xóa hoàn toàn khỏi cơ sở dữ liệu. Hồ sơ thành viên và cầu thủ vẫn được giữ lại.`,
           '',
           (form) =>
             ctx.submit(form, 'board', async () => {
               await ctx.api.delete(ctx.base(`/board-members/${member.id}`));
               await ctx.loadView();
-              ctx.toast('Đã cập nhật danh sách BCN.');
+              ctx.toast('Đã xóa thành viên khỏi Ban Chủ Nhiệm.');
             }),
-          'Bỏ khỏi BCN'
+          'Xác nhận xóa khỏi BCN'
         );
       }
 

@@ -96,10 +96,11 @@ export function boardPage() {
             <small style="display:block;color:var(--muted);">${e(m.email || '')}${m.title ? ` · Chức danh: ${e(m.title)}` : ''} · Vai trò: ${e(m.role)}</small>
             <div style="margin-top:4px;">${permissionSummary(m)}</div>
           </div>
-          <div class="team-actions" style="display:flex;gap:6px;flex-wrap:wrap;">
+          <div class="team-actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
             ${isOwner && m.role !== 'owner' ? `<button class="text-button" data-action="edit-permissions" data-id="${m.id}">Chức vụ & Phân quyền</button>` : ''}
             ${isOwner && m.role === 'owner' ? `<span class="badge" style="background:#ddf5e9;color:#126047;">Chủ nhiệm tối cao</span>` : ''}
             ${isOwner && m.role !== 'owner' ? `<button class="text-button danger" data-action="transfer-ownership" data-id="${m.user_id}" data-name="${e(m.name || m.email)}">Trao quyền Chủ nhiệm</button>` : ''}
+            ${isOwner && m.role !== 'owner' ? `<button class="text-button danger" data-action="remove-club-member" data-id="${m.id}" data-name="${e(m.name || m.email)}" title="Xóa tài khoản khỏi CLB và BCN">Xóa khỏi CLB</button>` : ''}
           </div>
         </div>`
         )
@@ -162,14 +163,23 @@ export function boardPage() {
                     const permsCount = Object.values(inv.permissions || {}).filter(
                       Boolean
                     ).length;
+                    const isExpired =
+                      inv.status === 'expired' ||
+                      (inv.expires_at && new Date(inv.expires_at) < new Date());
+                    const isActive = inv.status === 'pending' && !isExpired;
                     const statusMap = {
-                      pending: '<span class="badge active">Đang chờ</span>',
+                      pending: isExpired
+                        ? '<span class="badge muted">Hết hạn</span>'
+                        : '<span class="badge active">Đang chờ</span>',
                       accepted: '<span class="badge">Đã tham gia</span>',
                       expired: '<span class="badge muted">Hết hạn</span>',
                       revoked: '<span class="badge injured">Đã hủy</span>',
                     };
                     const statusBadge =
-                      statusMap[inv.status] || `<span class="badge">${e(inv.status)}</span>`;
+                      isExpired && inv.status === 'pending'
+                        ? '<span class="badge muted">Hết hạn</span>'
+                        : statusMap[inv.status] ||
+                          `<span class="badge">${e(inv.status)}</span>`;
                     return `
                     <tr>
                       <td><strong style="font-family:monospace;letter-spacing:1px;font-size:1rem;color:var(--primary);">${e(code)}</strong></td>
@@ -182,8 +192,8 @@ export function boardPage() {
                       <td class="text-center">${statusBadge}</td>
                       <td class="text-right">
                         <div style="display:inline-flex;gap:0.35rem;justify-content:flex-end;">
-                          <button type="button" class="text-button" data-action="copy-code" data-code="${e(code)}" title="Sao chép mã">Chép mã</button>
-                          ${inv.status === 'pending' ? `<button type="button" class="text-button danger" data-action="revoke-invitation" data-id="${inv.id}" title="Hủy mã này">Hủy</button>` : ''}
+                          ${isActive ? `<button type="button" class="text-button" data-action="copy-code" data-code="${e(code)}" title="Sao chép mã">Chép mã</button>` : ''}
+                          ${canManage ? `<button type="button" class="text-button danger" data-action="revoke-invitation" data-id="${inv.id}" title="${isActive ? 'Hủy và xóa vĩnh viễn mã này' : 'Xóa mã khỏi hệ thống'}">Xóa</button>` : ''}
                         </div>
                       </td>
                     </tr>

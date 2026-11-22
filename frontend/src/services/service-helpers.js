@@ -82,6 +82,10 @@ export function check(result) {
       msg = 'Câu lạc bộ này hiện không ở trạng thái hoạt động.';
     } else if (msg.includes('owner_cannot_leave')) {
       msg = 'Chủ nhiệm không thể tự rời câu lạc bộ. Vui lòng chuyển quyền Chủ nhiệm trước hoặc thực hiện xóa CLB.';
+    } else if (msg.includes('cannot_remove_owner')) {
+      msg = 'Chủ nhiệm không thể bị xóa khỏi câu lạc bộ. Vui lòng chuyển quyền Chủ nhiệm trước.';
+    } else if (msg.includes('member_not_found')) {
+      msg = 'Không tìm thấy thành viên trong câu lạc bộ.';
     } else if (msg.includes('idempotency_key_required')) {
       msg = 'Yêu cầu lưu thiếu mã chống ghi trùng. Vui lòng tải lại trang rồi thử lại.';
     } else if (msg.includes('idempotency_conflict')) {

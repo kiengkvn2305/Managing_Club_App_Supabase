@@ -277,6 +277,32 @@ export function createRosterService({ supabase, authService }) {
       };
     }
 
+    if (membership && method === 'DELETE') {
+      const memberId = Number(membership[1]);
+      const rpcRes = await supabase.rpc('remove_club_member', {
+        p_club_id: clubId,
+        p_member_id: memberId,
+      });
+      if (rpcRes.error) {
+        // Fallback trực tiếp nếu chưa có RPC
+        await supabase
+          .from('team_managers')
+          .delete()
+          .eq('club_id', clubId)
+          .eq('membership_id', memberId);
+        check(
+          await supabase
+            .from('club_members')
+            .delete()
+            .eq('club_id', clubId)
+            .eq('id', memberId)
+        );
+      } else {
+        check(rpcRes);
+      }
+      return {};
+    }
+
     const playerImage = clean.match(/\/members\/(\d+)\/avatar$/);
     if (playerImage && (method === 'POST' || method === 'DELETE')) {
       const playerId = Number(playerImage[1]);

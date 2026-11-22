@@ -5,6 +5,7 @@ import { createClubService } from '../src/services/club-service.js';
 import { state } from '../src/state.js';
 import { adminPage } from '../src/views/admin-page.js';
 import { clubPage } from '../src/views/club-page.js';
+import { boardPage } from '../src/views/board-page.js';
 import { check } from '../src/services/service-helpers.js';
 
 test('TITLE_PRESETS defines expected permissions for all club roles', () => {
@@ -278,21 +279,63 @@ test('clubPage renders invitations list table with invite code and test badge', 
     {
       id: 50,
       club_id: 'club-1',
-      invite_code: 'INV-TEST88',
+      invite_code: 'INV-ACTIVE',
       email: null,
       title: 'Phó chủ nhiệm CLB',
       permissions: { can_manage_club: true, can_manage_roster: true },
       status: 'pending',
       expires_at: '2026-11-25T00:00:00Z',
     },
+    {
+      id: 51,
+      club_id: 'club-1',
+      invite_code: 'INV-REVOKED',
+      email: null,
+      title: 'Thành viên',
+      permissions: {},
+      status: 'revoked',
+      expires_at: '2026-11-25T00:00:00Z',
+    },
+    {
+      id: 52,
+      club_id: 'club-1',
+      invite_code: 'INV-ACCEPTED',
+      email: null,
+      title: 'Phó chủ nhiệm CLB',
+      permissions: {},
+      status: 'accepted',
+      expires_at: '2026-11-25T00:00:00Z',
+    },
+    {
+      id: 53,
+      club_id: 'club-1',
+      invite_code: 'INV-EXPIRED',
+      email: null,
+      title: 'Thành viên',
+      permissions: {},
+      status: 'expired',
+      expires_at: '2020-01-01T00:00:00Z',
+    },
   ];
 
   const html = clubPage();
   assert.ok(html.includes('Mã mời & Lời mời tham gia CLB'));
-  assert.ok(html.includes('INV-TEST88'));
+  assert.ok(html.includes('INV-ACTIVE'));
+  assert.ok(html.includes('INV-REVOKED'));
   assert.ok(html.includes('Dùng chung (Test)'));
   assert.ok(html.includes('Phó chủ nhiệm CLB'));
   assert.ok(html.includes('Đang chờ'));
+  assert.ok(html.includes('Đã hủy'));
+  assert.ok(html.includes('Đã tham gia'));
+  assert.ok(html.includes('Hết hạn'));
+
+  // Active invitation HAS "Chép mã"
+  assert.ok(html.includes('data-code="INV-ACTIVE"'));
+
+  // Revoked, accepted, and expired invitations MUST NOT have "Chép mã"
+  assert.ok(!html.includes('data-code="INV-REVOKED"'));
+  assert.ok(!html.includes('data-code="INV-ACCEPTED"'));
+  assert.ok(!html.includes('data-code="INV-EXPIRED"'));
 });
 
 test('check() translates invitation and owner protection errors into friendly Vietnamese', () => {
@@ -365,4 +408,57 @@ test('clubPage never offers self-leave to owner, but permits a regular member to
   assert.ok(html.includes('data-action="leave-club"'));
   assert.ok(html.includes('Rời câu lạc bộ'));
   assert.ok(!html.includes('data-action="delete-club"'));
+});
+
+test('boardPage hides copy button for revoked/expired invitations and allows removing members', () => {
+  state.clubId = 'club-1';
+  state.clubs = [
+    { id: 'club-1', name: 'CLB Hà Nội', membership_role: 'owner', status: 'active' },
+  ];
+  state.clubInvitations = [
+    {
+      id: 1,
+      club_id: 'club-1',
+      invite_code: 'INV-VALID',
+      status: 'pending',
+      expires_at: '2026-12-31T00:00:00Z',
+    },
+    {
+      id: 2,
+      club_id: 'club-1',
+      invite_code: 'INV-CANCELLED',
+      status: 'revoked',
+      expires_at: '2026-12-31T00:00:00Z',
+    },
+  ];
+  state.clubMemberships = [
+    {
+      id: 10,
+      user_id: 'user-owner',
+      role: 'owner',
+      title: 'Chủ nhiệm CLB',
+      name: 'Nguyễn Văn Chủ Nhiệm',
+    },
+    {
+      id: 11,
+      user_id: 'user-vice',
+      role: 'member',
+      title: 'Phó chủ nhiệm CLB',
+      name: 'Trần Văn Phó',
+    },
+  ];
+  state.boardMembers = [];
+  state.boardSharedRates = [];
+
+  const html = boardPage();
+  // Valid invite has copy button
+  assert.ok(html.includes('data-code="INV-VALID"'));
+  // Cancelled invite does NOT have copy button
+  assert.ok(!html.includes('data-code="INV-CANCELLED"'));
+
+  // Owner can remove regular member from club
+  assert.ok(html.includes('data-action="remove-club-member"'));
+  assert.ok(html.includes('data-id="11"'));
+  // Owner cannot remove self
+  assert.ok(!html.includes('data-action="remove-club-member" data-id="10"'));
 });
