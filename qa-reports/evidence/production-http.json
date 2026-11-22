@@ -1,6 +1,6 @@
 {
-  "at": "2026-11-21T06:46:10.761Z",
-  "entry": "/assets/index-DU6pG7Fp.js",
+  "at": "2026-11-22T08:36:06.766Z",
+  "entry": "/assets/index-CN1oFOPS.js",
   "safeProfile": true,
   "evidence": [
     {
@@ -12,42 +12,42 @@
       "bytes": 1151
     },
     {
-      "path": "/assets/index-DU6pG7Fp.js",
+      "path": "/assets/index-CN1oFOPS.js",
       "status": 200,
       "mime": "application/javascript",
-      "cache": "public, max-age=0, must-revalidate",
+      "cache": "public, max-age=31536000, immutable",
       "html": false,
-      "bytes": 555016
+      "bytes": 556414
     },
     {
-      "path": "/assets/exceljs.min-ZGUMFiaG.js",
+      "path": "/assets/exceljs.min-A1KbYvo4.js",
       "status": 200,
       "mime": "application/javascript",
-      "cache": "public, max-age=0, must-revalidate",
+      "cache": "public, max-age=31536000, immutable",
       "html": false,
       "bytes": 928797
     },
     {
-      "path": "/assets/web-COcFuhiy.js",
+      "path": "/assets/web-D3WpoqJn.js",
       "status": 200,
       "mime": "application/javascript",
-      "cache": "public, max-age=0, must-revalidate",
+      "cache": "public, max-age=31536000, immutable",
       "html": false,
       "bytes": 844
     },
     {
-      "path": "/assets/web-BKm2Qe2U.js",
+      "path": "/assets/web-C-C-mHxX.js",
       "status": 200,
       "mime": "application/javascript",
-      "cache": "public, max-age=0, must-revalidate",
+      "cache": "public, max-age=31536000, immutable",
       "html": false,
       "bytes": 1104
     },
     {
-      "path": "/assets/web-DzXKcXXc.js",
+      "path": "/assets/web-RvXU_MU1.js",
       "status": 200,
       "mime": "application/javascript",
-      "cache": "public, max-age=0, must-revalidate",
+      "cache": "public, max-age=31536000, immutable",
       "html": false,
       "bytes": 123
     },
