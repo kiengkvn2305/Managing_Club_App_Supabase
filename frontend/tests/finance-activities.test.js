@@ -80,3 +80,105 @@ test('award recipient search and sort handles name, date of birth, and notes acc
   assert.equal(sortedDobAsc[1].id, 1); // 2000
   assert.equal(sortedDobAsc[2].id, 2); // 2005
 });
+
+test('activitiesPage filters by date and sorts training sessions chronologically', () => {
+  const t1 = {
+    id: 1,
+    team_name: 'Futsal Đội Lớn',
+    team_id: 'team-1',
+    training_date: '2026-11-23',
+    training_time: '18:00',
+    location: 'Sân Thống Nhất',
+    notes: 'Theo kế hoạch',
+    present_count: 0,
+    training_status: 'scheduled',
+    approval_status: 'approved',
+  };
+  const t2 = {
+    id: 2,
+    team_name: 'Futsal Đội Trẻ',
+    team_id: 'team-2',
+    training_date: '2026-11-22',
+    training_time: '17:00',
+    location: 'Sân Thống Nhất',
+    notes: 'Theo kế hoạch',
+    present_count: 0,
+    training_status: 'scheduled',
+    approval_status: 'approved',
+  };
+  const t3 = {
+    id: 3,
+    team_name: 'Futsal Đội Lớn',
+    team_id: 'team-1',
+    training_date: '2026-11-22',
+    training_time: '15:39',
+    location: 'Sân Thống Nhất',
+    notes: 'Theo kế hoạch',
+    present_count: 13,
+    training_status: 'scheduled',
+    approval_status: 'approved',
+  };
+
+  Object.assign(state, {
+    loading: false,
+    error: '',
+    route: 'activities',
+    clubs: [{ id: 1, membership_role: 'owner', can_manage_activities: true }],
+    clubId: 1,
+    teams: [
+      { id: 'team-1', name: 'Futsal Đội Lớn' },
+      { id: 'team-2', name: 'Futsal Đội Trẻ' },
+    ],
+    trainingFilterDate: '',
+    trainingFilterTeam: '',
+    trainingSort: 'asc',
+    activities: {
+      celebrations: [],
+      awards: [],
+      birthdays: [],
+      trainings: [t1, t2, t3], // deliberately unsorted: 23rd, 22nd 17:00, 22nd 15:39
+    },
+  });
+
+  // Ascending sort: 22nd 15:39 -> 22nd 17:00 -> 23rd 18:00
+  let html = page();
+  const idxT3 = html.indexOf('22/11/2026 15:39');
+  const idxT2 = html.indexOf('22/11/2026 17:00');
+  const idxT1 = html.indexOf('23/11/2026 18:00');
+  assert.ok(idxT3 !== -1 && idxT2 !== -1 && idxT1 !== -1);
+  assert.ok(idxT3 < idxT2, '15:39 comes before 17:00 on same day');
+  assert.ok(idxT2 < idxT1, '22/11 comes before 23/11');
+  assert.match(html, /data-training-date/);
+  assert.match(html, /data-training-sort/);
+  assert.match(html, /3<\/strong> lịch tập/);
+
+  // Descending sort: 23rd 18:00 -> 22nd 17:00 -> 22nd 15:39
+  state.trainingSort = 'desc';
+  html = page();
+  const revT1 = html.indexOf('23/11/2026 18:00');
+  const revT2 = html.indexOf('22/11/2026 17:00');
+  const revT3 = html.indexOf('22/11/2026 15:39');
+  assert.ok(revT1 < revT2, '23/11 comes first in desc sort');
+  assert.ok(revT2 < revT3, '17:00 comes before 15:39 in desc sort');
+
+  // Filter by single date: 2026-11-22
+  state.trainingSort = 'asc';
+  state.trainingFilterDate = '2026-11-22';
+  html = page();
+  assert.match(html, /22\/11\/2026 15:39/);
+  assert.match(html, /22\/11\/2026 17:00/);
+  assert.doesNotMatch(html, /23\/11\/2026 18:00/);
+  assert.match(html, /2<\/strong> lịch tập/);
+  assert.match(html, /ngày <strong>22\/11\/2026<\/strong>/);
+
+  // Filter by date with zero sessions
+  state.trainingFilterDate = '2026-11-25';
+  html = page();
+  assert.match(html, /Không có lịch tập nào vào ngày 25\/11\/2026/);
+  assert.match(html, /0<\/strong> lịch tập/);
+
+  // Reset filter
+  state.trainingFilterDate = '';
+  state.trainingFilterTeam = '';
+  state.trainingSort = 'asc';
+});

@@ -29,6 +29,42 @@ export function activitiesPage() {
     trainings = [],
     awards = [],
   } = s.activities;
+
+  // Sắp xếp thứ tự ngày tháng và lọc theo ngày/đội bóng
+  const sortDir = s.trainingSort === 'desc' ? -1 : 1;
+  const filteredTrainings = trainings
+    .filter((t) => {
+      if (s.trainingFilterDate && t.training_date !== s.trainingFilterDate) {
+        return false;
+      }
+      if (
+        s.trainingFilterTeam &&
+        String(t.team_id) !== String(s.trainingFilterTeam)
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const dateCmp = String(a.training_date || '').localeCompare(
+        String(b.training_date || '')
+      );
+      if (dateCmp !== 0) return sortDir * dateCmp;
+      const timeCmp = String(a.training_time || '').localeCompare(
+        String(b.training_time || '')
+      );
+      if (timeCmp !== 0) return sortDir * timeCmp;
+      return sortDir * (a.id - b.id);
+    });
+
+  // Đếm số buổi tập theo từng ngày để hỗ trợ chọn nhanh
+  const dateCounts = new Map();
+  trainings.forEach((t) => {
+    if (t.training_date) {
+      dateCounts.set(t.training_date, (dateCounts.get(t.training_date) || 0) + 1);
+    }
+  });
+  const availableDates = [...dateCounts.keys()].sort();
   const owner = currentClub().membership_role === 'owner';
   const birthdayMonth = s.birthdayMonth || vietnamToday().slice(5, 7);
   const monthlyBirthdays = birthdays
@@ -141,15 +177,76 @@ export function activitiesPage() {
 
       <section class="panel">
         <div class="panel-head">
-          <h2>Lịch tập & điểm danh</h2>
+          <div>
+            <h2>Lịch tập & điểm danh</h2>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--muted);">Lịch tập của các đội bóng, quản lý điểm danh và theo dõi tiến độ tham gia.</p>
+          </div>
           <div class="team-actions">
             ${canManageRoster(currentClub()) ? button('attendance-report', 'Tiến độ điểm danh', 'check', 'secondary') : ''}
             ${button('new-training', 'Tạo lịch tập')}
           </div>
         </div>
+
+        <div class="training-filter-bar">
+          <div class="training-filter-controls">
+            <label class="training-filter-item">
+              <span class="training-filter-label">Chọn ngày tập</span>
+              <input type="date" data-training-date value="${e(s.trainingFilterDate || '')}" aria-label="Chọn ngày lọc lịch tập">
+            </label>
+            <label class="training-filter-item">
+              <span class="training-filter-label">Đội bóng</span>
+              <select data-training-team aria-label="Lọc theo đội bóng">
+                <option value="">Tất cả đội bóng</option>
+                ${(s.teams || []).map((t) => `<option value="${e(t.id)}" ${String(s.trainingFilterTeam || '') === String(t.id) ? 'selected' : ''}>${e(t.name)}</option>`).join('')}
+              </select>
+            </label>
+            <label class="training-filter-item">
+              <span class="training-filter-label">Thứ tự ngày tháng</span>
+              <select data-training-sort aria-label="Sắp xếp theo thứ tự ngày tháng">
+                <option value="asc" ${s.trainingSort !== 'desc' ? 'selected' : ''}>Ngày tăng dần (Cũ → Mới)</option>
+                <option value="desc" ${s.trainingSort === 'desc' ? 'selected' : ''}>Ngày giảm dần (Mới → Cũ)</option>
+              </select>
+            </label>
+            <div class="training-quick-buttons">
+              <button type="button" class="button secondary small" data-action="training-today" title="Xem lịch tập hôm nay">Hôm nay</button>
+              ${s.trainingFilterDate || s.trainingFilterTeam ? `<button type="button" class="button secondary small" data-action="training-all" title="Xóa bộ lọc xem tất cả">Xem tất cả</button>` : ''}
+            </div>
+          </div>
+
+          ${
+            availableDates.length > 1
+              ? `
+            <div class="training-date-pills">
+              <span class="training-pills-label">Ngày có lịch:</span>
+              <button type="button" class="training-date-pill ${!s.trainingFilterDate ? 'active' : ''}" data-action="training-select-date" data-date="">Tất cả (${trainings.length})</button>
+              ${availableDates
+                .map(
+                  (d) =>
+                    `<button type="button" class="training-date-pill ${s.trainingFilterDate === d ? 'active' : ''}" data-action="training-select-date" data-date="${e(d)}">${formatDate(d)} (${dateCounts.get(d)})</button>`
+                )
+                .join('')}
+            </div>
+          `
+              : ''
+          }
+
+          <div class="training-filter-status">
+            <span class="training-count-badge">
+              <strong>${filteredTrainings.length}</strong> lịch tập
+            </span>
+            <span class="training-count-info">
+              ${
+                s.trainingFilterDate
+                  ? `ngày <strong>${formatDate(s.trainingFilterDate)}</strong>${s.trainingFilterTeam ? ` · ${e((s.teams || []).find((t) => String(t.id) === String(s.trainingFilterTeam))?.name || 'Đội đã chọn')}` : ''} (trên tổng số ${trainings.length} buổi tập)`
+                  : `(hiển thị toàn bộ ${trainings.length} buổi tập theo thứ tự ngày tháng)`
+              }
+            </span>
+          </div>
+        </div>
+
         ${
-          trainings.length
-            ? trainings
+          filteredTrainings.length
+            ? filteredTrainings
                 .map((t) =>
                   row(
                     `${t.team_name} · ${formatDate(t.training_date)} ${t.training_time}`,
@@ -159,7 +256,14 @@ export function activitiesPage() {
                   )
                 )
                 .join('')
-            : empty('Chưa có lịch tập', 'Tạo lịch tập cho đội bóng.')
+            : empty(
+                s.trainingFilterDate
+                  ? `Không có lịch tập nào vào ngày ${formatDate(s.trainingFilterDate)}`
+                  : 'Chưa có lịch tập',
+                s.trainingFilterDate
+                  ? 'Chọn ngày khác từ thanh lọc hoặc nhấn "Xem tất cả" để xem toàn bộ danh sách.'
+                  : 'Tạo lịch tập cho đội bóng.'
+              )
         }
       </section>
 

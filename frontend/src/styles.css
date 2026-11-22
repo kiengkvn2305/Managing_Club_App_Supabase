@@ -2220,6 +2220,130 @@ input[type="radio"],
 .att-select.att-select-absent { color: #dc2626; border-color: rgba(239, 68, 68, 0.5); }
 .att-select.att-select-excused { color: #b45309; border-color: rgba(245, 158, 11, 0.5); }
 .training-time-hint { grid-column: 1 / -1; margin: -2px 0 2px; padding: 10px 12px; border-left: 3px solid var(--green); border-radius: 0 9px 9px 0; background: var(--mint); color: var(--ink); font-size: 12px; line-height: 1.55; }
+
+/* Training Filter Bar on Activities Page */
+.training-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--subtle, rgba(0, 0, 0, 0.02));
+  border-bottom: 1px solid var(--line);
+}
+.training-filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.training-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+}
+.training-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.training-filter-item input[type="date"],
+.training-filter-item select {
+  height: 38px;
+  min-height: 38px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  box-sizing: border-box;
+}
+.training-filter-item input[type="date"] {
+  width: 155px;
+}
+.training-filter-item select {
+  min-width: 165px;
+}
+.training-quick-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+}
+.training-quick-buttons .button {
+  height: 38px;
+  padding: 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.training-date-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0 2px;
+}
+.training-pills-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-right: 2px;
+}
+.training-date-pill {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 14px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.training-date-pill:hover {
+  background: var(--subtle);
+  color: var(--text);
+  border-color: var(--muted);
+}
+.training-date-pill.active {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.4);
+  font-weight: 700;
+}
+.training-filter-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+.training-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.training-count-info {
+  color: var(--muted);
+  font-size: 12px;
+}
+.training-count-info strong {
+  color: var(--text);
+}
+
 .dues-status { display: inline-block; padding: 4px 8px; border-radius: 6px; }
 .dues-status.owing { color: #a32323; background: #ffe8e8; }
 .dues-status.settled { color: #126047; background: #ddf5e9; }

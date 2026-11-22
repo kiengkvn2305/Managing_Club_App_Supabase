@@ -972,6 +972,21 @@ root.addEventListener('change', (event) => {
     return;
   }
 
+  if (
+    event.target.matches(
+      '[data-training-date], [data-training-team], [data-training-sort]'
+    )
+  ) {
+    if (event.target.matches('[data-training-date]'))
+      s.trainingFilterDate = event.target.value;
+    if (event.target.matches('[data-training-team]'))
+      s.trainingFilterTeam = event.target.value;
+    if (event.target.matches('[data-training-sort]'))
+      s.trainingSort = event.target.value;
+    render();
+    return;
+  }
+
   if (event.target.matches('[data-finance-period]')) {
     const form = event.target.closest('form');
     form.querySelector('[data-finance-month]').hidden =
@@ -994,6 +1009,9 @@ root.addEventListener('change', (event) => {
     s.pollsPage = 1;
     s.recruitmentPage = 1;
     s.recruitmentStatus = '';
+    s.trainingFilterDate = '';
+    s.trainingFilterTeam = '';
+    s.trainingSort = 'asc';
     s.filters = { q: '', team_id: '', status: '', page: 1 };
     loadView();
   }
@@ -1152,6 +1170,11 @@ root.addEventListener('submit', (event) => {
 });
 
 root.addEventListener('input', (event) => {
+  if (event.target.matches('[data-training-date]')) {
+    s.trainingFilterDate = event.target.value;
+    render();
+    return;
+  }
   if (event.target.hasAttribute('data-admin-search')) {
     s.adminQuery = event.target.value;
     render();

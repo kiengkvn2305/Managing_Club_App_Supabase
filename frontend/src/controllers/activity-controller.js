@@ -1,5 +1,6 @@
 import { activityAction } from '../activities.js';
 import { openAttendanceReport } from '../attendance-report.js';
+import { vietnamToday } from '../utils.js';
 
 export function createActivityController(ctx) {
   async function handleAction(a, el) {
@@ -50,6 +51,25 @@ export function createActivityController(ctx) {
 
     if (a === 'birthday-prev' || a === 'birthday-next') {
       ctx.state.birthdayPage += a === 'birthday-next' ? 1 : -1;
+      ctx.render();
+      return true;
+    }
+
+    if (a === 'training-today') {
+      ctx.state.trainingFilterDate = vietnamToday();
+      ctx.render();
+      return true;
+    }
+
+    if (a === 'training-all') {
+      ctx.state.trainingFilterDate = '';
+      ctx.state.trainingFilterTeam = '';
+      ctx.render();
+      return true;
+    }
+
+    if (a === 'training-select-date') {
+      ctx.state.trainingFilterDate = el.dataset.date || '';
       ctx.render();
       return true;
     }
