@@ -2,7 +2,21 @@ import { check } from './service-helpers.js';
 
 export function createDuesService({ supabase }) {
   async function getDues(clubId, params) {
-    const targetMonth = `${params.get('month') || new Date().toISOString().slice(0, 7)}-01`;
+    const rawMonth = params.get('month') || new Date().toISOString().slice(0, 7);
+    const targetMonth = `${rawMonth.slice(0, 7)}-01`;
+
+    // Ưu tiên xử lý toàn bộ nghiệp vụ tính quỹ tại backend qua RPC bảo mật
+    if (typeof supabase?.rpc === 'function') {
+      try {
+        const { data: rpcDues, error: rpcErr } = await supabase.rpc('get_club_dues_report', {
+          p_club_id: clubId,
+          p_month: rawMonth.slice(0, 7),
+        });
+        if (!rpcErr && Array.isArray(rpcDues) && rpcDues.length > 0) {
+          return rpcDues;
+        }
+      } catch {}
+    }
 
     const [
       entriesResult,

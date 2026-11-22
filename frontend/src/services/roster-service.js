@@ -486,6 +486,19 @@ export function createRosterService({ supabase, authService }) {
     }
 
     if (clean === `/clubs/${clubId}/members` && method === 'POST') {
+      if (typeof supabase?.rpc === 'function') {
+        try {
+          const { data: savedPlayer, error: saveErr } = await supabase.rpc('save_player_profile', {
+            p_club_id: clubId,
+            p_player_id: null,
+            p_data: data,
+          });
+          if (!saveErr && savedPlayer) {
+            return { data: savedPlayer };
+          }
+        } catch {}
+      }
+
       return {
         data: check(
           await supabase
@@ -568,6 +581,19 @@ export function createRosterService({ supabase, authService }) {
         return { data: { ...row, avatar_version: row.avatar_path || null } };
       }
       if (method === 'PATCH') {
+        if (typeof supabase?.rpc === 'function') {
+          try {
+            const { data: savedPlayer, error: saveErr } = await supabase.rpc('save_player_profile', {
+              p_club_id: clubId,
+              p_player_id: id,
+              p_data: data,
+            });
+            if (!saveErr && savedPlayer) {
+              return { data: { ...savedPlayer, avatar_version: savedPlayer.avatar_path || null } };
+            }
+          } catch {}
+        }
+
         const profileData = {
           ...data,
           jersey_number: numeric(data.jersey_number),

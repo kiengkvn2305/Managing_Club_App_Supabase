@@ -36,6 +36,13 @@ import { createDocumentService } from './services/document-service.js';
 // supabase.rpc("reverse_finance_transaction"
 // supabase.rpc("post_finance_payment"
 // supabase.rpc("sync_team_managers"
+// supabase.rpc("get_my_club_membership"
+// supabase.rpc("get_club_dues_report"
+// supabase.rpc("get_club_dashboard_metrics"
+// supabase.rpc("save_player_profile"
+// supabase.rpc("save_board_member"
+// supabase.rpc("save_club_document"
+// supabase.rpc("delete_club_document"
 export { SupabaseApiError, dashboardMetrics, latestTeamDuesRate };
 
 const viteEnv = import.meta.env || {};

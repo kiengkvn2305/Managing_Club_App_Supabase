@@ -31,6 +31,33 @@ export function createClubService({ supabase, authService }) {
 
   async function resource(row, userId) {
     const club = row.club || row;
+
+    // Ưu tiên phân quyền và thông tin thành viên tính toán tập trung từ backend
+    if (typeof supabase?.rpc === 'function') {
+      try {
+        const { data: memberData, error: memberErr } = await supabase.rpc('get_my_club_membership', {
+          p_club_id: club.id,
+        });
+        if (!memberErr && memberData && typeof memberData === 'object' && memberData.role) {
+          return {
+            ...club,
+            membership_role: memberData.role,
+            membership_title: memberData.title,
+            is_system_admin: Boolean(memberData.is_system_admin),
+            can_view_finance: Boolean(memberData.can_view_finance),
+            can_manage_finance: Boolean(memberData.can_manage_finance),
+            can_manage_roster: Boolean(memberData.can_manage_roster),
+            can_manage_club: Boolean(memberData.can_manage_club),
+            can_manage_inventory: Boolean(memberData.can_manage_inventory),
+            can_view_inventory: Boolean(memberData.can_view_inventory),
+            can_manage_activities: Boolean(memberData.can_manage_activities),
+            can_view_activities: Boolean(memberData.can_view_activities),
+            can_view_club: true,
+          };
+        }
+      } catch {}
+    }
+
     const currentProfile = await authService.profile(false).catch(() => null);
     const isSystemAdmin = currentProfile?.is_system_admin === true;
     const userEmail = currentProfile?.email || '';
@@ -150,6 +177,26 @@ export function createClubService({ supabase, authService }) {
   }
 
   async function dashboard(clubId) {
+    if (typeof supabase?.rpc === 'function') {
+      try {
+        const { data: metrics, error: metricsErr } = await supabase.rpc('get_club_dashboard_metrics', {
+          p_club_id: clubId,
+        });
+        if (!metricsErr && metrics && typeof metrics === 'object') {
+          return {
+            data: {
+              members_count: Number(metrics.players_count || 0),
+              active_members_count: Number(metrics.active_players_count || 0),
+              teams_count: Number(metrics.teams_count || 0),
+              managers_count: Number(metrics.members_count || 0),
+              finance_balance: Number(metrics.finance_balance || 0),
+              uncollected_dues: Number(metrics.uncollected_dues || 0),
+            },
+          };
+        }
+      } catch {}
+    }
+
     const [playersResult, teamsResult, membershipsResult] = await Promise.all([
       supabase.from('player_profiles').select('status').eq('club_id', clubId),
       supabase.from('teams').select('id', { count: 'exact', head: true }).eq('club_id', clubId),

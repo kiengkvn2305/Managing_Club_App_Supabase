@@ -81,6 +81,19 @@ export function createBoardService({ supabase }) {
     }
 
     if (clean === `/clubs/${clubId}/board-members` && method === 'POST') {
+      if (typeof supabase?.rpc === 'function') {
+        try {
+          const { data: boardRow, error: boardErr } = await supabase.rpc('save_board_member', {
+            p_club_id: clubId,
+            p_player_id: Number(data.player_id),
+            p_title: String(data.title).trim(),
+          });
+          if (!boardErr && boardRow) {
+            return { data: boardRow };
+          }
+        } catch {}
+      }
+
       const row = check(
         await supabase
           .from('club_board_members')

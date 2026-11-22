@@ -12,6 +12,7 @@ const app = readFileSync(join(root, 'frontend', 'src', 'app.js'), 'utf8');
 const vite = readFileSync(join(root, 'frontend', 'vite.config.js'), 'utf8');
 const sw = readFileSync(join(root, 'frontend', 'public', 'sw.js'), 'utf8');
 const redirects = readFileSync(join(root, 'frontend', 'public', '_redirects'), 'utf8');
+const backendRpcs = readFileSync(join(root, 'supabase', 'migrations', '20261122000004_backend_business_logic_and_security_rpcs.sql'), 'utf8');
 
 test('Supabase migration contains the multi-club identity model and tenant helpers', () => {
   assert.match(sql, /create table public\.profiles/);
@@ -106,4 +107,23 @@ test('permission hardening uses explicit grants without weakening RLS', () => {
   assert.match(permissions, /record_finance_transaction\(bigint,public\.finance_type,numeric,date,text/);
   assert.doesNotMatch(permissions, /grant (insert|update|delete).*public\.finance_transactions/i);
   assert.doesNotMatch(permissions, /grant (insert|update|delete).*public\.audit_logs/i);
+});
+
+test('backend business logic and security RPCs compute permissions, dues and profile writes server-side', () => {
+  assert.match(backendRpcs, /create or replace function public\.get_my_club_membership/);
+  assert.match(backendRpcs, /create or replace function public\.get_club_dues_report/);
+  assert.match(backendRpcs, /create or replace function public\.get_club_dashboard_metrics/);
+  assert.match(backendRpcs, /create or replace function public\.save_player_profile/);
+  assert.match(backendRpcs, /create or replace function public\.save_board_member/);
+  assert.match(backendRpcs, /create or replace function public\.save_club_document/);
+  assert.match(backendRpcs, /create or replace function public\.delete_club_document/);
+  assert.match(backendRpcs, /grant execute on function public\.get_my_club_membership/);
+  assert.match(backendRpcs, /grant execute on function public\.get_club_dues_report/);
+  assert.match(frontend, /rpc\("get_my_club_membership"/);
+  assert.match(frontend, /rpc\("get_club_dues_report"/);
+  assert.match(frontend, /rpc\("get_club_dashboard_metrics"/);
+  assert.match(frontend, /rpc\("save_player_profile"/);
+  assert.match(frontend, /rpc\("save_board_member"/);
+  assert.match(frontend, /rpc\("save_club_document"/);
+  assert.match(frontend, /rpc\("delete_club_document"/);
 });

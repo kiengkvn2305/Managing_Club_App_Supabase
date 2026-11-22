@@ -239,3 +239,56 @@ test('clubPage renders successfully without throwing ReferenceError for formatDa
   assert.ok(html.includes('15/09/2024'));
   assert.ok(html.includes('Ngày bắt đầu hoạt động CLB'));
 });
+
+test('clubService delegates permission calculation to backend get_my_club_membership RPC', async () => {
+  let calledRpc = '';
+  let passedClubId = null;
+
+  const mockSupabase = {
+    rpc: async (fn, params) => {
+      calledRpc = fn;
+      passedClubId = params.p_club_id;
+      return {
+        data: {
+          club_id: 10,
+          role: 'owner',
+          title: 'Chủ nhiệm CLB',
+          is_owner: true,
+          is_system_admin: false,
+          can_view_finance: true,
+          can_manage_finance: true,
+          can_manage_roster: true,
+          can_manage_club: true,
+          can_manage_inventory: true,
+          can_view_inventory: true,
+          can_manage_activities: true,
+          can_view_activities: true,
+        },
+        error: null,
+      };
+    },
+    from: () => {
+      const q = {
+        select() { return q; },
+        eq() { return q; },
+        is() { return q; },
+        then(res) { res({ data: [{ club_id: 10, club: { id: 10, name: 'CLB Backend Secure' } }] }); },
+      };
+      return q;
+    },
+  };
+
+  const mockAuthService = {
+    profile: async () => ({ id: 'usr-10' }),
+    user: async () => ({ id: 'usr-10' }),
+  };
+
+  const service = createClubService({ supabase: mockSupabase, authService: mockAuthService });
+  const result = await service.handleClubRequest('/clubs', 'GET', null, new URLSearchParams(), 10);
+
+  assert.equal(calledRpc, 'get_my_club_membership');
+  assert.equal(passedClubId, 10);
+  assert.ok(result.data.length > 0);
+  assert.equal(result.data[0].can_view_finance, true);
+  assert.equal(result.data[0].membership_role, 'owner');
+});

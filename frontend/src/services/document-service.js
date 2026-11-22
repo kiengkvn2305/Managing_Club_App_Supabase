@@ -129,25 +129,48 @@ export function createDocumentService({ supabase, authService }) {
       }
 
       let inserted = null;
-      try {
-        const result = await supabase
-          .from('club_documents')
-          .insert({
-            club_id: clubId,
-            folder_name: folder,
-            name,
-            file_name: fileName,
-            file_path: filePath,
-            file_size: fileSize,
-            file_type: fileType,
-            notes,
-            created_by: user.id,
-          })
-          .select('*,creator:profiles(id,name,email)')
-          .single();
+      if (typeof supabase?.rpc === 'function') {
+        try {
+          const { data: rpcDoc, error: rpcErr } = await supabase.rpc('save_club_document', {
+            p_club_id: clubId,
+            p_doc_id: null,
+            p_data: {
+              folder_name: folder,
+              name,
+              file_name: fileName,
+              file_path: filePath,
+              file_size: fileSize,
+              file_type: fileType,
+              notes,
+            },
+          });
+          if (!rpcErr && rpcDoc) {
+            inserted = rpcDoc;
+          }
+        } catch {}
+      }
 
-        if (!result.error && result.data) {
-          inserted = result.data;
+      try {
+        if (!inserted) {
+          const result = await supabase
+            .from('club_documents')
+            .insert({
+              club_id: clubId,
+              folder_name: folder,
+              name,
+              file_name: fileName,
+              file_path: filePath,
+              file_size: fileSize,
+              file_type: fileType,
+              notes,
+              created_by: user.id,
+            })
+            .select('*,creator:profiles(id,name,email)')
+            .single();
+
+          if (!result.error && result.data) {
+            inserted = result.data;
+          }
         }
       } catch {}
 
@@ -223,6 +246,13 @@ export function createDocumentService({ supabase, authService }) {
 
         if (found?.file_path && !found.file_path.startsWith('data:')) {
           await supabase.storage.from('fcms-private').remove([found.file_path]).catch(() => {});
+        }
+
+        if (typeof supabase?.rpc === 'function') {
+          await supabase.rpc('delete_club_document', {
+            p_club_id: clubId,
+            p_doc_id: docId,
+          }).catch(() => {});
         }
 
         await supabase
