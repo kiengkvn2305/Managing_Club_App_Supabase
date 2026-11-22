@@ -144,4 +144,31 @@ test('check() translates database permission errors and transfer exceptions into
       return true;
     }
   );
+
+  // stale_dues_status
+  assert.throws(
+    () => check({ error: { message: 'stale_dues_status' } }),
+    (err) => {
+      assert.equal(err.message, 'Trạng thái đóng quỹ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.');
+      return true;
+    }
+  );
+
+  // invalid_correction
+  assert.throws(
+    () => check({ error: { message: 'invalid_correction' } }),
+    (err) => {
+      assert.equal(err.message, 'Thao tác điều chỉnh trạng thái đóng quỹ không hợp lệ.');
+      return true;
+    }
+  );
+
+  // missing_source_transaction
+  assert.throws(
+    () => check({ error: { message: 'missing_source_transaction' } }),
+    (err) => {
+      assert.equal(err.message, 'Không tìm thấy giao dịch thu quỹ gốc cần điều chỉnh.');
+      return true;
+    }
+  );
 });

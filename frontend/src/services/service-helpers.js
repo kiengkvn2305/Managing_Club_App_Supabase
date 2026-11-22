@@ -86,6 +86,12 @@ export function check(result) {
       msg = 'Chủ nhiệm không thể bị xóa khỏi câu lạc bộ. Vui lòng chuyển quyền Chủ nhiệm trước.';
     } else if (msg.includes('member_not_found')) {
       msg = 'Không tìm thấy thành viên trong câu lạc bộ.';
+    } else if (msg.includes('stale_dues_status')) {
+      msg = 'Trạng thái đóng quỹ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.';
+    } else if (msg.includes('invalid_correction')) {
+      msg = 'Thao tác điều chỉnh trạng thái đóng quỹ không hợp lệ.';
+    } else if (msg.includes('missing_source_transaction')) {
+      msg = 'Không tìm thấy giao dịch thu quỹ gốc cần điều chỉnh.';
     } else if (msg.includes('idempotency_key_required')) {
       msg = 'Yêu cầu lưu thiếu mã chống ghi trùng. Vui lòng tải lại trang rồi thử lại.';
     } else if (msg.includes('idempotency_conflict')) {
