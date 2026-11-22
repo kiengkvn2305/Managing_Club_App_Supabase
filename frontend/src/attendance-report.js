@@ -48,36 +48,36 @@ export function openAttendanceReport({ teams, trainings, api, base }) {
 
   const fields = `
     <div class="member-picker">
-      <div class="filters" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:8px;margin-bottom:12px;">
-        <label style="margin:0;">Đội bóng 
+      <div class="attendance-report-filters">
+        <label class="report-team"> <span>Đội bóng</span>
           <select data-report-team>
             ${teams.map((t) => `<option value="${e(t.id)}">${e(t.name)}</option>`).join('')}
           </select>
         </label>
-        <label style="margin:0;">Khoảng xem 
+        <label class="report-period"> <span>Kỳ xem</span>
           <select data-report-period>
             <option value="month">Tháng</option>
             <option value="quarter">Quý</option>
             <option value="year">Năm</option>
           </select>
         </label>
-        <label style="margin:0;">Năm 
+        <label class="report-year"> <span>Năm</span>
           <input type="number" data-report-year min="1900" max="2100" value="${e(year)}">
         </label>
-        <label data-report-month-label style="margin:0;">Tháng 
+        <label data-report-month-label class="report-month"> <span>Tháng</span>
           <select data-report-month>
             ${Array.from({ length: 12 }, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${String(i + 1).padStart(2, '0') === month ? 'selected' : ''}>Tháng ${i + 1}</option>`).join('')}
           </select>
         </label>
-        <label data-report-quarter-label hidden style="margin:0;">Quý 
+        <label data-report-quarter-label class="report-quarter" hidden> <span>Quý</span>
           <select data-report-quarter>
             ${[1, 2, 3, 4].map((q) => `<option value="${q}" ${q === Math.ceil(Number(month) / 3) ? 'selected' : ''}>Quý ${q}</option>`).join('')}
           </select>
         </label>
-        <label style="margin:0;">Tìm kiếm 
+        <label class="report-search"> <span>Tìm</span>
           <input type="search" data-report-search placeholder="Tìm tên hoặc ghi chú…">
         </label>
-        <label style="margin:0;">Sắp xếp tiến độ 
+        <label class="report-sort"> <span>Sắp xếp</span>
           <select data-report-sort>
             ${sortOptions.map(([val, label]) => `<option value="${val}">${label}</option>`).join('')}
           </select>

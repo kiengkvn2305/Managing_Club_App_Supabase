@@ -1988,6 +1988,13 @@ input[type="radio"],
 .member-picker-list label { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
 .member-picker-list label[hidden] { display: none; }
 .member-picker-list small { display: block; color: var(--muted); }
+.attendance-report-filters { display: grid; grid-template-columns: minmax(150px, 1.35fr) 94px 82px 104px 104px minmax(165px, 1.25fr) minmax(185px, 1.4fr); gap: 9px; align-items: end; margin-bottom: 14px; }
+.attendance-report-filters label { display: grid; gap: 5px; min-width: 0; margin: 0; }
+.attendance-report-filters label > span { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .25px; white-space: nowrap; }
+.attendance-report-filters input,
+.attendance-report-filters select { width: 100%; min-width: 0; min-height: 40px; margin: 0; padding: 8px 10px; font-size: 12px; }
+@media (max-width: 1050px) { .attendance-report-filters { grid-template-columns: repeat(3, minmax(150px, 1fr)); } .attendance-report-filters .report-search, .attendance-report-filters .report-sort { grid-column: span 1; } }
+@media (max-width: 620px) { .attendance-report-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .attendance-report-filters .report-search, .attendance-report-filters .report-sort { grid-column: 1 / -1; } }
 .attendance-list label { justify-content: space-between; align-items: center; }
 .attendance-person { display: flex; align-items: center; gap: 12px; }
 .training-time-hint { grid-column: 1 / -1; margin: -2px 0 2px; padding: 10px 12px; border-left: 3px solid var(--green); border-radius: 0 9px 9px 0; background: var(--mint); color: var(--ink); font-size: 12px; line-height: 1.55; }
