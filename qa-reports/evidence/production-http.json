@@ -1,6 +1,6 @@
 {
-  "at": "2026-11-22T08:36:06.766Z",
-  "entry": "/assets/index-CN1oFOPS.js",
+  "at": "2026-11-22T08:47:01.372Z",
+  "entry": "/assets/index-BMvL7_Wm.js",
   "safeProfile": true,
   "evidence": [
     {
@@ -12,15 +12,15 @@
       "bytes": 1151
     },
     {
-      "path": "/assets/index-CN1oFOPS.js",
+      "path": "/assets/index-BMvL7_Wm.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=31536000, immutable",
       "html": false,
-      "bytes": 556414
+      "bytes": 556056
     },
     {
-      "path": "/assets/exceljs.min-A1KbYvo4.js",
+      "path": "/assets/exceljs.min-R32dv1ir.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=31536000, immutable",
@@ -28,7 +28,7 @@
       "bytes": 928797
     },
     {
-      "path": "/assets/web-D3WpoqJn.js",
+      "path": "/assets/web-CGKvOtGJ.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=31536000, immutable",
@@ -36,7 +36,7 @@
       "bytes": 844
     },
     {
-      "path": "/assets/web-C-C-mHxX.js",
+      "path": "/assets/web-B_Lw2yF4.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=31536000, immutable",
@@ -44,7 +44,7 @@
       "bytes": 1104
     },
     {
-      "path": "/assets/web-RvXU_MU1.js",
+      "path": "/assets/web-vxrRDFOP.js",
       "status": 200,
       "mime": "application/javascript",
       "cache": "public, max-age=31536000, immutable",
