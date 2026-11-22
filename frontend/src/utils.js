@@ -159,7 +159,7 @@ export function validate(kind, data) {
         data.date_of_birth > vietnamToday())
     )
       errors.date_of_birth = "Ngày sinh không hợp lệ.";
-    if (!["active", "inactive", "injured"].includes(data.status))
+    if (!["active", "inactive", "injured", "graduated"].includes(data.status))
       errors.status = "Chọn trạng thái hợp lệ.";
   }
   if (["club", "team"].includes(kind)) required("name", "Tên");

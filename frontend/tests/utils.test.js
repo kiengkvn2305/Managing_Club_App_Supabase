@@ -53,6 +53,20 @@ test("dates use real calendar validation and jersey number zero is valid", () =>
     }),
     {},
   );
+  assert.deepEqual(
+    validate("member", {
+      full_name: "Nguyễn Gia Lâm",
+      status: "graduated",
+    }),
+    {},
+  );
+  assert.equal(
+    validate("member", {
+      full_name: "Nguyễn Gia Lâm",
+      status: "unknown_status",
+    }).status,
+    "Chọn trạng thái hợp lệ.",
+  );
 });
 test("pagination understands the shared response envelope", () =>
   assert.equal(
