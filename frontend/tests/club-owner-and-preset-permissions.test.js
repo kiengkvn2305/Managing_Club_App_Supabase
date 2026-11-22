@@ -272,7 +272,22 @@ test('clubService delegates permission calculation to backend get_my_club_member
         select() { return q; },
         eq() { return q; },
         is() { return q; },
-        then(res) { res({ data: [{ club_id: 10, club: { id: 10, name: 'CLB Backend Secure' } }] }); },
+        then(res) {
+          res({
+            data: [
+              {
+                club_id: 10,
+                club: {
+                  id: 10,
+                  name: 'CLB Backend Secure',
+                  avatar_path: 'clubs/10/avatar-abc.png',
+                  background_path: 'clubs/10/bg-xyz.png',
+                  formats: ['5', '7'],
+                },
+              },
+            ],
+          });
+        },
       };
       return q;
     },
@@ -291,4 +306,7 @@ test('clubService delegates permission calculation to backend get_my_club_member
   assert.ok(result.data.length > 0);
   assert.equal(result.data[0].can_view_finance, true);
   assert.equal(result.data[0].membership_role, 'owner');
+  assert.equal(result.data[0].avatar_version, 'clubs/10/avatar-abc.png');
+  assert.equal(result.data[0].background_version, 'clubs/10/bg-xyz.png');
+  assert.deepEqual(result.data[0].formats, ['5', '7']);
 });

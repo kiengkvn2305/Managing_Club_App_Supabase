@@ -43,6 +43,7 @@ import { createDocumentService } from './services/document-service.js';
 // supabase.rpc("save_board_member"
 // supabase.rpc("save_club_document"
 // supabase.rpc("delete_club_document"
+// supabase.rpc("update_club_image"
 export { SupabaseApiError, dashboardMetrics, latestTeamDuesRate };
 
 const viteEnv = import.meta.env || {};

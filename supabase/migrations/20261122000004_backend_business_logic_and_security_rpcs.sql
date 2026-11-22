@@ -540,6 +540,40 @@ begin
 end;
 $$;
 
+-- 7. RPC: Cập nhật ảnh đại diện hoặc ảnh nền câu lạc bộ
+create or replace function public.update_club_image(
+  p_club_id bigint,
+  p_kind text,
+  p_image_path text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+begin
+  if not public.can_manage_club(p_club_id, v_user_id) then
+    raise exception 'Forbidden: Bạn không có quyền chỉnh sửa thông tin CLB';
+  end if;
+
+  if p_kind = 'avatar' then
+    update public.clubs
+    set avatar_path = p_image_path, updated_at = now()
+    where id = p_club_id;
+  elsif p_kind = 'background' then
+    update public.clubs
+    set background_path = p_image_path, updated_at = now()
+    where id = p_club_id;
+  else
+    raise exception 'Invalid kind: Chỉ chấp nhận avatar hoặc background';
+  end if;
+
+  return true;
+end;
+$$;
+
 -- Cấp quyền gọi các RPC cho authenticated users
 grant execute on function public.get_my_club_membership(bigint) to authenticated;
 grant execute on function public.get_club_dues_report(bigint, text) to authenticated;
@@ -548,3 +582,4 @@ grant execute on function public.save_player_profile(bigint, bigint, jsonb) to a
 grant execute on function public.save_board_member(bigint, bigint, text) to authenticated;
 grant execute on function public.save_club_document(bigint, bigint, jsonb) to authenticated;
 grant execute on function public.delete_club_document(bigint, bigint) to authenticated;
+grant execute on function public.update_club_image(bigint, text, text) to authenticated;

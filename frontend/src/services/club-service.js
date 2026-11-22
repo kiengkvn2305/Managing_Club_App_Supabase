@@ -41,9 +41,11 @@ export function createClubService({ supabase, authService }) {
         if (!memberErr && memberData && typeof memberData === 'object' && memberData.role) {
           return {
             ...club,
+            formats: club.formats || (club.format ? [club.format] : ['7']),
             membership_role: memberData.role,
             membership_title: memberData.title,
             is_system_admin: Boolean(memberData.is_system_admin),
+            permissions: memberData.permissions || club.permissions || {},
             can_view_finance: Boolean(memberData.can_view_finance),
             can_manage_finance: Boolean(memberData.can_manage_finance),
             can_manage_roster: Boolean(memberData.can_manage_roster),
@@ -53,6 +55,8 @@ export function createClubService({ supabase, authService }) {
             can_manage_activities: Boolean(memberData.can_manage_activities),
             can_view_activities: Boolean(memberData.can_view_activities),
             can_view_club: true,
+            avatar_version: club.avatar_version || club.avatar_path || null,
+            background_version: club.background_version || club.background_path || null,
           };
         }
       } catch {}
@@ -333,25 +337,52 @@ export function createClubService({ supabase, authService }) {
 
     const clubImage = clean.match(/\/clubs\/(\d+)\/images\/(avatar|background)$/);
     if (clubImage && (method === 'POST' || method === 'DELETE')) {
-      const column = `${clubImage[2]}_path`;
+      const kind = clubImage[2];
+      const column = `${kind}_path`;
       const old = check(
         await supabase.from('clubs').select(column).eq('id', clubId).single()
       )?.[column];
 
       if (method === 'DELETE') {
-        check(
-          await supabase.from('clubs').update({ [column]: null }).eq('id', clubId)
-        );
-        await authService.deletePrivateImage(old);
+        let rpcOk = false;
+        if (typeof supabase?.rpc === 'function') {
+          try {
+            const { error: rpcErr } = await supabase.rpc('update_club_image', {
+              p_club_id: clubId,
+              p_kind: kind,
+              p_image_path: null,
+            });
+            if (!rpcErr) rpcOk = true;
+          } catch {}
+        }
+        if (!rpcOk) {
+          check(
+            await supabase.from('clubs').update({ [column]: null }).eq('id', clubId)
+          );
+        }
+        if (old) await authService.deletePrivateImage(old);
         return { data: { version: null } };
       }
 
       const file = data.image;
-      const path = `clubs/${clubId}/${clubImage[2]}-${crypto.randomUUID()}.${file.type.split('/')[1] || 'bin'}`;
+      const path = `clubs/${clubId}/${kind}-${crypto.randomUUID()}.${file.type.split('/')[1] || 'bin'}`;
       await authService.uploadPrivateImage(path, file);
-      check(
-        await supabase.from('clubs').update({ [column]: path }).eq('id', clubId)
-      );
+      let rpcOk = false;
+      if (typeof supabase?.rpc === 'function') {
+        try {
+          const { error: rpcErr } = await supabase.rpc('update_club_image', {
+            p_club_id: clubId,
+            p_kind: kind,
+            p_image_path: path,
+          });
+          if (!rpcErr) rpcOk = true;
+        } catch {}
+      }
+      if (!rpcOk) {
+        check(
+          await supabase.from('clubs').update({ [column]: path }).eq('id', clubId)
+        );
+      }
       if (old) await authService.deletePrivateImage(old);
       return { data: { version: path } };
     }
