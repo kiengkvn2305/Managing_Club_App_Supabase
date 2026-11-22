@@ -530,14 +530,15 @@ export function createRosterController(ctx) {
         ],
         ['Ghi chú', m.notes],
       ];
+      const canManage = ctx.canManageRoster();
       const removeButton =
-        ctx.state.route === 'team-roster'
+        ctx.state.route === 'team-roster' && canManage
           ? '<div class="lineup-editor"><button type="button" class="button secondary" data-remove-from-team>Xóa khỏi đội bóng</button></div>'
           : '';
       const modal = ctx.dialog(
         'Hồ sơ thành viên',
         'Thông tin và các đội bóng trong câu lạc bộ.',
-        `<div class="lineup-editor profile-image-actions">${avatar(m.full_name, imageUrl('player', m.id, m.avatar_version, ctx.state.clubId))}<button type="button" class="button secondary" data-change-player-image>Đổi ảnh đại diện</button></div><dl class="details lineup-editor">${details.map(([label, value]) => `<div><dt>${ctx.e(label)}</dt><dd>${ctx.e(value ?? 'Chưa cập nhật')}</dd></div>`).join('')}</dl>${removeButton}`,
+        `<div class="lineup-editor profile-image-actions">${avatar(m.full_name, imageUrl('player', m.id, m.avatar_version, ctx.state.clubId))}${canManage ? '<button type="button" class="button secondary" data-change-player-image>Đổi ảnh đại diện</button>' : ''}</div><dl class="details lineup-editor">${details.map(([label, value]) => `<div><dt>${ctx.e(label)}</dt><dd>${ctx.e(value ?? 'Chưa cập nhật')}</dd></div>`).join('')}</dl>${removeButton}`,
         async () => true,
         'Đóng'
       );

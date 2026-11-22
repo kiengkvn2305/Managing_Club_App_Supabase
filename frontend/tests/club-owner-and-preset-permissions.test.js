@@ -79,7 +79,7 @@ test('title presets correctly define permissions for club roles and allow custom
   const TITLE_PRESETS = {
     'Phó chủ nhiệm CLB': {
       can_view_finance: true,
-      can_manage_finance: false,
+      can_manage_finance: true,
       can_manage_roster: true,
       can_manage_inventory: true,
       can_manage_activities: true,
@@ -130,6 +130,7 @@ test('title presets correctly define permissions for club roles and allow custom
   // Verify Deputy presets
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_roster, true);
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_view_finance, true);
+  assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_finance, true);
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_club, true);
 
   // Verify Treasurer presets

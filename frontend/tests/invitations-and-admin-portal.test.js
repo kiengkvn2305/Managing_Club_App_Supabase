@@ -12,6 +12,7 @@ test('TITLE_PRESETS defines expected permissions for all club roles', () => {
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_club, true);
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_roster, true);
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_view_finance, true);
+  assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_finance, true);
 
   assert.equal(TITLE_PRESETS['Thủ quỹ'].can_view_finance, true);
   assert.equal(TITLE_PRESETS['Thủ quỹ'].can_manage_finance, true);

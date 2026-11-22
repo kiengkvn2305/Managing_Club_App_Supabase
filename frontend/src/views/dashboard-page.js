@@ -71,35 +71,32 @@ export function dashboardPage() {
             <h2>Những thành viên mới nhất</h2>
             <p>Hồ sơ được thêm gần đây trong câu lạc bộ</p>
           </div>
-          ${allowed ? '<a class="text-link" href="#members">Xem tất cả →</a>' : ''}
+          <a class="text-link" href="#members">Xem tất cả →</a>
         </div>
         ${
-          !allowed
-            ? empty(
-                'Quyền truy cập được bảo vệ',
-                'Thông tin nhân sự do ban quản lý câu lạc bộ phụ trách.'
-              )
-            : s.members.length
-              ? s.members
-                  .map(
-                    (m) => `
-                <div class="member-row">
-                  ${avatar(m.full_name, imageUrl('player', m.id, m.avatar_version, s.clubId))}
-                  <div>
-                    <strong>${e(m.full_name)}</strong>
-                    <small>${e(m.team?.name || 'Chưa xếp đội')} · ${e(m.position || 'Chưa cập nhật vị trí')}</small>
-                  </div>
-                  ${badge(m.status)}
-                  <span class="jersey">${m.jersey_number != null ? '#' + e(m.jersey_number) : '—'}</span>
-                </div>`
-                  )
-                  .join('')
-              : empty(
-                  'Đội hình đang chờ bạn',
-                  'Thêm thành viên đầu tiên để bắt đầu xây dựng hồ sơ đội bóng.',
-                  'new-member',
-                  'Thêm thành viên'
+          s.members.length
+            ? s.members
+                .map(
+                  (m) => `
+              <div class="member-row">
+                ${avatar(m.full_name, imageUrl('player', m.id, m.avatar_version, s.clubId))}
+                <div>
+                  <strong>${e(m.full_name)}</strong>
+                  <small>${e(m.team?.name || 'Chưa xếp đội')} · ${e(m.position || 'Chưa cập nhật vị trí')}</small>
+                </div>
+                ${badge(m.status)}
+                <span class="jersey">${m.jersey_number != null ? '#' + e(m.jersey_number) : '—'}</span>
+              </div>`
                 )
+                .join('')
+            : empty(
+                'Đội hình đang chờ bạn',
+                canManageRoster(currentRole())
+                  ? 'Thêm thành viên đầu tiên để bắt đầu xây dựng hồ sơ đội bóng.'
+                  : 'Chưa có thành viên nào trong danh sách.',
+                canManageRoster(currentRole()) ? 'new-member' : null,
+                canManageRoster(currentRole()) ? 'Thêm thành viên' : null
+              )
         }
       </section>
 

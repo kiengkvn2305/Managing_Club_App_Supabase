@@ -77,16 +77,16 @@ function teams() {
                 ? `<p>Quỹ gần nhất: ${t.monthly_dues ? `${e(number(t.monthly_dues.amount))} đ/tháng · từ ${e(t.monthly_dues.effective_month.slice(0, 7))}` : 'Chưa thiết lập'}</p>`
                 : ''
             }
-            ${
-              canManageRoster(c)
-                ? `<p>Đội trưởng: ${e(t.captain_name || 'Chưa chọn')}<br>Quản lý: ${e((t.managers || []).map((m) => m.name).join(', ') || 'Chưa chọn')}</p>
-                   <div class="team-actions">
-                     <button class="text-button" data-action="team-members" data-id="${t.id}">Xem thành viên →</button>
-                     <button class="text-button" data-action="rename-team" data-id="${t.id}">Chỉnh sửa</button>
-                     <button class="text-button danger" data-action="delete-team" data-id="${t.id}">Xóa đội</button>
-                   </div>`
-                : ''
-            }
+            <p>Đội trưởng: ${e(t.captain_name || 'Chưa chọn')}<br>Quản lý: ${e((t.managers || []).map((m) => m.name).join(', ') || 'Chưa chọn')}</p>
+            <div class="team-actions">
+              <button class="text-button" data-action="team-members" data-id="${t.id}">Xem thành viên →</button>
+              ${
+                canManageRoster(c)
+                  ? `<button class="text-button" data-action="rename-team" data-id="${t.id}">Chỉnh sửa</button>
+                     <button class="text-button danger" data-action="delete-team" data-id="${t.id}">Xóa đội</button>`
+                  : ''
+              }
+            </div>
             ${
               c?.can_manage_finance && !canManageRoster(c)
                 ? `<button class="text-button" data-action="edit-dues-rate" data-id="${t.id}">Chỉnh sửa quỹ</button>`

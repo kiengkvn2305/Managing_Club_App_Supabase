@@ -180,7 +180,7 @@ export function unpackList(payload) {
 export const TITLE_PRESETS = {
   'Phó chủ nhiệm CLB': {
     can_view_finance: true,
-    can_manage_finance: false,
+    can_manage_finance: true,
     can_manage_roster: true,
     can_manage_inventory: true,
     can_manage_activities: true,

@@ -231,6 +231,9 @@ const nav = () =>
       if (route === 'inventory') {
         return Boolean(c.can_view_inventory);
       }
+      if (route === 'activities') {
+        return Boolean(c.can_manage_activities);
+      }
       return true;
     })
     .map(
@@ -670,10 +673,9 @@ async function loadView() {
         tasks.push(api.get(base('/invitations'), { signal }).catch(() => ({ data: [] })));
       }
       if (
-        (route === 'dashboard' ||
-          route === 'members' ||
-          (route === 'team-roster' && /^\d+$/.test(s.teamRosterId))) &&
-        canManageRoster(currentRole())
+        route === 'dashboard' ||
+        route === 'members' ||
+        (route === 'team-roster' && /^\d+$/.test(s.teamRosterId))
       ) {
         const q =
           route === 'dashboard'

@@ -127,6 +127,18 @@ begin
 
   v_can_view_act := v_can_manage_act or v_can_manage_ros;
 
+  -- Phó chủ nhiệm có đầy đủ chức năng quản trị như chủ nhiệm (ngoại trừ xoá CLB hoặc chuyển giao quyền sở hữu)
+  if v_role = 'co_owner' or lower(v_title) ~* 'phó chủ nhiệm' or (v_board_title is not null and lower(v_board_title) ~* 'phó chủ nhiệm') then
+    v_can_view_fin := true;
+    v_can_manage_fin := true;
+    v_can_manage_ros := true;
+    v_can_manage_clb := true;
+    v_can_manage_inv := true;
+    v_can_view_inv := true;
+    v_can_manage_act := true;
+    v_can_view_act := true;
+  end if;
+
   return jsonb_build_object(
     'club_id', p_club_id,
     'user_id', v_user_id,
@@ -583,3 +595,14 @@ grant execute on function public.save_board_member(bigint, bigint, text) to auth
 grant execute on function public.save_club_document(bigint, bigint, jsonb) to authenticated;
 grant execute on function public.delete_club_document(bigint, bigint) to authenticated;
 grant execute on function public.update_club_image(bigint, text, text) to authenticated;
+
+-- Cập nhật quyền hạn cho Phó chủ nhiệm đối với các bản ghi hiện có
+update public.club_members
+set permissions = coalesce(permissions, '{}'::jsonb) || '{"can_manage_finance": true}'::jsonb
+where (role = 'co_owner' or lower(title) ~* 'phó chủ nhiệm')
+  and (permissions->>'can_manage_finance' = 'false' or permissions->>'can_manage_finance' is null);
+
+update public.club_invitations
+set permissions = coalesce(permissions, '{}'::jsonb) || '{"can_manage_finance": true}'::jsonb
+where (role = 'co_owner' or lower(title) ~* 'phó chủ nhiệm')
+  and (permissions->>'can_manage_finance' = 'false' or permissions->>'can_manage_finance' is null);
