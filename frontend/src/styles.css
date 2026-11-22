@@ -2357,3 +2357,27 @@ input[type="radio"],
 @media (max-width: 760px) {
   .auth-clock { display: inline-flex; top: 16px; left: 16px; font-size: 9px; }
 }
+
+/* Documents Page */
+.doc-folders-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  scrollbar-width: thin;
+}
+.doc-folder-pill {
+  transition: all 0.15s ease;
+}
+.doc-folder-pill:hover:not(.active) {
+  background: var(--subtle) !important;
+  border-color: var(--muted) !important;
+}
+.doc-item {
+  transition: background-color 0.15s ease;
+}
+.doc-item:hover {
+  background: var(--subtle, rgba(0, 0, 0, 0.02));
+}
