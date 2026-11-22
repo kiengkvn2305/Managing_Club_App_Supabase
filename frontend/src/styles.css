@@ -1,10 +1,26 @@
 :root {
   font-family: Inter, "Segoe UI", system-ui, sans-serif;
-  color: #172b43;
-  background: #edf1f4;
+  color: #edf4ff;
+  background: #0c1927;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  --bg: #0c1927;
+  --surface: #142538;
+  --subtle: #1a2d43;
+  --ink: #edf4ff;
+  --muted: #a3b2c5;
+  --line: #293e55;
+  --green: #62e4b2;
+  --mint: #1b4239;
+  --text: var(--ink);
+  --border: var(--line);
+  --primary: var(--green);
+  --primary-subtle: var(--mint);
+  --bg-subtle: var(--subtle);
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
   --bg: #edf1f4;
   --surface: #fbfcfd;
   --subtle: #f3f6f8;
@@ -19,6 +35,8 @@
   --primary-subtle: var(--mint);
   --bg-subtle: var(--subtle);
   color-scheme: light;
+  color: var(--ink);
+  background: var(--bg);
 }
 :root[data-theme="dark"] {
   --bg: #0c1927;
@@ -1898,6 +1916,10 @@ dialog::backdrop {
 
 /* Calm layered backgrounds keep the workspace readable on every screen. */
 .workspace {
+  background: radial-gradient(ellipse at 90% 0%, #173f39 0, transparent 38%),
+    linear-gradient(145deg, #101f2e, #0c1927);
+}
+:root[data-theme="light"] .workspace {
   background: radial-gradient(ellipse at 90% 0%, #dce9e6 0, transparent 38%),
     linear-gradient(145deg, #f3f6f7, #e9eef1);
 }
@@ -1906,18 +1928,17 @@ dialog::backdrop {
     linear-gradient(145deg, #101f2e, #0c1927);
 }
 .workspace.has-club-background { background: transparent; isolation: isolate; }
-.workspace.has-club-background::before { content: ""; position: fixed; inset: 0 0 0 var(--sidebar-width); z-index: 0; pointer-events: none; background: linear-gradient(145deg, rgba(241, 247, 246, .88), rgba(226, 235, 237, .84)), var(--club-background) center / cover no-repeat; }
+.workspace.has-club-background::before { content: ""; position: fixed; inset: 0 0 0 var(--sidebar-width); z-index: 0; pointer-events: none; background: linear-gradient(145deg, rgba(13, 30, 42, .92), rgba(9, 28, 33, .88)), var(--club-background) center / cover no-repeat; }
 .workspace.has-club-background > * { position: relative; z-index: 1; }
+:root[data-theme="light"] .workspace.has-club-background::before { background-image: linear-gradient(145deg, rgba(241, 247, 246, .88), rgba(226, 235, 237, .84)), var(--club-background); }
 :root[data-theme="dark"] .workspace.has-club-background::before { background-image: linear-gradient(145deg, rgba(13, 30, 42, .92), rgba(9, 28, 33, .88)), var(--club-background); }
 .sidebar { background: linear-gradient(165deg, #0c2435, #081827 80%); }
-.topbar { background: rgb(251 252 253 / 94%); box-shadow: 0 6px 22px rgb(24 54 69 / 5%); }
-:root[data-theme="dark"] .topbar { background: rgb(20 37 56 / 94%); }
-.panel { box-shadow: 0 8px 26px rgb(26 52 66 / 6%); }
-:root:not([data-theme="dark"]) .panel { border-color: #d3dde5; background: rgb(251 252 253 / 96%); box-shadow: 0 10px 28px rgb(31 52 66 / 7%), 0 1px 0 rgb(255 255 255 / 75%) inset; }
-:root:not([data-theme="dark"]) .topbar { border-bottom-color: #d3dde5; }
-.owner-notice { margin: -2px 0 20px; padding: 12px 14px; border: 1px solid #9edabe; border-radius: 11px; background: #edf9f2; color: var(--ink); font-size: 13px; line-height: 1.55; }
-:root[data-theme="dark"] .panel, :root[data-theme="dark"] .topbar { box-shadow: 0 10px 28px rgb(0 0 0 / 18%); }
-:root[data-theme="dark"] .owner-notice { border-color: #2f7766; background: #17372f; }
+.topbar { background: rgb(20 37 56 / 94%); box-shadow: 0 10px 28px rgb(0 0 0 / 18%); }
+:root[data-theme="light"] .topbar { background: rgb(251 252 253 / 94%); border-bottom-color: #d3dde5; box-shadow: 0 6px 22px rgb(24 54 69 / 5%); }
+.panel { box-shadow: 0 10px 28px rgb(0 0 0 / 18%); }
+:root[data-theme="light"] .panel { border-color: #d3dde5; background: rgb(251 252 253 / 96%); box-shadow: 0 10px 28px rgb(31 52 66 / 7%), 0 1px 0 rgb(255 255 255 / 75%) inset; }
+.owner-notice { margin: -2px 0 20px; padding: 12px 14px; border: 1px solid #2f7766; border-radius: 11px; background: #17372f; color: var(--ink); font-size: 13px; line-height: 1.55; }
+:root[data-theme="light"] .owner-notice { border: 1px solid #9edabe; background: #edf9f2; }
 .hero { background: radial-gradient(circle at 85% 20%, #2c8065aa, transparent 42%), linear-gradient(115deg, #102c3d, #13503f); box-shadow: 0 15px 32px #143d3620; }
 .team-actions { display: flex; flex-wrap: wrap; gap: 2px 16px; }
 .roadmap-card { display: flex; flex-direction: column; align-items: flex-start; gap: 13px; padding: 24px; }

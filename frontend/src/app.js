@@ -28,6 +28,13 @@ import {
   unpackList,
 } from './utils.js';
 
+try {
+  const savedTheme = localStorage.getItem('fcms-theme');
+  document.documentElement.dataset.theme = savedTheme === 'light' ? 'light' : 'dark';
+} catch {
+  document.documentElement.dataset.theme = 'dark';
+}
+
 import { createClubController } from './controllers/club-controller.js';
 import { createRosterController } from './controllers/roster-controller.js';
 import { createDuesController } from './controllers/dues-controller.js';
@@ -823,7 +830,7 @@ async function action(el) {
 
   if (a === 'theme') {
     const theme =
-      document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = theme;
     try {
       localStorage.setItem('fcms-theme', theme);
