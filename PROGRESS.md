@@ -1,6 +1,14 @@
 # FCMS PRO – Tiến độ hiện tại
 
-Ngày cập nhật: 2026-11-21
+Ngày cập nhật: 2026-11-22
+
+## Điểm danh tự động UTC+7 — đã triển khai Supabase production
+
+- Migration `20261122000000_auto_absent_training_attendance.sql` tạo lịch `pg_cron` chạy mỗi phút tại database.
+- Với mỗi buổi tập đang theo kế hoạch, sau đúng 10 phút kể từ `training_date + training_time` theo `Asia/Ho_Chi_Minh` (UTC+7), tất cả thành viên active chưa có trạng thái được ghi `absent`.
+- Các trạng thái `present`, `excused` và `absent` hiện có được giữ nguyên; việc tự động ghi vắng có optimistic locking, row lock và audit log có actor.
+- Đồng hồ UTC+7 xuất hiện ở góc trên trái của giao diện đã đăng nhập, đăng nhập và đặt lại mật khẩu; hiển thị cập nhật mỗi giây, hỗ trợ light/dark và mobile.
+- Đã kiểm chứng local: scheduler `fcms-auto-mark-training-absences` active với lịch `* * * * *`; pgTAP kiểm tra deadline trước/sau 10 phút và bảo toàn trạng thái có mặt. Migrations `20261122000000` và `20261122000001` đã áp dụng thành công lên Supabase production `dandxiwdedbwxtvokeag`.
 
 ## Rà soát bổ sung 2026-11-21 (đã triển khai Supabase production)
 

@@ -20,6 +20,7 @@ export function authPage() {
       </section>
 
       <main id="main-content" class="auth-content" tabindex="-1">
+        <time class="app-clock auth-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
         <button class="icon-button theme-control" data-action="theme" aria-label="Đổi giao diện sáng tối">
           ${icon('moon')}
         </button>

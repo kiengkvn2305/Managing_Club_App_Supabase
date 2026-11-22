@@ -476,6 +476,21 @@ textarea {
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
+.topbar-context {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.app-clock {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.15px;
+  font-variant-numeric: tabular-nums;
+}
 .breadcrumb {
   display: flex;
   gap: 12px;
@@ -1943,3 +1958,9 @@ input[type="radio"],
 .auth-story { background: radial-gradient(ellipse at 20% 70%, #1b5d4a, transparent 50%), linear-gradient(145deg, #0c2939, #081827); }
 .auth-content { background: radial-gradient(ellipse at top right, #e8f6ef, transparent 50%), var(--surface); }
 :root[data-theme="dark"] .auth-content { background: radial-gradient(ellipse at top right, #183c36, transparent 50%), var(--surface); }
+.auth-content { position: relative; }
+.auth-clock { position: absolute; top: 24px; left: 28px; z-index: 2; }
+@media (max-width: 700px) {
+  .auth-clock { top: 16px; left: 16px; font-size: 9px; }
+  .topbar-context .app-clock { display: none; }
+}

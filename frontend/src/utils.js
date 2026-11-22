@@ -102,6 +102,21 @@ export function formatVietnamDateTime(value) {
   if (Number.isNaN(date.getTime())) return text;
   return new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
 }
+export function formatVietnamClock(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const value = (type) => parts.find((part) => part.type === type)?.value || '';
+  return `${value('weekday')} · ${value('day')}/${value('month')}/${value('year')} · ${value('hour')}:${value('minute')}:${value('second')} · UTC+7`;
+}
 export function validate(kind, data) {
   const errors = {};
   const required = (key, label) => {

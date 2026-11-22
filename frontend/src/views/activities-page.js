@@ -153,7 +153,7 @@ export function activitiesPage() {
                 .map((t) =>
                   row(
                     `${t.team_name} · ${formatDate(t.training_date)} ${t.training_time}`,
-                    `${t.location} · ${{ scheduled: 'Theo kế hoạch', cancelled: 'Không tập', postponed: 'Hoãn' }[t.training_status] || 'Theo kế hoạch'} · Đã điểm danh ${(t.attendance || []).length}`,
+                    `${t.location} · ${{ scheduled: 'Theo kế hoạch', cancelled: 'Không tập', postponed: 'Hoãn' }[t.training_status] || 'Theo kế hoạch'} · Đã điểm danh ${(t.attendance || []).length}${t.training_status === 'scheduled' ? ' · Tự ghi vắng sau 10 phút' : ''}`,
                     `${canManageRoster(currentClub()) && t.team_id && t.training_status === 'scheduled' && t.approval_status === 'approved' ? `<button class="text-button" data-action="attendance" data-id="${t.id}">Điểm danh</button>` : ''}${controls('trainings', t)}`,
                     t.approval_status === 'pending'
                   )

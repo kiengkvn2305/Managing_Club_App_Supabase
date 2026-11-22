@@ -22,6 +22,7 @@ import {
   canManageClub,
   validate,
   formatDate,
+  formatVietnamClock,
   vietnamToday,
   compareVietnameseNames,
   unpackList,
@@ -43,6 +44,7 @@ const root = document.querySelector('#app');
 let sequence = 0;
 let abortController;
 let searchTimer;
+let clockTimer;
 
 const api = createApiClient({
   onUnauthorized: () => {
@@ -236,13 +238,28 @@ const nav = () =>
 const clubSelect = () =>
   `<select data-club-switch aria-label="Chuyển câu lạc bộ">${s.clubs.length ? s.clubs.map((c) => `<option value="${c.id}" ${String(c.id) === String(s.clubId) ? 'selected' : ''}>${e(c.name)}</option>`).join('') : '<option>Chưa có câu lạc bộ</option>'}</select>`;
 
+function startVietnamClock() {
+  clearInterval(clockTimer);
+  const update = () => {
+    const label = formatVietnamClock();
+    document.querySelectorAll('[data-vietnam-clock]').forEach((clock) => {
+      clock.textContent = label;
+      clock.dateTime = new Date().toISOString();
+    });
+  };
+  update();
+  clockTimer = setInterval(update, 1000);
+}
+
 function render() {
   if (['forgot', 'reset'].includes(s.authMode)) {
     root.innerHTML = passwordResetPage(s);
+    startVietnamClock();
     return;
   }
   if (!s.user) {
     root.innerHTML = authPage();
+    startVietnamClock();
     return;
   }
 
@@ -287,8 +304,11 @@ function render() {
 
       <div class="workspace ${background ? 'has-club-background' : ''}" ${background ? `style="--club-background: url('${e(background)}')"` : ''}>
         <header class="topbar">
-          <div class="breadcrumb">
-            ${icon('shield')} ${e(currentClub()?.name || 'FCMS PRO')} <span>/</span> <strong>${titles[s.route]}</strong>
+          <div class="topbar-context">
+            <time class="app-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
+            <div class="breadcrumb">
+              ${icon('shield')} ${e(currentClub()?.name || 'FCMS PRO')} <span>/</span> <strong>${titles[s.route]}</strong>
+            </div>
           </div>
           <a class="brand mobile-brand" href="#dashboard">
             <img src="/icons/crest.svg" alt="">FCMS <small>PRO</small>
@@ -326,6 +346,7 @@ function render() {
       <nav class="bottom-nav" aria-label="Điều hướng di động">${nav()}</nav>
     </div>
   `;
+  startVietnamClock();
 }
 
 function clearSession() {
