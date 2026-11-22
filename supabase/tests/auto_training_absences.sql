@@ -1,7 +1,7 @@
 -- UTC+7 deadline behavior for automatic training attendance.
 begin;
 create extension if not exists pgtap;
-select plan(7);
+select plan(8);
 
 select ok(to_regprocedure('public.auto_mark_overdue_training_absences(timestamp with time zone)') is not null, 'automatic absence function exists');
 select ok(exists(select 1 from cron.job where jobname = 'fcms-auto-mark-training-absences'), 'minute scheduler is registered');
@@ -77,6 +77,13 @@ select is(
   (select jsonb_array_length(attendance) from public.team_trainings where id=(select training_id from auto_absence_context)),
   2,
   'all roster members have a final attendance status'
+);
+select throws_ok(
+  $$insert into public.team_trainings(club_id,team_id,team_name,training_date,training_time,location,submitted_by)
+    select club_id,team_id,'Invalid time','2026-01-02','25:61','Test field',user_id from auto_absence_context$$,
+  '23514',
+  'new row for relation "team_trainings" violates check constraint "team_trainings_time_of_day_check"',
+  'database rejects malformed training times'
 );
 
 select * from finish();

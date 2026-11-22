@@ -1951,6 +1951,7 @@ input[type="radio"],
 .member-picker-list small { display: block; color: var(--muted); }
 .attendance-list label { justify-content: space-between; align-items: center; }
 .attendance-person { display: flex; align-items: center; gap: 12px; }
+.training-time-hint { grid-column: 1 / -1; margin: -2px 0 2px; padding: 10px 12px; border-left: 3px solid var(--green); border-radius: 0 9px 9px 0; background: var(--mint); color: var(--ink); font-size: 12px; line-height: 1.55; }
 .dues-status { display: inline-block; padding: 4px 8px; border-radius: 6px; }
 .dues-status.owing { color: #a32323; background: #ffe8e8; }
 .dues-status.settled { color: #126047; background: #ddf5e9; }

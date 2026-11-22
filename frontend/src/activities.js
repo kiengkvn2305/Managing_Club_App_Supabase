@@ -230,6 +230,7 @@ export function openAwardDialog({
 }
 export async function activityAction(action, id, { state: s, api, base, reload }) {
   const post = async (path, data) => { await api.post(base(path), data); await reload(); toast('Đã lưu.'); };
+  const trainingTimeHelp = '<p class="training-time-hint">Chọn ngày từ lịch và giờ từ bộ chọn của thiết bị. Mốc này luôn được tính theo giờ Việt Nam (UTC+7); sau 10 phút hệ thống tự đánh dấu Vắng các thành viên chưa điểm danh.</p>';
   if (['edit-activity', 'delete-activity', 'approve-activity'].includes(action)) {
     const [kind, key] = id.split(':'), list = s.activities[kind], item = list?.find((x) => String(x.id) === key);
     if (!item) return;
@@ -238,7 +239,7 @@ export async function activityAction(action, id, { state: s, api, base, reload }
     if (action === 'delete-activity') return saveDialog('Xóa hoạt động?', 'Hoạt động này sẽ bị xóa.', '', async () => { await api.delete(base(path)); await reload(); toast('Đã xóa hoạt động.'); });
     let fields;
     if (kind === 'celebrations') fields = field('title', 'Tên dịp lễ', item.title, 'text', true) + field('event_date', 'Ngày', item.event_date, 'date', true) + field('message', 'Lời chúc', item.message || '', 'textarea');
-    if (kind === 'trainings') fields = (item.team_id ? select('team_id', 'Đội bóng', s.teams.map((t) => [t.id, t.name]), item.team_id) : '') + field('training_date', 'Ngày tập', item.training_date, 'date', true) + field('training_time', 'Giờ tập', item.training_time, 'time', true) + field('location', 'Địa điểm', item.location, 'text', true) + select('training_status', 'Trạng thái', [['scheduled', 'Theo kế hoạch'], ['cancelled', 'Không tập'], ['postponed', 'Hoãn']], item.training_status) + field('notes', 'Ghi chú', item.notes || '', 'textarea');
+    if (kind === 'trainings') fields = (item.team_id ? select('team_id', 'Đội bóng', s.teams.map((t) => [t.id, t.name]), item.team_id) : '') + field('training_date', 'Chọn ngày tập', item.training_date, 'date', true) + field('training_time', 'Chọn giờ tập (UTC+7)', item.training_time, 'time', true) + trainingTimeHelp + field('location', 'Địa điểm', item.location, 'text', true) + select('training_status', 'Trạng thái', [['scheduled', 'Theo kế hoạch'], ['cancelled', 'Không tập'], ['postponed', 'Hoãn']], item.training_status) + field('notes', 'Ghi chú', item.notes || '', 'textarea');
     if (kind === 'awards') {
       let players = (s.activities.players && s.activities.players.length) ? s.activities.players : (s.members || []);
       if (!players.length) {
@@ -268,7 +269,7 @@ export async function activityAction(action, id, { state: s, api, base, reload }
   });
   if (action === 'new-training') {
     if (!s.teams.length) { toast('Hãy tạo đội bóng trước.', true); return; }
-    return saveDialog('Tạo lịch tập', 'Chọn đội bóng, ngày giờ và địa điểm.', select('team_id', 'Đội bóng', s.teams.map((t) => [t.id, t.name])) + field('training_date', 'Ngày tập', '', 'date', true) + field('training_time', 'Giờ tập', '', 'time', true) + field('location', 'Địa điểm', '', 'text', true) + field('notes', 'Ghi chú', '', 'textarea'), async (form) => {
+    return saveDialog('Tạo lịch tập', 'Chọn đội bóng, ngày giờ và địa điểm.', select('team_id', 'Đội bóng', s.teams.map((t) => [t.id, t.name])) + field('training_date', 'Chọn ngày tập', '', 'date', true) + field('training_time', 'Chọn giờ tập (UTC+7)', '', 'time', true) + trainingTimeHelp + field('location', 'Địa điểm', '', 'text', true) + field('notes', 'Ghi chú', '', 'textarea'), async (form) => {
       await post('/activities/trainings', { team_id: Number(form.elements.team_id.value), training_date: form.elements.training_date.value, training_time: form.elements.training_time.value, location: form.elements.location.value.trim(), notes: form.elements.notes.value.trim() || null });
     });
   }
