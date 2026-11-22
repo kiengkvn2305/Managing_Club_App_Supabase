@@ -21,20 +21,40 @@ export async function openMatchAttendance({ match, api, base }) {
   const orderedRows = [...markedRows, ...unmarkedRows];
 
   const sortControls = `
-    <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-bottom:8px;">
-      <input id="match-player-search" type="search" placeholder="Tìm tên, email, ghi chú hoặc ngày sinh..." style="margin:0;">
-      <select id="match-player-sort" style="margin:0;">
-        <option value="name_asc">Tên A–Z</option>
-        <option value="name_desc">Tên Z–A</option>
-        <option value="att_present">Điểm danh: Có mặt lên đầu</option>
-        <option value="att_absent">Điểm danh: Vắng lên đầu</option>
-        <option value="att_excused">Điểm danh: Có phép lên đầu</option>
-        <option value="att_unmarked">Điểm danh: Chưa điểm danh</option>
-        <option value="rsvp_yes">Đăng ký: Tham gia lên đầu</option>
-        <option value="jersey">Số áo</option>
-        <option value="position">Vị trí</option>
-        <option value="dob">Ngày sinh</option>
-      </select>
+    <div class="attendance-modal-toolbar">
+      <div class="attendance-modal-filter-row">
+        <label class="attendance-field" style="flex: 2; min-width: 220px;">
+          <span class="attendance-label">Tìm kiếm</span>
+          <input id="match-player-search" type="search" placeholder="Tìm tên, email, ghi chú hoặc ngày sinh…">
+        </label>
+        <label class="attendance-field" style="flex: 1.2; min-width: 200px;">
+          <span class="attendance-label">Sắp xếp</span>
+          <select id="match-player-sort">
+            <option value="name_asc">Tên A–Z</option>
+            <option value="name_desc">Tên Z–A</option>
+            <option value="att_present">Điểm danh: Có mặt lên đầu</option>
+            <option value="att_absent">Điểm danh: Vắng lên đầu</option>
+            <option value="att_excused">Điểm danh: Có phép lên đầu</option>
+            <option value="att_unmarked">Điểm danh: Chưa điểm danh</option>
+            <option value="rsvp_yes">Đăng ký: Tham gia lên đầu</option>
+            <option value="jersey">Số áo</option>
+            <option value="position">Vị trí</option>
+            <option value="dob">Ngày sinh</option>
+          </select>
+        </label>
+      </div>
+      ${
+        !cancelled
+          ? `
+        <div class="attendance-quick-actions">
+          <span class="attendance-quick-title">Đánh dấu nhanh:</span>
+          <button type="button" class="btn-att-quick btn-att-present" data-match-bulk="present">✓ Tất cả Có mặt</button>
+          <button type="button" class="btn-att-quick btn-att-present" data-match-bulk="from_rsvp">Áp dụng theo Đăng ký (Tham gia → Có mặt)</button>
+          <button type="button" class="btn-att-quick btn-att-clear" data-match-bulk="unmarked">Đặt lại</button>
+        </div>
+      `
+          : ''
+      }
     </div>
   `;
 
@@ -98,6 +118,29 @@ export async function openMatchAttendance({ match, api, base }) {
 
   searchInput.addEventListener('input', () => filterAndSort(false));
   sortSelect.addEventListener('change', () => filterAndSort(true));
+
+  modal.querySelectorAll('[data-match-bulk]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.matchBulk;
+      const visibleRows = tbody.querySelectorAll('tr:not([hidden])');
+      visibleRows.forEach((row) => {
+        const attSelect = row.querySelector('[data-attendance]');
+        const rsvpSelect = row.querySelector('[data-rsvp]');
+        if (attSelect && !attSelect.disabled) {
+          if (mode === 'from_rsvp') {
+            if (rsvpSelect?.value === 'yes') {
+              attSelect.value = 'present';
+            } else if (rsvpSelect?.value === 'no') {
+              attSelect.value = 'absent';
+            }
+          } else {
+            attSelect.value = mode;
+          }
+        }
+      });
+      toast('Đã cập nhật lựa chọn trên danh sách (nhấn "Lưu" từng dòng để cập nhật server).');
+    });
+  });
 
   modal.querySelectorAll('[data-save]').forEach((button) => button.addEventListener('click', async () => {
     const row = button.closest('tr');

@@ -48,40 +48,52 @@ export function openAttendanceReport({ teams, trainings, api, base }) {
 
   const fields = `
     <div class="member-picker">
-      <div class="attendance-report-filters">
-        <label class="report-team"> <span>Đội bóng</span>
-          <select data-report-team>
-            ${teams.map((t) => `<option value="${e(t.id)}">${e(t.name)}</option>`).join('')}
-          </select>
-        </label>
-        <label class="report-period"> <span>Kỳ xem</span>
-          <select data-report-period>
-            <option value="month">Tháng</option>
-            <option value="quarter">Quý</option>
-            <option value="year">Năm</option>
-          </select>
-        </label>
-        <label class="report-year"> <span>Năm</span>
-          <input type="number" data-report-year min="1900" max="2100" value="${e(year)}">
-        </label>
-        <label data-report-month-label class="report-month"> <span>Tháng</span>
-          <select data-report-month>
-            ${Array.from({ length: 12 }, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${String(i + 1).padStart(2, '0') === month ? 'selected' : ''}>Tháng ${i + 1}</option>`).join('')}
-          </select>
-        </label>
-        <label data-report-quarter-label class="report-quarter" hidden> <span>Quý</span>
-          <select data-report-quarter>
-            ${[1, 2, 3, 4].map((q) => `<option value="${q}" ${q === Math.ceil(Number(month) / 3) ? 'selected' : ''}>Quý ${q}</option>`).join('')}
-          </select>
-        </label>
-        <label class="report-search"> <span>Tìm</span>
-          <input type="search" data-report-search placeholder="Tìm tên hoặc ghi chú…">
-        </label>
-        <label class="report-sort"> <span>Sắp xếp</span>
-          <select data-report-sort>
-            ${sortOptions.map(([val, label]) => `<option value="${val}">${label}</option>`).join('')}
-          </select>
-        </label>
+      <div class="attendance-report-toolbar">
+        <div class="attendance-report-row attendance-report-scope">
+          <label class="attendance-field report-team">
+            <span class="attendance-label">Đội bóng</span>
+            <select data-report-team>
+              ${teams.map((t) => `<option value="${e(t.id)}">${e(t.name)}</option>`).join('')}
+            </select>
+          </label>
+          <label class="attendance-field report-period">
+            <span class="attendance-label">Kỳ xem</span>
+            <select data-report-period>
+              <option value="month">Tháng</option>
+              <option value="quarter">Quý</option>
+              <option value="year">Năm</option>
+            </select>
+          </label>
+          <label class="attendance-field report-year">
+            <span class="attendance-label">Năm</span>
+            <input type="number" data-report-year min="1900" max="2100" value="${e(year)}">
+          </label>
+          <label data-report-month-label class="attendance-field report-month">
+            <span class="attendance-label">Tháng</span>
+            <select data-report-month>
+              ${Array.from({ length: 12 }, (_, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${String(i + 1).padStart(2, '0') === month ? 'selected' : ''}>Tháng ${i + 1}</option>`).join('')}
+            </select>
+          </label>
+          <label data-report-quarter-label class="attendance-field report-quarter" hidden>
+            <span class="attendance-label">Quý</span>
+            <select data-report-quarter>
+              ${[1, 2, 3, 4].map((q) => `<option value="${q}" ${q === Math.ceil(Number(month) / 3) ? 'selected' : ''}>Quý ${q}</option>`).join('')}
+            </select>
+          </label>
+        </div>
+
+        <div class="attendance-report-row attendance-report-filter">
+          <label class="attendance-field report-search">
+            <span class="attendance-label">Tìm kiếm</span>
+            <input type="search" data-report-search placeholder="Tìm theo tên thành viên hoặc ghi chú…">
+          </label>
+          <label class="attendance-field report-sort">
+            <span class="attendance-label">Sắp xếp</span>
+            <select data-report-sort>
+              ${sortOptions.map(([val, label]) => `<option value="${val}">${label}</option>`).join('')}
+            </select>
+          </label>
+        </div>
       </div>
       <div data-report-body></div>
     </div>
@@ -245,12 +257,12 @@ export function openAttendanceReport({ teams, trainings, api, base }) {
 
     const statusBadge = (v) => {
       if (v === 'present')
-        return '<span style="color:var(--green);font-weight:700;" title="Có mặt">✓</span>';
+        return '<span class="att-badge att-present" title="Có mặt">✓</span>';
       if (v === 'absent')
-        return '<span style="color:var(--red);font-weight:600;" title="Vắng">Vắng</span>';
+        return '<span class="att-badge att-absent" title="Vắng">Vắng</span>';
       if (v === 'excused')
-        return '<span style="color:var(--yellow, #ca8a04);font-weight:600;" title="Có phép">Phép</span>';
-      return '<span style="color:var(--muted);">—</span>';
+        return '<span class="att-badge att-excused" title="Có phép">Phép</span>';
+      return '<span class="att-badge att-unmarked" title="Chưa điểm danh">—</span>';
     };
 
     const totalPresent = filteredRows.reduce(
@@ -267,23 +279,55 @@ export function openAttendanceReport({ teams, trainings, api, base }) {
       ? Math.round((totalPresent / totalMarked) * 100)
       : null;
 
+    const summaryCards = sessions.length
+      ? `
+      <div class="attendance-summary-bar">
+        <div class="attendance-stat">
+          <span class="stat-num">${filteredRows.length}</span>
+          <span class="stat-txt">Thành viên</span>
+        </div>
+        <div class="attendance-stat">
+          <span class="stat-num">${sessions.length}</span>
+          <span class="stat-txt">Buổi tập</span>
+        </div>
+        <div class="attendance-stat">
+          <span class="stat-num text-green">${totalPresent}</span>
+          <span class="stat-txt">Lượt có mặt</span>
+        </div>
+        <div class="attendance-stat">
+          <span class="stat-num text-red">${totalAbsent}</span>
+          <span class="stat-txt">Lượt vắng</span>
+        </div>
+        <div class="attendance-stat">
+          <span class="stat-num text-yellow">${totalExcused}</span>
+          <span class="stat-txt">Lượt phép</span>
+        </div>
+        <div class="attendance-stat">
+          <span class="stat-num ${overallPercent !== null && overallPercent >= 75 ? 'text-green' : overallPercent !== null && overallPercent < 50 ? 'text-red' : ''}">${overallPercent !== null ? `${overallPercent}%` : '—'}</span>
+          <span class="stat-txt">Tỷ lệ có mặt</span>
+        </div>
+      </div>
+    `
+      : '';
+
     body.innerHTML = sessions.length
       ? `
-      <div class="table-wrap" style="max-height:65dvh;overflow:auto;">
+      ${summaryCards}
+      <div class="table-wrap attendance-table-wrap">
         <table>
           <thead>
             <tr>
-              <th style="min-width:140px;position:sticky;left:0;background:var(--surface);z-index:2;">Thành viên</th>
+              <th class="att-col-member">Thành viên</th>
               ${sessions
                 .map(
                   (t) =>
-                    `<th style="text-align:center;min-width:70px;">${e(formatDate(t.training_date))}<br><small style="color:var(--muted);">${e(t.training_time || '')}</small></th>`
+                    `<th class="att-col-session">${e(formatDate(t.training_date))}<br><small>${e(t.training_time || '')}</small></th>`
                 )
                 .join('')}
-              <th style="text-align:center;color:var(--green);min-width:65px;" title="Số lượng buổi có mặt">Có mặt</th>
-              <th style="text-align:center;color:var(--red);min-width:60px;" title="Số lượng buổi vắng">Vắng</th>
-              <th style="text-align:center;color:var(--yellow, #ca8a04);min-width:60px;" title="Số lượng buổi có phép">Phép</th>
-              <th style="text-align:center;min-width:90px;" title="Tỷ lệ có mặt trên các buổi đã điểm danh">Tỷ lệ (%)</th>
+              <th class="att-col-summary text-green" title="Số lượng buổi có mặt">Có mặt</th>
+              <th class="att-col-summary text-red" title="Số lượng buổi vắng">Vắng</th>
+              <th class="att-col-summary text-yellow" title="Số lượng buổi có phép">Phép</th>
+              <th class="att-col-rate" title="Tỷ lệ có mặt trên các buổi đã điểm danh">Tỷ lệ (%)</th>
             </tr>
           </thead>
           <tbody>
@@ -291,17 +335,19 @@ export function openAttendanceReport({ teams, trainings, api, base }) {
               .map(
                 (p) => `
               <tr>
-                <td style="position:sticky;left:0;background:var(--surface);z-index:1;">
-                  <strong>${e(p.name)}</strong>
-                  ${p.notes ? `<small style="display:block;color:var(--muted);">${e(p.notes)}</small>` : ''}
+                <td class="att-col-member">
+                  <div class="att-member-cell">
+                    <strong>${e(p.name)}</strong>
+                    ${p.notes ? `<small>${e(p.notes)}</small>` : ''}
+                  </div>
                 </td>
-                ${p.values.map((v) => `<td style="text-align:center;">${statusBadge(v)}</td>`).join('')}
-                <td style="text-align:center;font-weight:700;color:var(--green);">${p.summary.present}</td>
-                <td style="text-align:center;font-weight:700;color:var(--red);">${p.summary.absent}</td>
-                <td style="text-align:center;font-weight:700;color:var(--yellow, #ca8a04);">${p.summary.excused}</td>
-                <td style="text-align:center;">
+                ${p.values.map((v) => `<td class="text-center">${statusBadge(v)}</td>`).join('')}
+                <td class="text-center font-bold text-green">${p.summary.present}</td>
+                <td class="text-center font-bold text-red">${p.summary.absent}</td>
+                <td class="text-center font-bold text-yellow">${p.summary.excused}</td>
+                <td class="text-center att-rate-cell">
                   <strong>${p.summary.percent !== null ? `${p.summary.percent}%` : '—'}</strong>
-                  <small style="display:block;color:var(--muted);">${p.summary.present}/${p.summary.marked}</small>
+                  <small>${p.summary.present}/${p.summary.marked}</small>
                 </td>
               </tr>
             `
@@ -309,20 +355,20 @@ export function openAttendanceReport({ teams, trainings, api, base }) {
               .join('')}
           </tbody>
           <tfoot>
-            <tr style="font-weight:600;background:var(--bg-subtle, rgba(0,0,0,0.02));border-top:2px solid var(--border);">
-              <td style="position:sticky;left:0;background:var(--surface);z-index:1;">Tổng cộng (${filteredRows.length} người)</td>
+            <tr class="att-table-total-row">
+              <td class="att-col-member">Tổng cộng (${filteredRows.length} người)</td>
               ${sessions
                 .map((t, idx) => {
                   const sessPresent = filteredRows.filter(
                     (r) => r.values[idx] === 'present'
                   ).length;
-                  return `<td style="text-align:center;color:var(--green);">${sessPresent} ✓</td>`;
+                  return `<td class="text-center font-bold text-green">${sessPresent} ✓</td>`;
                 })
                 .join('')}
-              <td style="text-align:center;color:var(--green);">${totalPresent}</td>
-              <td style="text-align:center;color:var(--red);">${totalAbsent}</td>
-              <td style="text-align:center;color:var(--yellow, #ca8a04);">${totalExcused}</td>
-              <td style="text-align:center;">${overallPercent !== null ? `${overallPercent}%` : '—'}</td>
+              <td class="text-center font-bold text-green">${totalPresent}</td>
+              <td class="text-center font-bold text-red">${totalAbsent}</td>
+              <td class="text-center font-bold text-yellow">${totalExcused}</td>
+              <td class="text-center font-bold">${overallPercent !== null ? `${overallPercent}%` : '—'}</td>
             </tr>
           </tfoot>
         </table>

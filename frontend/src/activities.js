@@ -308,7 +308,106 @@ export async function activityAction(action, id, { state: s, api, base, reload }
     unmarkedPlayers.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
     const orderedPlayers = [...markedPlayers, ...unmarkedPlayers];
 
-    const fields = `<div class="member-picker"><div class="filters"><label>Tìm tên / ghi chú <input type="search" data-att-name placeholder="Nhập tên hoặc ghi chú"></label><label>Năm sinh <input type="number" data-att-year min="1900" max="2100" placeholder="Năm"></label><label>Chân thuận <select data-att-foot><option value="">Tất cả</option><option value="left">Trái</option><option value="right">Phải</option><option value="both">Hai chân</option></select></label><label>Vị trí <select data-att-position><option value="">Tất cả</option>${positions.map((p) => `<option value="${e(p)}">${e(p)}</option>`).join('')}</select></label><label>Sắp xếp <select data-att-sort><option value="asc">Tên A–Z</option><option value="desc">Tên Z–A</option><option value="status_present">Có mặt lên đầu</option><option value="status_absent">Vắng lên đầu</option><option value="status_excused">Có phép lên đầu</option><option value="status_unmarked">Chưa điểm danh lên đầu</option><option value="notes">Theo ghi chú</option><option value="foot">Theo chân thuận</option><option value="year">Theo năm sinh</option><option value="position">Theo vị trí</option></select></label></div><div class="member-picker-list attendance-list">${orderedPlayers.map((p) => { const team = (p.teams || []).find((t) => String(t.id) === String(training.team_id)); const info = [p.date_of_birth ? `Ngày sinh: ${formatDate(p.date_of_birth)}` : '', p.preferred_foot ? (p.preferred_foot === 'right' ? 'Chân phải' : p.preferred_foot === 'left' ? 'Chân trái' : 'Hai chân') : '', p.email, p.phone, team?.position, team?.jersey_number != null ? `#${team.jersey_number}` : '', p.notes ? `Ghi chú: ${p.notes}` : ''].filter(Boolean).join(' · '); return `<label data-attendance-row data-name="${e(p.full_name.toLocaleLowerCase('vi'))}" data-notes="${e(p.notes || '')}" data-year="${e((p.date_of_birth || '').slice(0, 4))}" data-foot="${e(p.preferred_foot || '')}" data-position="${e(position(p))}"><span class="attendance-person">${avatar(p.full_name, imageUrl('player', p.id, p.avatar_version, s.clubId))}<span><strong>${e(p.full_name)}</strong><small>${e(info || 'Chưa có thông tin bổ sung')}</small></span></span><select data-player="${p.id}" aria-label="Điểm danh ${e(p.full_name)} ${e(info)}"><option value="">Chưa điểm danh</option>${[['present', 'Có mặt'], ['absent', 'Vắng'], ['excused', 'Có phép']].map(([v, label]) => `<option value="${v}" ${previous.get(String(p.id)) === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label>`; }).join('') || '<p>Đội chưa có thành viên.</p>'}</div></div>`;
+    const fields = `
+      <div class="member-picker">
+        <div class="attendance-modal-toolbar filters">
+          <div class="attendance-modal-filter-row">
+            <label class="attendance-field" style="flex: 2; min-width: 180px;">
+              <span class="attendance-label">Tìm tên / ghi chú</span>
+              <input type="search" data-att-name placeholder="Nhập tên hoặc ghi chú…">
+            </label>
+            <label class="attendance-field" style="width: 85px;">
+              <span class="attendance-label">Năm sinh</span>
+              <input type="number" data-att-year min="1900" max="2100" placeholder="Năm">
+            </label>
+            <label class="attendance-field" style="width: 105px;">
+              <span class="attendance-label">Chân thuận</span>
+              <select data-att-foot>
+                <option value="">Tất cả</option>
+                <option value="left">Trái</option>
+                <option value="right">Phải</option>
+                <option value="both">Hai chân</option>
+              </select>
+            </label>
+            <label class="attendance-field" style="width: 110px;">
+              <span class="attendance-label">Vị trí</span>
+              <select data-att-position>
+                <option value="">Tất cả</option>
+                ${positions.map((p) => `<option value="${e(p)}">${e(p)}</option>`).join('')}
+              </select>
+            </label>
+            <label class="attendance-field" style="flex: 1.2; min-width: 160px;">
+              <span class="attendance-label">Sắp xếp</span>
+              <select data-att-sort>
+                <option value="asc">Tên A–Z</option>
+                <option value="desc">Tên Z–A</option>
+                <option value="status_present">Có mặt lên đầu</option>
+                <option value="status_absent">Vắng lên đầu</option>
+                <option value="status_excused">Có phép lên đầu</option>
+                <option value="status_unmarked">Chưa điểm danh lên đầu</option>
+                <option value="notes">Theo ghi chú</option>
+                <option value="foot">Theo chân thuận</option>
+                <option value="year">Theo năm sinh</option>
+                <option value="position">Theo vị trí</option>
+              </select>
+            </label>
+          </div>
+          <div class="attendance-quick-actions">
+            <span class="attendance-quick-title">Đánh dấu nhanh:</span>
+            <button type="button" class="btn-att-quick btn-att-present" data-att-bulk="present">✓ Tất cả Có mặt</button>
+            <button type="button" class="btn-att-quick btn-att-absent" data-att-bulk="absent">✕ Tất cả Vắng</button>
+            <button type="button" class="btn-att-quick btn-att-clear" data-att-bulk="">Đặt lại</button>
+          </div>
+        </div>
+        <div class="member-picker-list attendance-list">
+          ${orderedPlayers
+            .map((p) => {
+              const team = (p.teams || []).find(
+                (t) => String(t.id) === String(training.team_id)
+              );
+              const info = [
+                p.date_of_birth ? `Ngày sinh: ${formatDate(p.date_of_birth)}` : '',
+                p.preferred_foot
+                  ? p.preferred_foot === 'right'
+                    ? 'Chân phải'
+                    : p.preferred_foot === 'left'
+                    ? 'Chân trái'
+                    : 'Hai chân'
+                  : '',
+                p.email,
+                p.phone,
+                team?.position,
+                team?.jersey_number != null ? `#${team.jersey_number}` : '',
+                p.notes ? `Ghi chú: ${p.notes}` : '',
+              ]
+                .filter(Boolean)
+                .join(' · ');
+              const curStatus = previous.get(String(p.id)) || '';
+              return `
+                <label data-attendance-row data-name="${e(p.full_name.toLocaleLowerCase('vi'))}" data-notes="${e(p.notes || '')}" data-year="${e((p.date_of_birth || '').slice(0, 4))}" data-foot="${e(p.preferred_foot || '')}" data-position="${e(position(p))}" class="att-row ${curStatus ? `att-row-${curStatus}` : ''}">
+                  <span class="attendance-person">
+                    ${avatar(p.full_name, imageUrl('player', p.id, p.avatar_version, s.clubId))}
+                    <span>
+                      <strong>${e(p.full_name)}</strong>
+                      <small>${e(info || 'Chưa có thông tin bổ sung')}</small>
+                    </span>
+                  </span>
+                  <select data-player="${p.id}" class="att-select ${curStatus ? `att-select-${curStatus}` : ''}" aria-label="Điểm danh ${e(p.full_name)} ${e(info)}">
+                    <option value="">Chưa điểm danh</option>
+                    ${[['present', 'Có mặt'], ['absent', 'Vắng'], ['excused', 'Có phép']]
+                      .map(
+                        ([v, label]) =>
+                          `<option value="${v}" ${curStatus === v ? 'selected' : ''}>${label}</option>`
+                      )
+                      .join('')}
+                  </select>
+                </label>
+              `;
+            })
+            .join('') || '<p>Đội chưa có thành viên.</p>'}
+        </div>
+      </div>
+    `;
     const modal = saveDialog('Điểm danh', `${e(training.team_name)} · ${e(formatDate(training.training_date))}`, fields, async (form) => {
       const selected = [...form.querySelectorAll('[data-player]')].filter((x) => x.value).map((x) => ({ player_id: Number(x.dataset.player), status: x.value }));
       await api.patch(base(`/activities/trainings/${training.id}/attendance`), { players: selected, expected_updated_at: training.updated_at }); await reload(); toast('Đã lưu điểm danh.');
@@ -359,6 +458,40 @@ export async function activityAction(action, id, { state: s, api, base, reload }
     };
     modal.querySelector('.filters').addEventListener('input', filter);
     modal.querySelector('.filters').addEventListener('change', filter);
+
+    modal.querySelectorAll('[data-att-bulk]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetVal = btn.dataset.attBulk;
+        const visibleRows = modal.querySelectorAll('[data-attendance-row]:not([hidden])');
+        visibleRows.forEach((row) => {
+          const select = row.querySelector('[data-player]');
+          if (select) {
+            select.value = targetVal;
+            row.classList.remove('att-row-present', 'att-row-absent', 'att-row-excused');
+            select.classList.remove('att-select-present', 'att-select-absent', 'att-select-excused');
+            if (targetVal) {
+              row.classList.add(`att-row-${targetVal}`);
+              select.classList.add(`att-select-${targetVal}`);
+            }
+          }
+        });
+      });
+    });
+
+    modal.querySelector('.attendance-list')?.addEventListener('change', (e) => {
+      const select = e.target.closest('[data-player]');
+      if (select) {
+        const row = select.closest('[data-attendance-row]');
+        const val = select.value;
+        if (row) {
+          row.classList.remove('att-row-present', 'att-row-absent', 'att-row-excused');
+          if (val) row.classList.add(`att-row-${val}`);
+        }
+        select.classList.remove('att-select-present', 'att-select-absent', 'att-select-excused');
+        if (val) select.classList.add(`att-select-${val}`);
+      }
+    });
+
     filter();
     return modal;
   }
