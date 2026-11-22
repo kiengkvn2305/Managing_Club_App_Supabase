@@ -1,5 +1,5 @@
 import { dialog, field, select, showErrors, toast } from './components/ui.js';
-import { escapeHtml as e } from './utils.js';
+import { escapeHtml as e, formatDate } from './utils.js';
 import { postStatus, applicationStatus } from './recruitment-page.js';
 
 function submitOnce(form, operation) {
@@ -32,7 +32,7 @@ export async function showRecruitmentApplications({ post, api, base, canManage }
   const render = async () => {
     const result = await api.get(base(`/recruitment/posts/${post.id}/applications?page=${page}&status=${encodeURIComponent(status)}`));
     const host = document.createElement('dialog'); host.setAttribute('aria-label', 'Ứng viên tuyển dụng');
-    const rows = result.data.map((a) => `<tr><td>${e(a.full_name)}</td><td>${e(a.date_of_birth || '—')}</td><td>${e(a.email || '—')}</td><td>${e(a.phone || '—')}</td><td>${e(applicationStatus[a.status] || a.status)}</td><td>${e(a.notes || '—')}</td><td>${canManage ? `<button class="text-button" data-edit="${a.id}">Sửa</button>` : '—'}</td></tr>`).join('');
+    const rows = result.data.map((a) => `<tr><td>${e(a.full_name)}</td><td>${e(formatDate(a.date_of_birth) || '—')}</td><td>${e(a.email || '—')}</td><td>${e(a.phone || '—')}</td><td>${e(applicationStatus[a.status] || a.status)}</td><td>${e(a.notes || '—')}</td><td>${canManage ? `<button class="text-button" data-edit="${a.id}">Sửa</button>` : '—'}</td></tr>`).join('');
     host.innerHTML = `<div class="dialog-head"><div><h2>Ứng viên · ${e(post.title)}</h2><p>Hồ sơ chỉ dành cho người có quyền nhân sự của CLB.</p></div><button type="button" class="icon-button" data-close aria-label="Đóng">×</button></div><div class="dialog-body">${canManage ? '<button type="button" class="button" data-add>Thêm ứng viên</button>' : ''}<label>Trạng thái <select data-status><option value="">Tất cả</option>${Object.entries(applicationStatus).map(([value, label]) => `<option value="${value}" ${value === status ? 'selected' : ''}>${label}</option>`).join('')}</select></label>${rows ? `<div class="table-wrap"><table><thead><tr><th>Họ tên</th><th>Ngày sinh</th><th>Email</th><th>Điện thoại</th><th>Trạng thái</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p>Chưa có ứng viên phù hợp.</p>'}<div class="table-footer"><button class="icon-button" data-prev aria-label="Trang trước" ${page <= 1 ? 'disabled' : ''}>←</button> ${page} / ${result.last_page} <button class="icon-button" data-next aria-label="Trang sau" ${page >= result.last_page ? 'disabled' : ''}>→</button></div></div>`;
     document.body.append(host); host.querySelector('[data-close]').onclick = () => host.close();
     const refresh = async () => { host.close(); await render(); };

@@ -7,8 +7,11 @@ export function authPage() {
   return `
     <div class="auth-layout">
       <section class="auth-story">
-        <div class="brand">
-          <img src="/icons/crest.svg" alt="">FCMS <small>PRO</small>
+        <div class="auth-story-header">
+          <div class="brand">
+            <img src="/icons/crest.svg" alt="">FCMS <small>PRO</small>
+          </div>
+          <time class="sidebar-clock auth-story-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
         </div>
         <div>
           <span class="eyebrow">MỘT CÂU LẠC BỘ. MỘT TINH THẦN.</span>

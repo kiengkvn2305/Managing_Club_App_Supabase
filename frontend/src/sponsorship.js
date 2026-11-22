@@ -1,5 +1,5 @@
 import { dialog, field, select, showErrors, toast } from './components/ui.js';
-import { escapeHtml as e, number } from './utils.js';
+import { escapeHtml as e, number, formatDate } from './utils.js';
 const money = (value) => `${number(value)} đ`;
 
 function submitOnce(form, operation) {
@@ -55,7 +55,7 @@ export async function showSponsorshipReceipts({ agreement, api, base, reload, ca
   const render = async () => {
     const result = await api.get(base(`/sponsorships/${agreement.id}/receipts?page=${page}`));
     const host = document.createElement('dialog'); host.setAttribute('aria-label', 'Thực nhận tài trợ');
-    host.innerHTML = `<div class="dialog-head"><div><h2>${e(agreement.title)}</h2><p>Giá trị thực nhận được nhập thủ công; chưa ghi vào sổ thu chi hoặc kho.</p><p>Quyền lợi: ${e(agreement.benefits || '—')} · Ghi chú: ${e(agreement.notes || '—')}</p></div><button type="button" class="icon-button" data-close aria-label="Đóng">×</button></div><div class="dialog-body">${canManage ? '<button type="button" class="button" data-add>Ghi nhận thực nhận</button>' : ''}<div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Giá trị</th><th>Ghi chú</th></tr></thead><tbody>${result.data.map((r) => `<tr><td>${e(r.received_on)}</td><td>${money(r.value)}</td><td>${e(r.notes || '—')}</td></tr>`).join('')}</tbody></table></div><div class="table-footer"><button class="icon-button" data-prev aria-label="Trang trước" ${page <= 1 ? 'disabled' : ''}>←</button> ${page} / ${result.last_page} <button class="icon-button" data-next aria-label="Trang sau" ${page >= result.last_page ? 'disabled' : ''}>→</button></div></div>`;
+    host.innerHTML = `<div class="dialog-head"><div><h2>${e(agreement.title)}</h2><p>Giá trị thực nhận được nhập thủ công; chưa ghi vào sổ thu chi hoặc kho.</p><p>Quyền lợi: ${e(agreement.benefits || '—')} · Ghi chú: ${e(agreement.notes || '—')}</p></div><button type="button" class="icon-button" data-close aria-label="Đóng">×</button></div><div class="dialog-body">${canManage ? '<button type="button" class="button" data-add>Ghi nhận thực nhận</button>' : ''}<div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Giá trị</th><th>Ghi chú</th></tr></thead><tbody>${result.data.map((r) => `<tr><td>${e(formatDate(r.received_on))}</td><td>${money(r.value)}</td><td>${e(r.notes || '—')}</td></tr>`).join('')}</tbody></table></div><div class="table-footer"><button class="icon-button" data-prev aria-label="Trang trước" ${page <= 1 ? 'disabled' : ''}>←</button> ${page} / ${result.last_page} <button class="icon-button" data-next aria-label="Trang sau" ${page >= result.last_page ? 'disabled' : ''}>→</button></div></div>`;
     document.body.append(host); host.querySelector('[data-close]').onclick = () => host.close();
     const refresh = async () => { host.close(); await reload(); await render(); };
     host.querySelector('[data-add]')?.addEventListener('click', () => {

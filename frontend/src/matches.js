@@ -1,5 +1,5 @@
 import { dialog, field, select, showErrors, toast } from './components/ui.js';
-import { escapeHtml as e, unpackList } from './utils.js';
+import { escapeHtml as e, unpackList, formatDate } from './utils.js';
 
 export async function openMatch({ match, state: s, api, base, reload }) {
   if (!s.teams.length) { toast('Hãy tạo đội bóng trước.', true); return; }
@@ -9,7 +9,7 @@ export async function openMatch({ match, state: s, api, base, reload }) {
     do { const result = unpackList(await api.get(base(`/friendlies?page=${page}`))); invitations.push(...result.rows.filter((x) => x.status === 'accepted')); last = result.meta.last_page || 1; page++; } while (page <= last);
   }
   const date = match?.match_date || `${s.matchesMonth}-01`;
-  const choices = invitations.map((x) => [x.id, `${String(x.source_club_id) === String(s.clubId) ? x.target_name : x.source_name} · ${x.match_date}`]);
+  const choices = invitations.map((x) => [x.id, `${String(x.source_club_id) === String(s.clubId) ? x.target_name : x.source_name} · ${formatDate(x.match_date)}`]);
   const fields = select('team_id', 'Đội bóng', s.teams.map((t) => [t.id, t.name]), match?.team_id) +
     (choices.length ? select('friendly_invitation_id', 'Lời mời giao hữu đã chấp nhận (không bắt buộc)', [['', 'Không liên kết'], ...choices], match?.friendly_invitation_id || '') : (match?.friendly_invitation_id ? `<input type="hidden" name="friendly_invitation_id" value="${e(match.friendly_invitation_id)}">` : '')) +
     field('opponent', 'Đối thủ', match?.opponent || '', 'text', true) + field('match_date', 'Ngày', date, 'date', true) + field('start_time', 'Giờ bắt đầu', match?.start_time || '', 'time', true) + field('end_time', 'Giờ kết thúc', match?.end_time || '', 'time') + field('location', 'Địa điểm', match?.location || '') +

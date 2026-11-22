@@ -277,6 +277,7 @@ function render() {
         <a class="brand" href="#dashboard">
           <img src="/icons/crest.svg" alt="">FCMS <small>PRO</small>
         </a>
+        <time class="sidebar-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
         <div class="club-selector">
           ${avatar(club?.name || 'FC', imageUrl('club', club?.id, club?.avatar_version, club?.id), 'club-icon')}
           <div>
@@ -305,7 +306,6 @@ function render() {
       <div class="workspace ${background ? 'has-club-background' : ''}" ${background ? `style="--club-background: url('${e(background)}')"` : ''}>
         <header class="topbar">
           <div class="topbar-context">
-            <time class="app-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
             <div class="breadcrumb">
               ${icon('shield')} ${e(currentClub()?.name || 'FCMS PRO')} <span>/</span> <strong>${titles[s.route]}</strong>
             </div>
@@ -313,6 +313,7 @@ function render() {
           <a class="brand mobile-brand" href="#dashboard">
             <img src="/icons/crest.svg" alt="">FCMS <small>PRO</small>
           </a>
+          <time class="mobile-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
           <div class="header-actions">
             ${
               s.user?.is_system_admin

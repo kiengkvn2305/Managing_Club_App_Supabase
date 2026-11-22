@@ -4,6 +4,7 @@ import {
   number,
   canManageRoster,
   canManageClub,
+  formatDate,
 } from './utils.js';
 import { icon, button, empty } from './components/ui.js';
 import { clubDirectoryPage, teamRosterPage } from './roster-pages.js';
@@ -122,7 +123,7 @@ function lineups() {
             <div class="member-row">
               <div>
                 <strong>${e(s.teams.find((team) => String(team.id) === String(item.team_id))?.name || 'Đội bóng')} — ${e(item.opponent)}</strong>
-                <small>${e(item.match_date)} · ${e(item.formation || 'Chưa đặt sơ đồ')} · ${item.players.filter((p) => p.role === 'starter').length} đá chính · ${item.players.filter((p) => p.role === 'substitute').length} dự bị</small>
+                <small>${e(formatDate(item.match_date))} · ${e(item.formation || 'Chưa đặt sơ đồ')} · ${item.players.filter((p) => p.role === 'starter').length} đá chính · ${item.players.filter((p) => p.role === 'substitute').length} dự bị</small>
               </div>
               <button class="text-button" data-action="edit-lineup" data-id="${item.id}">Chỉnh sửa</button>
             </div>`

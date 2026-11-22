@@ -348,6 +348,21 @@ textarea {
 .sidebar > .brand {
   padding: 0 10px;
 }
+.sidebar-clock {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 13px 10px 3px;
+  padding: 9px 10px;
+  border: 1px solid #294759;
+  border-radius: 9px;
+  background: rgb(7 23 40 / 60%);
+  color: #78dfb8;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.1px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+}
 .club-selector {
   display: flex;
   align-items: center;
@@ -491,6 +506,7 @@ textarea {
   letter-spacing: 0.15px;
   font-variant-numeric: tabular-nums;
 }
+.mobile-clock { display: none; }
 .breadcrumb {
   display: flex;
   gap: 12px;
@@ -1240,12 +1256,18 @@ dialog::backdrop {
   position: relative;
   overflow: hidden;
 }
-.auth-story > .brand {
+.auth-story-header {
+  display: grid;
+  justify-items: start;
+  gap: 13px;
+}
+.auth-story-header > .brand {
   align-self: flex-start;
 }
-.auth-story > .brand small {
+.auth-story-header > .brand small {
   margin-top: 9px;
 }
+.auth-story-clock { margin: 0; width: auto; min-width: 185px; }
 .auth-story .eyebrow {
   color: #6edcb0;
   font-size: 10px;
@@ -1453,6 +1475,14 @@ dialog::backdrop {
     display: flex;
     color: var(--ink);
     font-size: 19px;
+  }
+  .mobile-clock {
+    display: block;
+    margin-right: auto;
+    color: var(--green);
+    font-size: 9px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
   }
   .mobile-brand img {
     width: 33px;
@@ -1960,8 +1990,8 @@ input[type="radio"],
 .auth-content { background: radial-gradient(ellipse at top right, #e8f6ef, transparent 50%), var(--surface); }
 :root[data-theme="dark"] .auth-content { background: radial-gradient(ellipse at top right, #183c36, transparent 50%), var(--surface); }
 .auth-content { position: relative; }
-.auth-clock { position: absolute; top: 24px; left: 28px; z-index: 2; }
-@media (max-width: 700px) {
-  .auth-clock { top: 16px; left: 16px; font-size: 9px; }
-  .topbar-context .app-clock { display: none; }
+.auth-clock { display: none; position: absolute; top: 24px; left: 28px; z-index: 2; }
+.auth-reset .auth-clock { display: inline-flex; }
+@media (max-width: 760px) {
+  .auth-clock { display: inline-flex; top: 16px; left: 16px; font-size: 9px; }
 }
