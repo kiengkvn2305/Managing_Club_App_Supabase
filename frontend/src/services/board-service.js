@@ -5,6 +5,13 @@ export function createBoardService({ supabase }) {
     if (!clubId) return null;
 
     if (clean === `/clubs/${clubId}/board-members` && method === 'GET') {
+      // Dọn dẹp triệt để bất kỳ bản ghi lưu trữ mềm cũ (archived_at is not null)
+      await supabase
+        .from('club_board_members')
+        .delete()
+        .eq('club_id', clubId)
+        .not('archived_at', 'is', null);
+
       const rows =
         check(
           await supabase
@@ -13,9 +20,23 @@ export function createBoardService({ supabase }) {
               'id,player_id,title,archived_at,player:player_profiles(full_name,email,date_of_birth)'
             )
             .eq('club_id', clubId)
-            .is('archived_at', null)
             .order('id')
         ) || [];
+
+      // Dọn dẹp bản ghi BCN mồ côi (không còn hồ sơ cầu thủ tương ứng)
+      const orphans = rows.filter((r) => !r.player);
+      if (orphans.length) {
+        await supabase
+          .from('club_board_members')
+          .delete()
+          .eq('club_id', clubId)
+          .in(
+            'id',
+            orphans.map((o) => o.id)
+          );
+      }
+
+      const validRows = rows.filter((r) => Boolean(r.player) && !r.archived_at);
 
       const rates =
         check(
@@ -38,7 +59,7 @@ export function createBoardService({ supabase }) {
         ) || [];
 
       return {
-        data: rows.map((row) => ({
+        data: validRows.map((row) => ({
           id: row.id,
           player_id: row.player_id,
           title: row.title,

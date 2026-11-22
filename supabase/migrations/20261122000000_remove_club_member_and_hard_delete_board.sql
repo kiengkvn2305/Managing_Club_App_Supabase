@@ -1,7 +1,8 @@
 -- Migration: 20261122000000_remove_club_member_and_hard_delete_board.sql
 -- 1. RPC: remove_club_member (Xóa thành viên / BCN khỏi câu lạc bộ và thu hồi toàn bộ quyền hạn)
 -- 2. RPC: remove_board_member (Xóa hoàn toàn thành viên BCN khỏi bảng club_board_members, không lưu rác)
--- 3. Dọn dẹp các mã mời đã hủy trước đây khỏi database và cập nhật quyền DELETE
+-- 3. Cập nhật create_club: KHÔNG tự động chèn vào club_board_members (chỉ thêm khi người dùng bấm Thêm BCN)
+-- 4. Dọn dẹp triệt để các mã mời đã hủy và các bản ghi BCN lưu trữ mềm/mồ côi khỏi database
 
 -- 1. RPC: remove_club_member
 create or replace function public.remove_club_member(p_club_id bigint, p_member_id bigint)
@@ -129,9 +130,87 @@ end $$;
 revoke all on function public.remove_board_member(bigint, bigint) from public, anon;
 grant execute on function public.remove_board_member(bigint, bigint) to authenticated;
 
--- 3. Cấp quyền DELETE trên bảng club_board_members và board_membership_periods
+-- 3. Cập nhật create_club: KHÔNG tự động chèn vào club_board_members
+create or replace function public.create_club(
+  p_name text,
+  p_description text default null,
+  p_city text default null,
+  p_home_ground text default null,
+  p_formats jsonb default '["7"]'::jsonb
+) returns public.clubs language plpgsql security definer set search_path = public as $$
+declare
+  c public.clubs;
+  slug_base text;
+  v_user_profile public.profiles;
+  v_player_id bigint;
+begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+
+  if jsonb_typeof(p_formats) <> 'array' or jsonb_array_length(p_formats) = 0 then
+    raise exception 'invalid_formats';
+  end if;
+
+  slug_base := regexp_replace(lower(coalesce(nullif(trim(p_name), ''), 'club')), '[^a-z0-9]+', '-', 'g');
+
+  insert into public.clubs(name, description, city, home_ground, format, formats, slug, activity_start_date)
+  values(
+    trim(p_name),
+    p_description,
+    p_city,
+    p_home_ground,
+    p_formats->>0,
+    p_formats,
+    slug_base || '-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 12),
+    now()::date
+  )
+  returning * into c;
+
+  -- Gán người tạo làm owner trong club_members với toàn quyền
+  insert into public.club_members(club_id, user_id, role, status, title, permissions)
+  values(c.id, auth.uid(), 'owner', 'active', 'Chủ nhiệm CLB', '{}'::jsonb);
+
+  -- Tự động tạo hồ sơ cầu thủ cho người tạo CLB nếu có thông tin profile
+  select * into v_user_profile from public.profiles where id = auth.uid();
+  insert into public.player_profiles(club_id, user_id, full_name, email, status)
+  values(
+    c.id,
+    auth.uid(),
+    coalesce(nullif(v_user_profile.name, ''), 'Chủ nhiệm CLB'),
+    v_user_profile.email,
+    'active'
+  )
+  on conflict do nothing;
+
+  -- KHÔNG tự động chèn vào club_board_members (BCN chỉ được thêm khi người dùng chủ động chỉ định)
+
+  insert into public.audit_logs(club_id, actor_id, action, subject_type, subject_id)
+  values(c.id, auth.uid(), 'club.created', 'Club', c.id);
+
+  return c;
+end $$;
+
+revoke all on function public.create_club(text, text, text, text, jsonb) from public;
+grant execute on function public.create_club(text, text, text, text, jsonb) to authenticated;
+
+-- 4. Cấp quyền DELETE trên bảng club_board_members và board_membership_periods
 grant delete on public.club_board_members, public.board_membership_periods to authenticated;
 grant delete on public.club_members to authenticated;
 
--- 4. Dọn dẹp triệt để các mã mời đã bị hủy trước đây khỏi database
+-- 5. Dọn dẹp triệt để các mã mời đã bị hủy trước đây khỏi database
 delete from public.club_invitations where status = 'revoked';
+
+-- 6. Dọn dẹp triệt để các bản ghi BCN bị lưu trữ mềm (archived_at is not null) hoặc mồ côi
+delete from public.board_tasks
+where board_member_id in (select id from public.club_board_members where archived_at is not null);
+
+delete from public.club_board_members
+where archived_at is not null;
+
+delete from public.club_board_members
+where player_id not in (select id from public.player_profiles);
+
+delete from public.board_membership_periods
+where ends_before is not null
+   or player_id not in (select player_id from public.club_board_members);
