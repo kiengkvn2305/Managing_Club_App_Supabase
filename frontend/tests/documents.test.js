@@ -6,6 +6,7 @@ import {
   formatFileSize,
   fileTypeInfo,
 } from '../src/views/documents-page.js';
+import { openDocumentPreview } from '../src/document-preview.js';
 import { createDocumentService } from '../src/services/document-service.js';
 
 test('fileTypeInfo accurately recognizes file extensions and mime types', () => {
@@ -16,7 +17,8 @@ test('fileTypeInfo accurately recognizes file extensions and mime types', () => 
   assert.equal(fileTypeInfo('anh_doi_bong.png').kind, 'image');
   assert.equal(fileTypeInfo('anh_san.jpg').kind, 'image');
   assert.equal(fileTypeInfo('ke_hoach.pptx').kind, 'slide');
-  assert.equal(fileTypeInfo('ghi_chu.txt').kind, 'other');
+  assert.equal(fileTypeInfo('ghi_chu.txt').kind, 'text');
+  assert.equal(fileTypeInfo('file_khac.zip').kind, 'other');
 });
 
 test('formatFileSize correctly calculates human-readable file sizes', () => {
@@ -81,6 +83,14 @@ test('documentsPage renders folder pills, search bar, and document cards', () =>
   assert.ok(html.includes('EXCEL'));
   assert.ok(html.includes('24 KB'));
   assert.ok(html.includes('1 MB'));
+
+  // Ensure NO emojis are present in documentsPage output:
+  assert.ok(!html.includes('📁'));
+  assert.ok(!html.includes('📊'));
+  assert.ok(!html.includes('📝'));
+  assert.ok(!html.includes('📕'));
+  assert.ok(!html.includes('🖼️'));
+  assert.ok(!html.includes('📄'));
 
   // Filter by folder: 'Tài chính & Thu chi'
   state.documentFolderFilter = 'Tài chính & Thu chi';
@@ -185,4 +195,42 @@ test('documentService handles document CRUD operations with fallback support', a
   // 4. DELETE document
   const deleteResult = await docService.handleDocumentRequest('/clubs/1/documents/99', 'DELETE', null, new URLSearchParams(), 1);
   assert.equal(deleteResult.data.id, 99);
+});
+
+test('openDocumentPreview renders clean preview modal without emojis', async () => {
+  let createdTitle = '';
+  let createdContent = '';
+  const fakeDialog = (title, subtitle, fields) => {
+    createdTitle = title;
+    createdContent = fields;
+    return {
+      classList: { add: () => {} },
+      style: {},
+      querySelector: () => null,
+    };
+  };
+
+  const doc = {
+    id: 1,
+    name: 'Biên bản tổng kết',
+    file_name: 'tong_ket.docx',
+    file_path: 'clubs/1/documents/tong_ket.docx',
+    download_url: 'https://example.com/tong_ket.docx',
+    file_size: 50000,
+    folder_name: 'Biên bản họp',
+    notes: 'Đã thông qua biểu quyết',
+  };
+
+  const modal = await openDocumentPreview(doc, { dialog: fakeDialog, toast: () => {} });
+  assert.ok(modal);
+  assert.equal(createdTitle, 'Biên bản tổng kết');
+  assert.ok(createdContent.includes('WORD'));
+  assert.ok(createdContent.includes('tong_ket.docx'));
+  assert.ok(createdContent.includes('Biên bản họp'));
+  assert.ok(createdContent.includes('Tải về tập tin'));
+  assert.ok(createdContent.includes('Đã thông qua biểu quyết'));
+  // Ensure no emojis in modal
+  assert.ok(!createdContent.includes('📁'));
+  assert.ok(!createdContent.includes('📝'));
+  assert.ok(!createdContent.includes('📊'));
 });

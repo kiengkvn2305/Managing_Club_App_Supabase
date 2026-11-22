@@ -1,3 +1,5 @@
+import { openDocumentPreview } from '../document-preview.js';
+
 export function createDocumentController(ctx) {
   function openUploadDialog() {
     const folders = ctx.state.documentFolders || [
@@ -25,7 +27,7 @@ export function createDocumentController(ctx) {
           <label class="field" style="margin:0;">
             <span style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Thư mục lưu trữ</span>
             <select name="folder_choice" style="width:100%;height:38px;padding:6px 10px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--text);">
-              ${folders.map((f) => `<option value="${ctx.e(f)}">📁 ${ctx.e(f)}</option>`).join('')}
+              ${folders.map((f) => `<option value="${ctx.e(f)}">${ctx.e(f)}</option>`).join('')}
               <option value="__custom__">+ Thư mục mới…</option>
             </select>
           </label>
@@ -104,7 +106,6 @@ export function createDocumentController(ctx) {
     const nameInput = modal.querySelector('input[name="name"]');
     fileInput.addEventListener('change', () => {
       if (fileInput.files && fileInput.files[0] && !nameInput.value) {
-        // Lấy tên bỏ phần mở rộng
         const fname = fileInput.files[0].name.replace(/\.[^/.]+$/, '');
         nameInput.value = fname;
       }
@@ -169,7 +170,7 @@ export function createDocumentController(ctx) {
         <label class="field" style="margin:0;">
           <span style="display:block;font-size:13px;font-weight:600;margin-bottom:4px;">Thư mục</span>
           <select name="folder_name" style="width:100%;height:38px;padding:6px 10px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--text);">
-            ${folders.map((f) => `<option value="${ctx.e(f)}" ${f === doc.folder_name ? 'selected' : ''}>📁 ${ctx.e(f)}</option>`).join('')}
+            ${folders.map((f) => `<option value="${ctx.e(f)}" ${f === doc.folder_name ? 'selected' : ''}>${ctx.e(f)}</option>`).join('')}
           </select>
         </label>
 
@@ -227,6 +228,15 @@ export function createDocumentController(ctx) {
       const folder = el.dataset.folder || '';
       ctx.state.documentFolderFilter = folder;
       ctx.render();
+      return true;
+    }
+
+    if (a === 'doc-preview') {
+      const id = el.dataset.id;
+      const doc = (ctx.state.documents || []).find((d) => String(d.id) === String(id));
+      if (doc) {
+        openDocumentPreview(doc, ctx);
+      }
       return true;
     }
 
