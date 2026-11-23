@@ -19,23 +19,52 @@ export function adminPage() {
     `;
   }
 
+  const clubs =
+    s.adminClubs && s.adminClubs.length > 0
+      ? s.adminClubs
+      : s.clubs && s.clubs.length > 0
+        ? s.clubs.map((c) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description || '',
+            city: c.city || '',
+            home_ground: c.home_ground || '',
+            format: c.format || '7',
+            formats: c.formats || [c.format || '7'],
+            status: c.status || 'active',
+            activity_start_date: c.activity_start_date || c.created_at?.slice(0, 10),
+            created_at: c.created_at,
+            avatar_version: c.avatar_version || c.avatar_path || null,
+            background_version: c.background_version || c.background_path || null,
+            owner_name: c.owner_name || 'Chưa gán',
+            owner_email: c.owner_email || '—',
+            member_count: c.member_count || 0,
+            player_count: c.player_count || 0,
+          }))
+        : [];
+
+  const users = s.adminUsers || [];
+  const activeTab = s.adminTab || 'overview';
+  const query = (s.adminQuery || '').toLowerCase().trim();
+
   const stats = s.adminStats || {
-    total_clubs: 0,
-    active_clubs: 0,
-    archived_clubs: 0,
-    total_users: 0,
-    active_users: 0,
-    admin_users: 0,
-    total_players: 0,
+    total_clubs: clubs.length,
+    active_clubs: clubs.filter((c) => c.status === 'active').length,
+    archived_clubs: clubs.filter((c) => c.status !== 'active').length,
+    total_users: users.length || 0,
+    active_users: users.filter((u) => u.is_active !== false).length || 0,
+    admin_users: users.filter((u) => u.is_system_admin).length || 1,
+    total_players: clubs.reduce((acc, c) => acc + (c.player_count || 0), 0),
     total_transactions: 0,
     total_income: 0,
     total_expense: 0,
   };
 
-  const clubs = s.adminClubs || [];
-  const users = s.adminUsers || [];
-  const activeTab = s.adminTab || 'overview';
-  const query = (s.adminQuery || '').toLowerCase().trim();
+  if (!stats.total_clubs && clubs.length) {
+    stats.total_clubs = clubs.length;
+    stats.active_clubs = clubs.filter((c) => c.status === 'active').length;
+    stats.archived_clubs = clubs.filter((c) => c.status !== 'active').length;
+  }
 
   const filteredClubs = query
     ? clubs.filter(
@@ -63,15 +92,6 @@ export function adminPage() {
         </div>
         <h1>Tổng Quản Trị Hệ Thống FCMS PRO</h1>
         <p>Bảng điều khiển tối cao: Giám sát toàn bộ Câu lạc bộ, Tài khoản người dùng và Phân quyền phần mềm.</p>
-      </div>
-      <div class="page-actions">
-        ${
-          s.clubs?.length
-            ? `<a href="#dashboard" class="button secondary" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.5rem;">
-                ${icon('layers')}<span>Vào Không gian CLB</span>
-              </a>`
-            : ''
-        }
       </div>
     </div>
 

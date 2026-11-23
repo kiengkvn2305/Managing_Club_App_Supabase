@@ -258,6 +258,72 @@ test('adminPage renders system admin dashboard when user is_system_admin is true
   assert.ok(html.includes('Nguyễn Văn B'));
 });
 
+test('adminPage gracefully falls back to state.clubs when adminClubs is empty', () => {
+  state.user = { id: 'admin-1', name: 'Quản Trị Viên', email: 'admin@fcms.pro', is_system_admin: true };
+  state.adminStats = null;
+  state.adminClubs = [];
+  state.clubs = [
+    { id: 1, name: 'CLB Chiến Binh Đỏ', city: 'TP.HCM', status: 'active', member_count: 18 },
+    { id: 2, name: 'CLB Rồng Vàng', city: 'Đà Nẵng', status: 'active', member_count: 25 },
+  ];
+  state.adminUsers = [];
+  state.adminTab = 'overview';
+
+  const html = adminPage();
+  assert.ok(html.includes('CLB Chiến Binh Đỏ'));
+  assert.ok(html.includes('CLB Rồng Vàng'));
+  assert.ok(html.includes('Xem tất cả (2)'));
+});
+
+test('clubService falls back to direct clubs table query when RPC returns empty or fails', async () => {
+  const mockSupabase = {
+    rpc: async (fn) => {
+      if (fn === 'admin_list_all_clubs') {
+        return { data: [], error: null }; // RPC returned empty
+      }
+      return { data: null, error: null };
+    },
+    from: (table) => {
+      if (table === 'clubs') {
+        return {
+          select: () => ({
+            is: () => ({
+              order: async () => ({
+                data: [
+                  { id: 10, name: 'CLB Fallback 1', status: 'active', city: 'Hà Nội' },
+                  { id: 20, name: 'CLB Fallback 2', status: 'active', city: 'Huế' },
+                ],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({ data: null }),
+              }),
+            }),
+          }),
+        }),
+      };
+    },
+  };
+
+  const authService = {
+    profile: async () => ({ id: 'u1', email: 'admin@fcms.pro', is_system_admin: true }),
+  };
+
+  const clubService = createClubService({ supabase: mockSupabase, authService });
+  const clubsRes = await clubService.handleClubRequest('/admin/clubs', 'GET', {}, new URLSearchParams(), null);
+  assert.equal(clubsRes.data.length, 2);
+  assert.equal(clubsRes.data[0].name, 'CLB Fallback 1');
+  assert.equal(clubsRes.data[1].name, 'CLB Fallback 2');
+});
+
 test('adminPage blocks regular non-admin users with access denied', () => {
   state.user = { id: 'usr-reg', name: 'Thành Viên', email: 'member@test.com', is_system_admin: false };
   const html = adminPage();

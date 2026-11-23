@@ -220,8 +220,26 @@ const navItems = [
   ['profile', 'Tài khoản', 'user'],
 ];
 
-const nav = () =>
-  navItems
+const nav = () => {
+  if (s.user?.is_system_admin) {
+    const clubsCount = s.adminClubs?.length || s.clubs?.length || 0;
+    const usersCount = s.adminUsers?.length || 0;
+    const adminTab = s.adminTab || 'overview';
+    const adminNavItems = [
+      ['admin?tab=overview', 'Tổng quan hệ thống', 'grid', s.route === 'admin' && adminTab === 'overview'],
+      ['admin?tab=clubs', `Quản lý CLB (${clubsCount})`, 'shield', s.route === 'admin' && adminTab === 'clubs'],
+      ['admin?tab=users', `Quản lý Người dùng (${usersCount})`, 'users', s.route === 'admin' && adminTab === 'users'],
+      ['profile', 'Tài khoản', 'user', s.route === 'profile'],
+    ];
+    return adminNavItems
+      .map(
+        ([href, name, glyph, isActive]) =>
+          `<a href="#${href}" class="nav-link ${isActive ? 'active' : ''}" ${isActive ? 'aria-current="page"' : ''}>${icon(glyph)}<span>${name}</span></a>`
+      )
+      .join('');
+  }
+
+  return navItems
     .filter(([route]) => {
       if (route === 'admin') {
         return Boolean(s.user?.is_system_admin);
@@ -248,6 +266,7 @@ const nav = () =>
         `<a href="#${route}" class="nav-link ${s.route === route ? 'active' : ''}" ${s.route === route ? 'aria-current="page"' : ''}>${icon(glyph)}<span>${name}</span></a>`
     )
     .join('');
+};
 
 const clubSelect = () =>
   `<select data-club-switch aria-label="Chuyển câu lạc bộ">${s.clubs.length ? s.clubs.map((c) => `<option value="${c.id}" ${String(c.id) === String(s.clubId) ? 'selected' : ''}>${e(c.name)}</option>`).join('') : '<option>Chưa có câu lạc bộ</option>'}</select>`;
@@ -277,65 +296,93 @@ function render() {
     return;
   }
 
+  const isSysAdmin = Boolean(s.user?.is_system_admin);
   const club = currentClub();
-  const background = imageUrl(
+  const background = !isSysAdmin && imageUrl(
     'background',
     club?.id,
     club?.background_version,
     club?.id
   );
 
+  const adminBreadcrumbTitle =
+    s.adminTab === 'clubs'
+      ? 'Quản lý Câu lạc bộ'
+      : s.adminTab === 'users'
+        ? 'Quản lý Người dùng'
+        : 'Tổng quan hệ thống';
+
+  const topbarContextHtml = isSysAdmin && s.route === 'admin'
+    ? `<div class="breadcrumb">${icon('shield')} FCMS PRO HỆ THỐNG <span>/</span> <strong>${adminBreadcrumbTitle}</strong></div>`
+    : `<div class="breadcrumb">${icon('shield')} ${e(currentClub()?.name || 'FCMS PRO')} <span>/</span> <strong>${titles[s.route] || 'Tổng quan'}</strong></div>`;
+
   root.innerHTML = `
     <div class="shell">
       <aside class="sidebar">
-        <a class="brand" href="#dashboard">
-          <img src="/icons/crest.svg" alt="">FCMS <small>PRO</small>
+        <a class="brand" href="${isSysAdmin ? '#admin' : '#dashboard'}">
+          <img src="/icons/crest.svg" alt="">FCMS <small>${isSysAdmin ? 'ADMIN' : 'PRO'}</small>
         </a>
         <time class="sidebar-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
-        <div class="club-selector">
-          ${avatar(club?.name || 'FC', imageUrl('club', club?.id, club?.avatar_version, club?.id), 'club-icon')}
-          <div>
-            <small>CÂU LẠC BỘ CỦA BẠN</small>
-            ${clubSelect()}
-          </div>
-        </div>
-        <div class="nav-label">QUẢN LÝ CÂU LẠC BỘ</div>
+        ${
+          isSysAdmin
+            ? `
+            <div class="club-selector" style="border:1px solid rgba(0,102,204,0.3);background:rgba(0,102,204,0.06);border-radius:12px;padding:0.75rem;">
+              <div style="display:flex;align-items:center;gap:0.75rem;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(0,102,204,0.15);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">
+                  👑
+                </div>
+                <div>
+                  <div style="font-weight:700;font-size:0.95rem;color:var(--text);line-height:1.2;">QUẢN TRỊ VIÊN</div>
+                  <small style="color:var(--primary);font-size:0.75rem;font-weight:600;">HỆ THỐNG TOÀN DIỆN</small>
+                </div>
+              </div>
+            </div>
+            <div class="nav-label">QUẢN TRỊ HỆ THỐNG</div>
+          `
+            : `
+            <div class="club-selector">
+              ${avatar(club?.name || 'FC', imageUrl('club', club?.id, club?.avatar_version, club?.id), 'club-icon')}
+              <div>
+                <small>CÂU LẠC BỘ CỦA BẠN</small>
+                ${clubSelect()}
+              </div>
+            </div>
+            <div class="nav-label">QUẢN LÝ CÂU LẠC BỘ</div>
+          `
+        }
         <nav aria-label="Điều hướng chính">
           ${nav()}
-          <div class="nav-divider"></div>
-          <a class="nav-link ${s.route === 'roadmap' ? 'active' : ''}" href="#roadmap">
-            ${icon('flag')}<span>Lộ trình phát triển</span>
-          </a>
+          ${
+            !isSysAdmin
+              ? `
+              <div class="nav-divider"></div>
+              <a class="nav-link ${s.route === 'roadmap' ? 'active' : ''}" href="#roadmap">
+                ${icon('flag')}<span>Lộ trình phát triển</span>
+              </a>
+            `
+              : ''
+          }
         </nav>
         <div class="sidebar-bottom">
           <div>
-            ${icon('flag')}
-            <h3>Vững đội hình.<br>Chung mục tiêu.</h3>
-            <p>Mỗi hồ sơ chỉn chu là một bước tiến của câu lạc bộ.</p>
+            ${icon(isSysAdmin ? 'shield' : 'flag')}
+            <h3>${isSysAdmin ? 'Cổng Quản Trị Hệ Thống' : 'Vững đội hình.<br>Chung mục tiêu.'}</h3>
+            <p>${isSysAdmin ? 'Giám sát toàn bộ Câu lạc bộ, tài khoản người dùng và thiết lập bảo mật.' : 'Mỗi hồ sơ chỉn chu là một bước tiến của câu lạc bộ.'}</p>
           </div>
-          <small>FCMS PRO / PHIÊN BẢN NỀN TẢNG</small>
+          <small>FCMS PRO / ${isSysAdmin ? 'SYSTEM ADMIN' : 'PHIÊN BẢN NỀN TẢNG'}</small>
         </div>
       </aside>
 
       <div class="workspace ${background ? 'has-club-background' : ''}" ${background ? `style="--club-background: url('${e(background)}')"` : ''}>
         <header class="topbar">
           <div class="topbar-context">
-            <div class="breadcrumb">
-              ${icon('shield')} ${e(currentClub()?.name || 'FCMS PRO')} <span>/</span> <strong>${titles[s.route]}</strong>
-            </div>
+            ${topbarContextHtml}
           </div>
-          <a class="brand mobile-brand" href="#dashboard">
-            <img src="/icons/crest.svg" alt="">FCMS <small>PRO</small>
+          <a class="brand mobile-brand" href="${isSysAdmin ? '#admin' : '#dashboard'}">
+            <img src="/icons/crest.svg" alt="">FCMS <small>${isSysAdmin ? 'ADMIN' : 'PRO'}</small>
           </a>
           <time class="mobile-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
           <div class="header-actions">
-            ${
-              s.user?.is_system_admin
-                ? `<a href="#admin" class="button secondary" style="padding:0.35rem 0.75rem;font-size:0.85rem;display:inline-flex;align-items:center;gap:0.35rem;text-decoration:none;" title="Chuyển sang Trang Quản Trị Hệ Thống">
-                    👑 <span>Quản trị hệ thống</span>
-                  </a>`
-                : ''
-            }
             <button class="icon-button" data-action="theme" aria-label="Đổi giao diện sáng tối">
               ${icon('moon')}
             </button>
@@ -343,7 +390,7 @@ function render() {
               ${avatar(s.user.name, imageUrl('account', s.user.id, s.user.avatar_version))}
               <div>
                 <strong>${e(s.user.name)}</strong>
-                <small>${e(roleLabel(currentRole()))}</small>
+                <small>${isSysAdmin ? '👑 Quản trị viên hệ thống' : e(roleLabel(currentRole()))}</small>
               </div>
             </a>
           </div>
@@ -352,7 +399,7 @@ function render() {
         <div id="connection-banner" class="connection-banner" ${navigator.onLine ? 'hidden' : ''} role="status">
           Bạn đang ngoại tuyến. Kết nối lại để cập nhật dữ liệu.
         </div>
-        <div class="mobile-club">${clubSelect()}</div>
+        ${!isSysAdmin ? `<div class="mobile-club">${clubSelect()}</div>` : ''}
         <main id="main-content" tabindex="-1" class="page">
           ${page()}
           <footer>© ${new Date().getFullYear()} FCMS PRO. Cùng câu lạc bộ vươn xa.</footer>
@@ -432,10 +479,29 @@ function readRoute() {
     return;
   }
 
-  const token = new URLSearchParams(query).get('token');
-  s.route = Object.hasOwn(titles, route) ? route : 'dashboard';
+  const params = new URLSearchParams(query);
+  const token = params.get('token');
+
+  if (route === 'admin' || route.startsWith('admin-')) {
+    s.route = 'admin';
+    if (route === 'admin-clubs' || params.get('tab') === 'clubs') {
+      s.adminTab = 'clubs';
+    } else if (route === 'admin-users' || params.get('tab') === 'users') {
+      s.adminTab = 'users';
+    } else if (route === 'admin-overview' || params.get('tab') === 'overview') {
+      s.adminTab = 'overview';
+    } else if (!s.adminTab) {
+      s.adminTab = 'overview';
+    }
+  } else {
+    s.route = Object.hasOwn(titles, route) ? route : 'dashboard';
+    if (s.user?.is_system_admin && (!route || route === 'dashboard')) {
+      s.route = 'admin';
+      s.adminTab = s.adminTab || 'overview';
+    }
+  }
   s.teamRosterId =
-    route === 'team-roster' ? new URLSearchParams(query).get('id') || '' : '';
+    route === 'team-roster' ? params.get('id') || '' : '';
 
   if (token) {
     s.invite = token;
@@ -455,6 +521,10 @@ async function loadApp() {
     if (seq !== sequence || !s.user) return;
     s.clubs = unpackList(result).rows;
     if (!currentClub()) s.clubId = s.clubs[0]?.id || null;
+    if (s.user?.is_system_admin && (!s.route || s.route === 'dashboard')) {
+      s.route = 'admin';
+      s.adminTab = s.adminTab || 'overview';
+    }
 
     await primeImageUrls([
       { kind: 'account', id: s.user.id, version: s.user.avatar_version },
@@ -528,13 +598,22 @@ async function loadView() {
         return;
       }
       const [statsRes, clubsRes, usersRes] = await Promise.all([
-        api.get('/admin/stats', { signal }).catch(() => ({ data: null })),
-        api.get('/admin/clubs', { signal }).catch(() => ({ data: [] })),
-        api.get('/admin/users', { signal }).catch(() => ({ data: [] })),
+        api.get('/admin/stats', { signal }).catch((err) => {
+          console.warn('/admin/stats error:', err);
+          return { data: null };
+        }),
+        api.get('/admin/clubs', { signal }).catch((err) => {
+          console.warn('/admin/clubs error:', err);
+          return { data: [] };
+        }),
+        api.get('/admin/users', { signal }).catch((err) => {
+          console.warn('/admin/users error:', err);
+          return { data: [] };
+        }),
       ]);
       if (signal.aborted || !s.user || route !== s.route) return;
       s.adminStats = statsRes.data;
-      s.adminClubs = clubsRes.data || [];
+      s.adminClubs = (clubsRes.data && clubsRes.data.length > 0) ? clubsRes.data : (s.clubs || []);
       s.adminUsers = usersRes.data || [];
       s.loading = false;
       render();
@@ -922,6 +1001,7 @@ async function action(el) {
 
   if (a === 'admin-tab') {
     s.adminTab = el.dataset.tab;
+    history.replaceState(null, '', location.pathname + `#admin?tab=${s.adminTab}`);
     render();
     return;
   }
