@@ -109,6 +109,40 @@ export function createRosterService({ supabase, authService }) {
           .order('full_name')
       ) || [];
 
+    // Auto-sync active club_members into player_profiles if missing
+    try {
+      const { data: cMembers } = await supabase
+        .from('club_members')
+        .select('id,user_id,role,title,profile:profiles(name,email)')
+        .eq('club_id', clubId)
+        .eq('status', 'active');
+
+      if (cMembers && cMembers.length > 0) {
+        const existingUserIds = new Set(rows.map((r) => r.user_id).filter(Boolean));
+        const missingMembers = cMembers.filter((m) => m.user_id && !existingUserIds.has(m.user_id));
+
+        for (const m of missingMembers) {
+          const fullName = m.profile?.name || m.title || 'Thành viên CLB';
+          const email = m.profile?.email || null;
+          const { data: newPlayer } = await supabase
+            .from('player_profiles')
+            .insert({
+              club_id: clubId,
+              user_id: m.user_id,
+              full_name: fullName,
+              email: email,
+              status: 'active',
+            })
+            .select('*,team_players(team_id,jersey_number,position,team:teams(id,name,format))')
+            .maybeSingle();
+
+          if (newPlayer) {
+            rows.push(newPlayer);
+          }
+        }
+      }
+    } catch {}
+
     const q = (params.get('q') || '').toLowerCase();
     const teamId = params.get('team_id');
     const status = params.get('status');
@@ -165,7 +199,7 @@ export function createRosterService({ supabase, authService }) {
       return diff * direction;
     });
 
-    return page(rows, params, Math.min(100, Number(params.get('per_page') || 15)));
+    return page(rows, params, Math.min(1000, Number(params.get('per_page') || 15)));
   }
 
   async function handleRosterRequest(clean, method, data, params, clubId, current) {
@@ -420,15 +454,67 @@ export function createRosterService({ supabase, authService }) {
 
     const teamPlayers = clean.match(/\/teams\/(\d+)\/players$/);
     if (teamPlayers && method === 'PATCH') {
-      return {
-        data: check(
-          await supabase.rpc('sync_team_players', {
-            p_club_id: clubId,
-            p_team_id: Number(teamPlayers[1]),
-            p_player_ids: (data.player_ids || []).map(Number),
-          })
-        ),
-      };
+      const pTeamId = Number(teamPlayers[1]);
+      const pPlayerIds = (data.player_ids || []).map(Number);
+      try {
+        const rpcRes = await supabase.rpc('sync_team_players', {
+          p_club_id: clubId,
+          p_team_id: pTeamId,
+          p_player_ids: pPlayerIds,
+        });
+        if (!rpcRes.error) {
+          return { data: rpcRes.data };
+        }
+      } catch (err) {
+        console.warn('sync_team_players RPC fallback:', err);
+      }
+
+      // Robust fallback directly syncing team_players table
+      const { data: existing } = await supabase
+        .from('team_players')
+        .select('player_id')
+        .eq('club_id', clubId)
+        .eq('team_id', pTeamId);
+
+      const existingIds = (existing || []).map((x) => x.player_id);
+      const toDelete = existingIds.filter((id) => !pPlayerIds.includes(id));
+      const toInsert = pPlayerIds.filter((id) => !existingIds.includes(id));
+
+      if (toDelete.length > 0) {
+        await supabase
+          .from('team_players')
+          .delete()
+          .eq('club_id', clubId)
+          .eq('team_id', pTeamId)
+          .in('player_id', toDelete);
+
+        await supabase
+          .from('team_membership_periods')
+          .update({ left_on: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() })
+          .eq('club_id', clubId)
+          .eq('team_id', pTeamId)
+          .in('player_id', toDelete)
+          .is('left_on', null);
+      }
+
+      if (toInsert.length > 0) {
+        const insertRows = toInsert.map((pid) => ({
+          club_id: clubId,
+          team_id: pTeamId,
+          player_id: pid,
+        }));
+        await supabase.from('team_players').upsert(insertRows, { onConflict: 'team_id,player_id' });
+
+        const periodRows = toInsert.map((pid) => ({
+          club_id: clubId,
+          team_id: pTeamId,
+          player_id: pid,
+          joined_on: new Date().toISOString().slice(0, 10),
+        }));
+        await supabase.from('team_membership_periods').insert(periodRows).catch(() => {});
+      }
+
+      return { data: true };
     }
 
     const teamPlayerRemove = clean.match(/\/teams\/(\d+)\/players\/(\d+)$/);

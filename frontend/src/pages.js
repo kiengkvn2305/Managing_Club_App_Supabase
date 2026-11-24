@@ -82,7 +82,8 @@ function teams() {
               <button class="text-button" data-action="team-members" data-id="${t.id}">Xem thành viên →</button>
               ${
                 canManageRoster(c)
-                  ? `<button class="text-button" data-action="rename-team" data-id="${t.id}">Chỉnh sửa</button>
+                  ? `<button class="text-button" data-action="select-team-players" data-id="${t.id}">Chọn thành viên</button>
+                     <button class="text-button" data-action="rename-team" data-id="${t.id}">Chỉnh sửa</button>
                      <button class="text-button danger" data-action="delete-team" data-id="${t.id}">Xóa đội</button>`
                   : ''
               }

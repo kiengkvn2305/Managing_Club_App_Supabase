@@ -970,6 +970,11 @@ export function createRosterController(ctx) {
         await ctx.api.get(ctx.base('/members?per_page=1000'))
       ).rows;
 
+      if (!players || players.length === 0) {
+        ctx.toast('Câu lạc bộ chưa có hồ sơ thành viên nào. Vui lòng thêm hồ sơ thành viên vào CLB trước khi xếp đội.', true);
+        return true;
+      }
+
       const initialSelected = players
         .filter((p) => (p.teams || []).some((t) => String(t.id) === String(team.id)))
         .map((p) => p.id);
