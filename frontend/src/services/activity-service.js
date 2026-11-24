@@ -138,6 +138,33 @@ export function createActivityService({ supabase }) {
       }[type];
 
       let updatePayload = { ...data };
+      if (type === 'trainings') {
+        updatePayload = {};
+        if (data.team_id != null && data.team_id !== '') {
+          const teamId = Number(data.team_id);
+          const team = check(
+            await supabase
+              .from('teams')
+              .select('name')
+              .eq('club_id', clubId)
+              .eq('id', teamId)
+              .single()
+          );
+          updatePayload.team_id = teamId;
+          updatePayload.team_name = team.name;
+        }
+        if (data.training_date) updatePayload.training_date = String(data.training_date).trim().slice(0, 10);
+        if (data.training_time) updatePayload.training_time = String(data.training_time).trim().slice(0, 5);
+        if (data.location != null) updatePayload.location = String(data.location).trim();
+        if (data.training_status) updatePayload.training_status = String(data.training_status).trim();
+        if (data.notes !== undefined) updatePayload.notes = String(data.notes || '').trim() || null;
+      }
+      if (type === 'celebrations') {
+        updatePayload = {};
+        if (data.title != null) updatePayload.title = String(data.title).trim();
+        if (data.event_date) updatePayload.event_date = String(data.event_date).trim().slice(0, 10);
+        if (data.message !== undefined) updatePayload.message = String(data.message || '').trim() || null;
+      }
       if (type === 'awards') {
         updatePayload = {};
         if (data.title != null) updatePayload.title = String(data.title).trim();

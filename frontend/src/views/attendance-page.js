@@ -4,7 +4,7 @@ import {
   formatDate,
   canManageAttendance,
 } from '../utils.js';
-import { button, empty } from '../components/ui.js';
+import { button, empty, dateControl } from '../components/ui.js';
 
 export function attendancePage() {
   const club = currentClub();
@@ -76,7 +76,9 @@ export function attendancePage() {
         <div class="training-filter-controls">
           <label class="training-filter-item">
             <span class="training-filter-label">Chọn ngày tập</span>
-            <input type="date" data-training-date value="${e(s.trainingFilterDate || '')}" aria-label="Chọn ngày lọc lịch tập">
+            ${dateControl('', s.trainingFilterDate || '', {
+              extraAttr: 'data-training-date aria-label="Chọn ngày lọc lịch tập"',
+            })}
           </label>
           <label class="training-filter-item">
             <span class="training-filter-label">Đội bóng</span>

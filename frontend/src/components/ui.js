@@ -25,12 +25,21 @@ export const icons = {
   file: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   sidebar: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
 };
 export const icon = (name) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.shield}</svg>`;
 export const button = (action, label, glyph = "plus", style = "") =>
   `<button type="button" class="button ${style}" data-action="${action}" aria-label="${e(label)}">${icon(glyph)}<span>${label}</span></button>`;
+export function dateControl(name, value = "", { id = "", required = false, extraAttr = "" } = {}) {
+  const iso = value ? String(value).trim().slice(0, 10) : "";
+  const display = formatDate(iso);
+  const idAttr = id ? `id="${e(id)}"` : "";
+  const nameAttr = name ? `name="${e(name)}"` : "";
+  return `<div class="date-input-wrap"><input type="text" class="date-display" data-date-display placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" value="${e(display)}" autocomplete="off" ${required ? "required" : ""}><input ${idAttr} ${nameAttr} type="date" value="${e(iso)}" ${required ? "required" : ""} ${extraAttr} tabindex="-1" aria-hidden="true"><button type="button" class="date-picker-trigger" data-date-picker-btn aria-label="Mở lịch chọn ngày" title="Chọn ngày từ lịch">${icon("calendar")}</button></div>`;
+}
+
 export function field(
   name,
   label,
@@ -42,7 +51,13 @@ export function field(
   const control =
     type === "textarea"
       ? `<textarea ${attributes} rows="3">${e(value)}</textarea>`
-      : `<input ${attributes} type="${type}" value="${e(value)}" ${type === "password" ? 'autocomplete="current-password"' : ""} ${type === "number" ? 'min="0" max="999"' : ""}>`;
+      : type === "date"
+        ? dateControl(name, value, {
+            id: `f-${name}`,
+            required,
+            extraAttr: `aria-describedby="error-${name}"`,
+          })
+        : `<input ${attributes} type="${type}" value="${e(value)}" ${type === "password" ? 'autocomplete="current-password"' : ""} ${type === "number" ? 'min="0" max="999"' : ""}>`;
   return `<div class="field"><label for="f-${name}">${label}${required ? " *" : ""}</label>${control}<small id="error-${name}" data-error="${name}"></small></div>`;
 }
 export const select = (name, label, options, value = "") =>

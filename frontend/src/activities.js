@@ -239,7 +239,10 @@ export async function activityAction(action, id, { state: s, api, base, reload }
     if (action === 'delete-activity') return saveDialog('Xóa hoạt động?', 'Hoạt động này sẽ bị xóa.', '', async () => { await api.delete(base(path)); await reload(); toast('Đã xóa hoạt động.'); });
     let fields;
     if (kind === 'celebrations') fields = field('title', 'Tên dịp lễ', item.title, 'text', true) + field('event_date', 'Ngày', item.event_date, 'date', true) + field('message', 'Lời chúc', item.message || '', 'textarea');
-    if (kind === 'trainings') fields = (item.team_id ? select('team_id', 'Đội bóng', s.teams.map((t) => [t.id, t.name]), item.team_id) : '') + field('training_date', 'Chọn ngày tập', item.training_date, 'date', true) + field('training_time', 'Chọn giờ tập (UTC+7)', item.training_time, 'time', true) + trainingTimeHelp + field('location', 'Địa điểm', item.location, 'text', true) + select('training_status', 'Trạng thái', [['scheduled', 'Theo kế hoạch'], ['cancelled', 'Không tập'], ['postponed', 'Hoãn']], item.training_status) + field('notes', 'Ghi chú', item.notes || '', 'textarea');
+    if (kind === 'trainings') {
+      const timeVal = String(item.training_time || '').trim().slice(0, 5);
+      fields = (item.team_id ? select('team_id', 'Đội bóng', s.teams.map((t) => [t.id, t.name]), item.team_id) : '') + field('training_date', 'Chọn ngày tập', item.training_date, 'date', true) + field('training_time', 'Chọn giờ tập (UTC+7)', timeVal, 'time', true) + trainingTimeHelp + field('location', 'Địa điểm', item.location, 'text', true) + select('training_status', 'Trạng thái', [['scheduled', 'Theo kế hoạch'], ['cancelled', 'Không tập'], ['postponed', 'Hoãn']], item.training_status) + field('notes', 'Ghi chú', item.notes || '', 'textarea');
+    }
     if (kind === 'awards') {
       let players = (s.activities.players && s.activities.players.length) ? s.activities.players : (s.members || []);
       if (!players.length) {
@@ -259,7 +262,14 @@ export async function activityAction(action, id, { state: s, api, base, reload }
       });
     }
     return saveDialog('Chỉnh sửa hoạt động', 'Cập nhật thông tin hoạt động.', fields, async (form) => {
-      await api.patch(base(path), Object.fromEntries(new FormData(form)));
+      const raw = Object.fromEntries(new FormData(form));
+      if (kind === 'trainings') {
+        raw.training_time = String(raw.training_time || '').trim().slice(0, 5);
+        raw.location = String(raw.location || '').trim();
+        raw.notes = String(raw.notes || '').trim() || null;
+        if (raw.team_id) raw.team_id = Number(raw.team_id);
+      }
+      await api.patch(base(path), raw);
       await reload();
       toast('Đã cập nhật hoạt động.');
     });

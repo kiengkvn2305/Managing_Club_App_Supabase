@@ -23,6 +23,7 @@ import {
   isCoOwnerOrOwner,
   validate,
   formatDate,
+  validDate,
   formatVietnamClock,
   vietnamToday,
   compareVietnameseNames,
@@ -1120,6 +1121,75 @@ document.addEventListener(
   },
   true
 );
+
+// Đồng bộ ô nhập ngày dd/mm/yyyy với input[type="date"] gốc trên toàn bộ ứng dụng & modal
+document.addEventListener('click', (event) => {
+  const btn = event.target.closest('[data-date-picker-btn]');
+  if (!btn) return;
+  const wrap = btn.closest('.date-input-wrap');
+  const nativeInput = wrap?.querySelector('input[type="date"]');
+  if (!nativeInput) return;
+  if (typeof nativeInput.showPicker === 'function') {
+    try {
+      nativeInput.showPicker();
+      return;
+    } catch {}
+  }
+  nativeInput.focus();
+  nativeInput.click();
+});
+
+document.addEventListener('input', (event) => {
+  const display = event.target.closest?.('[data-date-display]');
+  if (!display) return;
+  const wrap = display.closest('.date-input-wrap');
+  const nativeInput = wrap?.querySelector('input[type="date"]');
+  if (!nativeInput) return;
+
+  const digits = display.value.replace(/\D/g, '').slice(0, 8);
+  let formatted = digits;
+  if (digits.length > 4) {
+    formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  } else if (digits.length > 2) {
+    formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+  if (display.value !== formatted) display.value = formatted;
+
+  if (!digits.length) {
+    display.setCustomValidity('');
+    if (nativeInput.value !== '') {
+      nativeInput.value = '';
+      nativeInput.dispatchEvent(new Event('input', { bubbles: true }));
+      nativeInput.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    return;
+  }
+
+  if (digits.length === 8) {
+    const iso = `${digits.slice(4, 8)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}`;
+    if (validDate(iso)) {
+      display.setCustomValidity('');
+      if (nativeInput.value !== iso) {
+        nativeInput.value = iso;
+        nativeInput.dispatchEvent(new Event('input', { bubbles: true }));
+        nativeInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    } else {
+      display.setCustomValidity('Ngày không hợp lệ (định dạng dd/mm/yyyy).');
+    }
+  } else {
+    display.setCustomValidity('Vui lòng nhập đủ ngày theo định dạng dd/mm/yyyy.');
+  }
+});
+
+document.addEventListener('change', (event) => {
+  const nativeInput = event.target;
+  if (!nativeInput?.matches?.('.date-input-wrap input[type="date"]')) return;
+  const display = nativeInput.closest('.date-input-wrap')?.querySelector('[data-date-display]');
+  if (!display) return;
+  display.setCustomValidity('');
+  display.value = formatDate(nativeInput.value);
+});
 
 root.addEventListener('change', (event) => {
   if (event.target.matches('[data-birthday-month]')) {
