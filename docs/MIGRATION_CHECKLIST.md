@@ -4,7 +4,7 @@
 
 - [x] Đọc và đối chiếu [ma trận quyền database](./DATABASE_PERMISSIONS.md) với cấu trúc migrations & RLS.
 - [x] Migrations lịch sử đã áp dụng cho hệ thống (`20261119000000`–`20261122000007`).
-- [ ] `npx supabase db lint` không có lỗi *(đã chạy `npx supabase db lint --linked` lên production và phát hiện 3 lỗi schema/function; đã viết migration sửa lỗi `20261125000000_fix_db_lint_and_drop_document_rpcs.sql` chờ apply lên remote)*.
+- [x] `npx supabase db lint` không có lỗi *(đã apply `20261125000000_fix_db_lint_and_drop_document_rpcs.sql` lên production `dandxiwdedbwxtvokeag` và chạy `npx supabase db lint --linked` đạt `No schema errors found`)*.
 - [ ] `npx supabase test db` đạt *(cần bật Docker Desktop để chạy local pgTAP; `scripts/supabase.test.mjs` 8/8 PASS)*.
 - [x] RLS chặn truy cập chéo CLB (đã kiểm chứng qua `scripts/supabase.test.mjs` & `qa-reports/evidence/integration.json`).
 - [x] Một tài khoản nhiều CLB và nhiều quản lý một CLB đã kiểm thử.
