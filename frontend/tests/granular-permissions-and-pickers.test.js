@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { compareVietnameseNames } from '../src/utils.js';
 import { check, SupabaseApiError } from '../src/services/service-helpers.js';
+import { openMemberPickerModal } from '../src/components/ui.js';
+import { createDuesService } from '../src/services/dues-service.js';
+import { createRosterService } from '../src/services/roster-service.js';
 
 test('sorting by name, notes, foot, jersey operates accurately', () => {
   const names = ['Nguyễn Văn An', 'Trần Bảo', 'Đỗ Cường', 'Vũ Anh'];
@@ -171,4 +174,83 @@ test('check() translates database permission errors and transfer exceptions into
       return true;
     }
   );
+});
+
+test('openMemberPickerModal renders members with date_of_birth without throwing formatDate ReferenceError', () => {
+  const prevDoc = globalThis.document;
+  const fakeEl = () => ({
+    setAttribute() {},
+    addEventListener() {},
+    append() {},
+    showModal() {},
+    close() {},
+    remove() {},
+    querySelectorAll: () => [],
+    querySelector: () => ({
+      addEventListener() {},
+      querySelectorAll: () => [],
+      value: '',
+      hidden: false,
+      onsubmit: null,
+    }),
+    classList: { add() {} },
+    innerHTML: '',
+  });
+  globalThis.document = {
+    activeElement: null,
+    createElement: () => fakeEl(),
+    body: { append() {} },
+  };
+  try {
+    const modal = openMemberPickerModal({
+      title: 'Chọn thành viên vào đội',
+      items: [
+        { id: 1, full_name: 'Nguyễn Văn An', date_of_birth: '2000-05-10', notes: 'Đội 1' },
+      ],
+      initialSelectedIds: [],
+      onSubmit: async () => true,
+    });
+    assert.ok(modal);
+  } finally {
+    globalThis.document = prevDoc;
+  }
+});
+
+test('duesService wraps RPC get_club_dues_report array inside { data } envelope', async () => {
+  const service = createDuesService({
+    supabase: {
+      rpc: async () => ({
+        data: [{ player_id: 1, name: 'An', teams: [], total: 100000 }],
+        error: null,
+      }),
+    },
+  });
+  const res = await service.handleDuesRequest('/clubs/1/dues', 'GET', {}, new URLSearchParams('month=2026-11'), 1);
+  assert.ok(Array.isArray(res.data));
+  assert.equal(res.data[0].player_id, 1);
+});
+
+test('rosterService sync_team_players fallback handles team_membership_periods without Postgrest .catch TypeError', async () => {
+  const service = createRosterService({
+    supabase: {
+      rpc: async () => ({ error: { code: 'PGRST202', message: 'Could not find function sync_team_players' } }),
+      from: (table) => {
+        const q = {
+          select() { return q; },
+          delete() { return q; },
+          update() { return q; },
+          insert() { return q; },
+          upsert() { return q; },
+          eq() { return q; },
+          in() { return q; },
+          is() { return q; },
+          then(resolve) { resolve({ data: [], error: null }); },
+        };
+        return q;
+      },
+    },
+    authService: {},
+  });
+  const res = await service.handleRosterRequest('/clubs/1/teams/2/players', 'PATCH', { player_ids: [10, 20] }, new URLSearchParams(), 1, {});
+  assert.equal(res.data, true);
 });

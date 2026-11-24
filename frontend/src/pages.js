@@ -18,7 +18,6 @@ import { recruitmentPage } from './recruitment-page.js';
 import { dashboardPage } from './views/dashboard-page.js';
 import { boardPage } from './views/board-page.js';
 import { activitiesPage } from './views/activities-page.js';
-import { documentsPage } from './views/documents-page.js';
 import { clubPage } from './views/club-page.js';
 import { adminPage } from './views/admin-page.js';
 import { profilePage, acceptPage } from './views/profile-page.js';
@@ -34,7 +33,6 @@ export const titles = {
   finance: 'Sổ thu chi CLB',
   dues: 'Đóng quỹ',
   activities: 'Hoạt động CLB',
-  documents: 'Tài liệu CLB',
   inventory: 'Kho trang bị',
   'club-members': 'Thành viên BCN',
   club: 'Câu lạc bộ',
@@ -269,7 +267,6 @@ export function page() {
     finance: financePage,
     dues: duesPage,
     activities: activitiesPage,
-    documents: documentsPage,
     'club-members': boardPage,
     club: clubPage,
   };

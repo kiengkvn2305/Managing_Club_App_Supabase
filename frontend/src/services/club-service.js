@@ -278,7 +278,13 @@ export function createClubService({ supabase, authService }) {
           supabase.from('profiles').select('*', { count: 'exact', head: true }),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_system_admin', true),
           supabase.from('player_profiles').select('*', { count: 'exact', head: true }),
-          supabase.from('finance_transactions').select('*', { count: 'exact', head: true }).catch(() => ({ count: 0 })),
+          (async () => {
+            try {
+              return await supabase.from('finance_transactions').select('*', { count: 'exact', head: true });
+            } catch {
+              return { count: 0 };
+            }
+          })(),
         ]);
 
         return {

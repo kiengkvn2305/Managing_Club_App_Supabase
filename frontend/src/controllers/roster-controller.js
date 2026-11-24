@@ -6,7 +6,7 @@ import {
 } from '../spreadsheets.js';
 import { reviewImport } from '../import-review.js';
 import { avatar, imageUrl } from '../images.js';
-import { currentAcademicYear } from '../utils.js';
+import { currentAcademicYear, TITLE_PRESETS } from '../utils.js';
 
 export function createRosterController(ctx) {
   function editMember(member = { status: 'active' }) {
@@ -332,62 +332,11 @@ export function createRosterController(ctx) {
     const customWrap = el.querySelector('#f-invite-custom-title-wrap');
     const hintMsg = el.querySelector('#invite-preset-hint');
 
-    const TITLE_PRESETS_LOCAL = {
-      'Phó chủ nhiệm CLB': {
-        can_view_finance: true,
-        can_manage_finance: false,
-        can_manage_roster: true,
-        can_manage_inventory: true,
-        can_manage_activities: true,
-        can_manage_club: true,
-      },
-      'Thủ quỹ': {
-        can_view_finance: true,
-        can_manage_finance: true,
-        can_manage_roster: false,
-        can_manage_inventory: false,
-        can_manage_activities: false,
-        can_manage_club: false,
-      },
-      'Trưởng ban chuyên môn / HLV': {
-        can_view_finance: false,
-        can_manage_finance: false,
-        can_manage_roster: true,
-        can_manage_inventory: false,
-        can_manage_activities: true,
-        can_manage_club: false,
-      },
-      'Phụ trách hậu cần / Trang thiết bị': {
-        can_view_finance: false,
-        can_manage_finance: false,
-        can_manage_roster: false,
-        can_manage_inventory: true,
-        can_manage_activities: true,
-        can_manage_club: false,
-      },
-      'Ủy viên BCN / Cán sự': {
-        can_view_finance: false,
-        can_manage_finance: false,
-        can_manage_roster: false,
-        can_manage_inventory: false,
-        can_manage_activities: true,
-        can_manage_club: false,
-      },
-      'Thành viên': {
-        can_view_finance: false,
-        can_manage_finance: false,
-        can_manage_roster: false,
-        can_manage_inventory: false,
-        can_manage_activities: false,
-        can_manage_club: false,
-      },
-    };
-
     titleSelect?.addEventListener('change', () => {
       const val = titleSelect.value;
       if (customWrap) customWrap.style.display = val === '__custom__' ? 'block' : 'none';
-      if (TITLE_PRESETS_LOCAL[val]) {
-        const p = TITLE_PRESETS_LOCAL[val];
+      if (TITLE_PRESETS[val]) {
+        const p = TITLE_PRESETS[val];
         Object.keys(p).forEach((k) => {
           const cb = el.querySelector(`[name="${k}"]`);
           if (cb) cb.checked = p[k];
@@ -764,57 +713,6 @@ export function createRosterController(ctx) {
       const customWrap = modal.querySelector('#f-perm-custom-wrap');
       const hintMsg = modal.querySelector('#preset-hint-msg');
 
-      const TITLE_PRESETS = {
-        'Phó chủ nhiệm CLB': {
-          can_view_finance: true,
-          can_manage_finance: false,
-          can_manage_roster: true,
-          can_manage_inventory: true,
-          can_manage_activities: true,
-          can_manage_club: true,
-        },
-        'Thủ quỹ': {
-          can_view_finance: true,
-          can_manage_finance: true,
-          can_manage_roster: false,
-          can_manage_inventory: false,
-          can_manage_activities: false,
-          can_manage_club: false,
-        },
-        'Trưởng ban chuyên môn / HLV': {
-          can_view_finance: false,
-          can_manage_finance: false,
-          can_manage_roster: true,
-          can_manage_inventory: false,
-          can_manage_activities: true,
-          can_manage_club: false,
-        },
-        'Phụ trách hậu cần / Trang thiết bị': {
-          can_view_finance: false,
-          can_manage_finance: false,
-          can_manage_roster: false,
-          can_manage_inventory: true,
-          can_manage_activities: true,
-          can_manage_club: false,
-        },
-        'Ủy viên BCN / Cán sự': {
-          can_view_finance: false,
-          can_manage_finance: false,
-          can_manage_roster: false,
-          can_manage_inventory: false,
-          can_manage_activities: true,
-          can_manage_club: false,
-        },
-        'Thành viên': {
-          can_view_finance: false,
-          can_manage_finance: false,
-          can_manage_roster: false,
-          can_manage_inventory: false,
-          can_manage_activities: false,
-          can_manage_club: false,
-        },
-      };
-
       titleSelect.addEventListener('change', () => {
         const val = titleSelect.value;
         customWrap.style.display = val === '__custom__' ? 'block' : 'none';
@@ -950,8 +848,12 @@ export function createRosterController(ctx) {
       if (!ctx.requirePermission(ctx.canManageRoster(), 'Chọn đội trưởng')) return true;
       const team = ctx.state.teams.find((t) => String(t.id) === el.dataset.id);
       if (team) {
+        const players = ctx.unpackList(
+          await ctx.api.get(ctx.base(`/members?team_id=${encodeURIComponent(team.id)}&per_page=1000`))
+        ).rows;
         return openCaptain({
           team,
+          players,
           api: ctx.api,
           base: ctx.base,
           reload: ctx.loadView,

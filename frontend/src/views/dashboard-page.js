@@ -91,11 +91,11 @@ export function dashboardPage() {
                 .join('')
             : empty(
                 'Đội hình đang chờ bạn',
-                canManageRoster(currentRole())
+                allowed
                   ? 'Thêm thành viên đầu tiên để bắt đầu xây dựng hồ sơ đội bóng.'
                   : 'Chưa có thành viên nào trong danh sách.',
-                canManageRoster(currentRole()) ? 'new-member' : null,
-                canManageRoster(currentRole()) ? 'Thêm thành viên' : null
+                allowed ? 'new-member' : null,
+                allowed ? 'Thêm thành viên' : null
               )
         }
       </section>

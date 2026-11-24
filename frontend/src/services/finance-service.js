@@ -211,6 +211,7 @@ export function createFinanceService({ supabase, authService }) {
     }
 
     if (clean.endsWith('/planned') && method === 'POST') {
+      const effectiveFrom = data.effective_from || data.month;
       return {
         data: check(
           await supabase.rpc('save_planned_expense', {
@@ -219,7 +220,7 @@ export function createFinanceService({ supabase, authService }) {
             p_description: data.description,
             p_amount: data.amount === '' ? null : Number(data.amount),
             p_notes: data.notes || null,
-            p_effective_from: `${data.effective_from}-01`,
+            p_effective_from: `${effectiveFrom}-01`,
             p_effective_to: data.effective_to
               ? `${data.effective_to}-01`
               : null,
@@ -230,6 +231,7 @@ export function createFinanceService({ supabase, authService }) {
 
     const planned = clean.match(/\/finance\/planned\/(\d+)$/);
     if (planned && method === 'PATCH') {
+      const effectiveFrom = data.effective_from || data.month;
       return {
         data: check(
           await supabase.rpc('save_planned_expense', {
@@ -238,7 +240,7 @@ export function createFinanceService({ supabase, authService }) {
             p_description: data.description,
             p_amount: data.amount === '' ? null : Number(data.amount),
             p_notes: data.notes || null,
-            p_effective_from: `${data.effective_from}-01`,
+            p_effective_from: `${effectiveFrom}-01`,
             p_effective_to: data.effective_to
               ? `${data.effective_to}-01`
               : null,

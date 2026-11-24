@@ -46,7 +46,6 @@ import { createActivityController } from './controllers/activity-controller.js';
 import { createRecruitmentController } from './controllers/recruitment-controller.js';
 import { createPollController } from './controllers/poll-controller.js';
 import { createDiscoveryController } from './controllers/discovery-controller.js';
-import { createDocumentController } from './controllers/document-controller.js';
 
 const root = document.querySelector('#app');
 let sequence = 0;
@@ -185,7 +184,6 @@ const activityController = createActivityController(ctx);
 const recruitmentController = createRecruitmentController(ctx);
 const pollController = createPollController(ctx);
 const discoveryController = createDiscoveryController(ctx);
-const documentController = createDocumentController(ctx);
 
 ctx.clubController = clubController;
 ctx.rosterController = rosterController;
@@ -202,7 +200,6 @@ const controllers = [
   recruitmentController,
   pollController,
   discoveryController,
-  documentController,
 ];
 
 const navItems = [
@@ -214,7 +211,6 @@ const navItems = [
   ['dues', 'Đóng quỹ', 'layers'],
   ['inventory', 'Kho trang bị', 'layers'],
   ['activities', 'Hoạt động CLB', 'flag'],
-  ['documents', 'Tài liệu CLB', 'folder'],
   ['club', 'Câu lạc bộ', 'shield'],
   ['admin', 'Quản trị hệ thống 👑', 'shield'],
   ['profile', 'Tài khoản', 'user'],
@@ -647,7 +643,6 @@ async function loadView() {
         'finance',
         'dues',
         'activities',
-        'documents',
         'profile',
       ].includes(route)
     ) {
@@ -749,9 +744,6 @@ async function loadView() {
       if (route === 'activities' && currentClub()?.can_manage_activities) {
         tasks.push(api.get(base('/activities'), { signal }));
       }
-      if (route === 'documents') {
-        tasks.push(api.get(base('/documents'), { signal }));
-      }
       if (route === 'profile') {
         tasks.push(api.get(base('/my-player'), { signal }));
       }
@@ -811,10 +803,6 @@ async function loadView() {
       if (route === 'activities' && results[1]) {
         s.activities = results[1].data;
       }
-      if (route === 'documents' && results[1]) {
-        s.documents = results[1].data || [];
-        s.documentFolders = results[1].folders || [];
-      }
       if (route === 'profile') {
         s.myPlayer = results[1]?.data || null;
         s.canClaimPlayer = Boolean(results[1]?.eligible);
@@ -832,7 +820,6 @@ async function loadView() {
         'finance',
         'dues',
         'activities',
-        'documents',
         'profile',
         'club',
       ].includes(route)
@@ -1116,12 +1103,6 @@ root.addEventListener('change', (event) => {
     return;
   }
 
-  if (event.target.matches('[data-doc-type]')) {
-    s.documentTypeFilter = event.target.value;
-    render();
-    return;
-  }
-
   if (event.target.matches('[data-finance-period]')) {
     const form = event.target.closest('form');
     form.querySelector('[data-finance-month]').hidden =
@@ -1149,9 +1130,6 @@ root.addEventListener('change', (event) => {
     s.trainingSort = 'asc';
     s.boardSort = 'title';
     s.membershipsSort = 'role';
-    s.documentFolderFilter = '';
-    s.documentSearch = '';
-    s.documentTypeFilter = '';
     s.filters = { q: '', team_id: '', status: '', page: 1 };
     loadView();
   }
@@ -1313,16 +1291,6 @@ root.addEventListener('input', (event) => {
   if (event.target.matches('[data-training-date]')) {
     s.trainingFilterDate = event.target.value;
     render();
-    return;
-  }
-  if (event.target.matches('[data-doc-search]')) {
-    s.documentSearch = event.target.value;
-    render();
-    const searchInput = root.querySelector('[data-doc-search]');
-    if (searchInput) {
-      searchInput.focus();
-      searchInput.setSelectionRange(s.documentSearch.length, s.documentSearch.length);
-    }
     return;
   }
   if (event.target.hasAttribute('data-admin-search')) {

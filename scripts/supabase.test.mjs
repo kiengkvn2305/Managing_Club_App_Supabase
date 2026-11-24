@@ -115,8 +115,6 @@ test('backend business logic and security RPCs compute permissions, dues and pro
   assert.match(backendRpcs, /create or replace function public\.get_club_dashboard_metrics/);
   assert.match(backendRpcs, /create or replace function public\.save_player_profile/);
   assert.match(backendRpcs, /create or replace function public\.save_board_member/);
-  assert.match(backendRpcs, /create or replace function public\.save_club_document/);
-  assert.match(backendRpcs, /create or replace function public\.delete_club_document/);
   assert.match(backendRpcs, /create or replace function public\.update_club_image/);
   assert.match(backendRpcs, /grant execute on function public\.get_my_club_membership/);
   assert.match(backendRpcs, /grant execute on function public\.get_club_dues_report/);
@@ -126,7 +124,5 @@ test('backend business logic and security RPCs compute permissions, dues and pro
   assert.match(frontend, /rpc\("get_club_dashboard_metrics"/);
   assert.match(frontend, /rpc\("save_player_profile"/);
   assert.match(frontend, /rpc\("save_board_member"/);
-  assert.match(frontend, /rpc\("save_club_document"/);
-  assert.match(frontend, /rpc\("delete_club_document"/);
   assert.match(frontend, /rpc\("update_club_image"/);
 });

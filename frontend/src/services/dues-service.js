@@ -13,7 +13,7 @@ export function createDuesService({ supabase }) {
           p_month: rawMonth.slice(0, 7),
         });
         if (!rpcErr && Array.isArray(rpcDues) && rpcDues.length > 0) {
-          return rpcDues;
+          return { data: rpcDues };
         }
       } catch {}
     }

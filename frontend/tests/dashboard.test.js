@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { dashboardMetrics, latestTeamDuesRate } from '../src/supabase-api.js';
+import { state } from '../src/state.js';
+import { dashboardPage } from '../src/views/dashboard-page.js';
+
+test('dashboardPage renders cleanly with 0 members without throwing currentRole ReferenceError', () => {
+  Object.assign(state, {
+    clubId: 1,
+    clubs: [{ id: 1, name: 'CLB Test', membership_role: 'owner', can_manage_roster: true }],
+    members: [],
+    dashboard: { members_count: 0, active_members_count: 0, teams_count: 0, managers_count: 1 },
+  });
+  const html = dashboardPage();
+  assert.match(html, /Đội hình đang chờ bạn/);
+  assert.match(html, /data-action="new-member"/);
+});
 
 test('dashboard metrics count player profiles, active profiles and manager memberships separately', () => {
   assert.deepEqual(

@@ -119,7 +119,13 @@ export function createRosterService({ supabase, authService }) {
 
       if (cMembers && cMembers.length > 0) {
         const existingUserIds = new Set(rows.map((r) => r.user_id).filter(Boolean));
-        const missingMembers = cMembers.filter((m) => m.user_id && !existingUserIds.has(m.user_id));
+        const existingEmails = new Set(rows.map((r) => r.email?.toLowerCase()).filter(Boolean));
+        const missingMembers = cMembers.filter(
+          (m) =>
+            m.user_id &&
+            !existingUserIds.has(m.user_id) &&
+            !(m.profile?.email && existingEmails.has(m.profile.email.toLowerCase()))
+        );
 
         for (const m of missingMembers) {
           const fullName = m.profile?.name || m.title || 'Thành viên CLB';
@@ -465,36 +471,50 @@ export function createRosterService({ supabase, authService }) {
         if (!rpcRes.error) {
           return { data: rpcRes.data };
         }
+        if (
+          rpcRes.error.code !== 'PGRST202' &&
+          !String(rpcRes.error.message || '').includes('sync_team_players')
+        ) {
+          check(rpcRes);
+        }
       } catch (err) {
+        if (err?.name === 'ApiError') throw err;
         console.warn('sync_team_players RPC fallback:', err);
       }
 
       // Robust fallback directly syncing team_players table
-      const { data: existing } = await supabase
-        .from('team_players')
-        .select('player_id')
-        .eq('club_id', clubId)
-        .eq('team_id', pTeamId);
+      const existing =
+        check(
+          await supabase
+            .from('team_players')
+            .select('player_id')
+            .eq('club_id', clubId)
+            .eq('team_id', pTeamId)
+        ) || [];
 
-      const existingIds = (existing || []).map((x) => x.player_id);
+      const existingIds = existing.map((x) => x.player_id);
       const toDelete = existingIds.filter((id) => !pPlayerIds.includes(id));
       const toInsert = pPlayerIds.filter((id) => !existingIds.includes(id));
 
       if (toDelete.length > 0) {
-        await supabase
-          .from('team_players')
-          .delete()
-          .eq('club_id', clubId)
-          .eq('team_id', pTeamId)
-          .in('player_id', toDelete);
+        check(
+          await supabase
+            .from('team_players')
+            .delete()
+            .eq('club_id', clubId)
+            .eq('team_id', pTeamId)
+            .in('player_id', toDelete)
+        );
 
-        await supabase
-          .from('team_membership_periods')
-          .update({ left_on: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() })
-          .eq('club_id', clubId)
-          .eq('team_id', pTeamId)
-          .in('player_id', toDelete)
-          .is('left_on', null);
+        try {
+          await supabase
+            .from('team_membership_periods')
+            .update({ left_on: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() })
+            .eq('club_id', clubId)
+            .eq('team_id', pTeamId)
+            .in('player_id', toDelete)
+            .is('left_on', null);
+        } catch {}
       }
 
       if (toInsert.length > 0) {
@@ -503,7 +523,9 @@ export function createRosterService({ supabase, authService }) {
           team_id: pTeamId,
           player_id: pid,
         }));
-        await supabase.from('team_players').upsert(insertRows, { onConflict: 'team_id,player_id' });
+        check(
+          await supabase.from('team_players').upsert(insertRows, { onConflict: 'team_id,player_id' })
+        );
 
         const periodRows = toInsert.map((pid) => ({
           club_id: clubId,
@@ -511,7 +533,9 @@ export function createRosterService({ supabase, authService }) {
           player_id: pid,
           joined_on: new Date().toISOString().slice(0, 10),
         }));
-        await supabase.from('team_membership_periods').insert(periodRows).catch(() => {});
+        try {
+          await supabase.from('team_membership_periods').insert(periodRows);
+        } catch {}
       }
 
       return { data: true };

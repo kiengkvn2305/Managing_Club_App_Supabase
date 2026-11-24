@@ -20,7 +20,6 @@ import { createRecruitmentService } from './services/recruitment-service.js';
 import { createSponsorshipService } from './services/sponsorship-service.js';
 import { createPollService } from './services/poll-service.js';
 import { createDisciplineService } from './services/discipline-service.js';
-import { createDocumentService } from './services/document-service.js';
 
 // Client profiles query: from("profiles").select("id,name,email,avatar_path,created_at,updated_at")
 // Database RPC operations with row-level locks and replay protection:
@@ -41,8 +40,6 @@ import { createDocumentService } from './services/document-service.js';
 // supabase.rpc("get_club_dashboard_metrics"
 // supabase.rpc("save_player_profile"
 // supabase.rpc("save_board_member"
-// supabase.rpc("save_club_document"
-// supabase.rpc("delete_club_document"
 // supabase.rpc("update_club_image"
 export { SupabaseApiError, dashboardMetrics, latestTeamDuesRate };
 
@@ -77,7 +74,6 @@ export function createSupabaseApiClient({
   const sponsorshipService = createSponsorshipService({ supabase });
   const pollService = createPollService({ supabase });
   const disciplineService = createDisciplineService({ supabase });
-  const documentService = createDocumentService({ supabase, authService });
 
   async function request(
     path,
@@ -240,15 +236,6 @@ export function createSupabaseApiClient({
       clubId
     );
     if (disciplineResult !== null) return disciplineResult;
-
-    const documentResult = await documentService.handleDocumentRequest(
-      clean,
-      method,
-      data,
-      params,
-      clubId
-    );
-    if (documentResult !== null) return documentResult;
 
     throw new SupabaseApiError(
       `Supabase adapter chưa ánh xạ nghiệp vụ: ${method} ${clean}`,
