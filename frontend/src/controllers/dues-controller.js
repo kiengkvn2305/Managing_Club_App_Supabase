@@ -1,3 +1,5 @@
+import { formatMonth } from '../utils.js';
+
 export function createDuesController(ctx) {
   async function handleAction(a, el) {
     if (a === 'record-dues') {
@@ -9,7 +11,7 @@ export function createDuesController(ctx) {
 
       return ctx.dialog(
         'Ghi quỹ tháng',
-        `${ctx.e(person.name)} · ${ctx.e(ctx.state.duesMonth)}. Áp dụng cho các đội đủ điều kiện; các khoản đã ghi được giữ nguyên.`,
+        `${ctx.e(person.name)} · Tháng ${ctx.e(formatMonth(ctx.state.duesMonth))}. Áp dụng cho các đội đủ điều kiện; các khoản đã ghi được giữ nguyên.`,
         ctx.select('status', 'Hình thức', [
           ['paid', 'Đã đóng'],
           ['exempt', 'Miễn đóng'],
@@ -55,7 +57,7 @@ export function createDuesController(ctx) {
 
       return ctx.dialog(
         'Sửa trạng thái đóng quỹ',
-        `${ctx.e(person.name)} · ${ctx.e(team.name)} · ${ctx.e(ctx.state.duesMonth)} · ${ctx.e(ctx.number(team.amount))} đ. Sổ thu chi sẽ được điều chỉnh tương ứng; thay đổi này có lưu lý do.`,
+        `${ctx.e(person.name)} · ${ctx.e(team.name)} · Tháng ${ctx.e(formatMonth(ctx.state.duesMonth))} · ${ctx.e(ctx.number(team.amount))} đ. Sổ thu chi sẽ được điều chỉnh tương ứng; thay đổi này có lưu lý do.`,
         ctx.select(
           'status',
           'Trạng thái đúng',

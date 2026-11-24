@@ -8,7 +8,7 @@ test('finance shows remaining, period comparison and correction history', () => 
   Object.assign(state, { clubs: [{ id: 1, membership_role: 'owner', can_view_finance: true }], clubId: 1, financePeriod: 'month', financeMonth: '2026-02', financeYear: '2026', finance: { summary: { income: 40, expense: 10, balance: 30, remaining: 180, change: -20 }, meta: {}, data: [], chart: [{ period: '2026-02-10', type: 'income', total: 40 }], adjustments: { data: [{ created_at: '2026-02-11', player_name: 'An', team_name: 'A', month: '2026-02-01', old_status: 'paid', new_status: 'unpaid', amount: 10, reason: 'Ghi nhầm' }], meta: {} } } });
   const html = financePage();
   assert.match(html, /Còn lại đến cuối kỳ/); assert.match(html, /180 đ/); assert.match(html, /-20 đ/);
-  assert.match(html, /Đã đóng → Chưa đóng/); assert.match(html, /Ghi nhầm/); assert.match(html, /2026-02-10/);
+  assert.match(html, /Đã đóng → Chưa đóng/); assert.match(html, /Ghi nhầm/); assert.match(html, /10\/02\/2026/);
 });
 
 test('birthdays show only the current month and paginate three at a time', () => {

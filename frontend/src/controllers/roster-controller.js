@@ -6,7 +6,7 @@ import {
 } from '../spreadsheets.js';
 import { reviewImport } from '../import-review.js';
 import { avatar, imageUrl } from '../images.js';
-import { currentAcademicYear, TITLE_PRESETS, footLabel as formatFootLabel, statusLabel, matchesSearch, isCoOwnerOrOwner } from '../utils.js';
+import { currentAcademicYear, TITLE_PRESETS, footLabel as formatFootLabel, statusLabel, matchesSearch, isCoOwnerOrOwner, formatMonth } from '../utils.js';
 
 export function createRosterController(ctx) {
   function editMember(member = { status: 'active' }) {
@@ -159,7 +159,7 @@ export function createRosterController(ctx) {
     const today = ctx.vietnamCalendarDate();
     const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
     const duesInfo = team.monthly_dues
-      ? `<p>Mức quỹ gần nhất: ${ctx.e(Number(team.monthly_dues.amount).toLocaleString('vi-VN'))} đ/tháng, từ ${ctx.e(team.monthly_dues.effective_month.slice(0, 7))}.</p>`
+      ? `<p>Mức quỹ gần nhất: ${ctx.e(Number(team.monthly_dues.amount).toLocaleString('vi-VN'))} đ/tháng, từ ${ctx.e(formatMonth(team.monthly_dues.effective_month))}.</p>`
       : '<p>Đội chưa thiết lập mức quỹ.</p>';
     const duesFields = ctx.currentClub()?.can_manage_finance
       ? duesInfo +

@@ -1,4 +1,4 @@
-import { formatDate, formatVietnamDateTime, escapeHtml as e, number } from './utils.js';
+import { formatDate, formatMonth, formatVietnamDateTime, escapeHtml as e, number } from './utils.js';
 import { state as s, currentClub } from './state.js';
 import { button, empty, icon } from './components/ui.js';
 import { plannedExpensesPanel } from './planned-expenses.js';
@@ -110,7 +110,8 @@ function chartMarkup(chart) {
       const centerX = left + slotWidth * (i + 0.5);
       const hasActivity = v.income > 0 || v.expense > 0;
       const diff = v.income - v.expense;
-      const tooltip = `${period} · Thu: ${money(v.income)} · Chi: ${money(v.expense)} · Chênh lệch: ${diff > 0 ? '+' : ''}${money(diff)}`;
+      const periodLabel = isYear ? `Tháng ${formatMonth(period)}` : formatDate(period);
+      const tooltip = `${periodLabel} · Thu: ${money(v.income)} · Chi: ${money(v.expense)} · Chênh lệch: ${diff > 0 ? '+' : ''}${money(diff)}`;
 
       const incH = v.income > 0 ? Math.max(5, bottom - y(v.income)) : 0;
       const expH = v.expense > 0 ? Math.max(5, bottom - y(v.expense)) : 0;
@@ -144,12 +145,12 @@ function chartMarkup(chart) {
           }
           ${
             incH > 0
-              ? `<rect x="${incX}" y="${bottom - incH}" width="${barWidth}" height="${incH}" rx="3.5" class="finance-bar income"><title>${e(period)} · Thu: ${e(money(v.income))}</title></rect>`
+              ? `<rect x="${incX}" y="${bottom - incH}" width="${barWidth}" height="${incH}" rx="3.5" class="finance-bar income"><title>${e(periodLabel)} · Thu: ${e(money(v.income))}</title></rect>`
               : ''
           }
           ${
             expH > 0
-              ? `<rect x="${expX}" y="${bottom - expH}" width="${barWidth}" height="${expH}" rx="3.5" class="finance-bar expense"><title>${e(period)} · Chi: ${e(money(v.expense))}</title></rect>`
+              ? `<rect x="${expX}" y="${bottom - expH}" width="${barWidth}" height="${expH}" rx="3.5" class="finance-bar expense"><title>${e(periodLabel)} · Chi: ${e(money(v.expense))}</title></rect>`
               : ''
           }
           ${peakTag}
@@ -201,7 +202,8 @@ function chartMarkup(chart) {
               .filter(([, v]) => v.income > 0 || v.expense > 0)
               .map(([p, v]) => {
                 const d = v.income - v.expense;
-                return `<tr><td class="tabular-nums"><strong>${e(p)}</strong></td><td class="text-right tabular-nums text-green">${e(money(v.income))}</td><td class="text-right tabular-nums text-red">${e(money(v.expense))}</td><td class="text-right tabular-nums font-bold">${d > 0 ? '+' : ''}${e(money(d))}</td></tr>`;
+                const label = isYear ? formatMonth(p) : formatDate(p);
+                return `<tr><td class="tabular-nums"><strong>${e(label)}</strong></td><td class="text-right tabular-nums text-green">${e(money(v.income))}</td><td class="text-right tabular-nums text-red">${e(money(v.expense))}</td><td class="text-right tabular-nums font-bold">${d > 0 ? '+' : ''}${e(money(d))}</td></tr>`;
               })
               .join('')}
           </tbody>
@@ -376,7 +378,7 @@ export function financePage() {
                   <td class="tabular-nums">${e(formatVietnamDateTime(a.created_at))}</td>
                   <td><strong>${e(a.player_name || '—')}</strong></td>
                   <td>${e(a.team_name || '—')}</td>
-                  <td class="text-center tabular-nums">${e(a.month.slice(0, 7))}</td>
+                  <td class="text-center tabular-nums">${e(formatMonth(a.month))}</td>
                   <td class="text-center">${e(status[a.old_status] || a.old_status)} → ${e(status[a.new_status] || a.new_status)}</td>
                   <td class="text-right tabular-nums font-bold">${e(money(a.amount))}</td>
                   <td>${e(a.reason)}</td>

@@ -1,4 +1,4 @@
-import { formatDate, validDate, formatVietnamDateTime } from './utils.js';
+import { formatDate, formatMonth, validDate, formatVietnamDateTime } from './utils.js';
 const BASE_HEADERS = ['full_name', 'email', 'phone', 'date_of_birth', 'position', 'preferred_foot', 'status', 'notes'];
 const HEADERS = [...BASE_HEADERS];
 async function workbook() {
@@ -102,7 +102,7 @@ export async function buildFinanceWorkbook(items, summary = {}, adjustments = []
   changes.addRow(['Ngày điều chỉnh', 'Thành viên', 'Đội', 'Tháng quỹ', 'Trạng thái cũ', 'Trạng thái mới', 'Số tiền', 'Lý do']);
   changes.getRow(1).font = { bold: true };
   const labels = { unpaid: 'Chưa đóng', paid: 'Đã đóng', exempt: 'Miễn đóng' };
-  for (const a of adjustments) changes.addRow([formatVietnamDateTime(a.created_at), sanitizeCell(a.player_name), sanitizeCell(a.team_name), a.month, labels[a.old_status] || a.old_status, labels[a.new_status] || a.new_status, Number(a.amount), sanitizeCell(a.reason)]);
+  for (const a of adjustments) changes.addRow([formatVietnamDateTime(a.created_at), sanitizeCell(a.player_name), sanitizeCell(a.team_name), formatMonth(a.month), labels[a.old_status] || a.old_status, labels[a.new_status] || a.new_status, Number(a.amount), sanitizeCell(a.reason)]);
   changes.columns.forEach((c) => { c.width = 24; }); changes.getColumn(8).width = 45;
   return book;
 }

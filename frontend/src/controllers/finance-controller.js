@@ -1,3 +1,5 @@
+import { formatMonth } from '../utils.js';
+
 export function createFinanceController(ctx) {
   async function handleAction(a, el) {
     if (a === 'new-finance') {
@@ -114,7 +116,7 @@ export function createFinanceController(ctx) {
       if (a === 'stop-planned-expense') {
         return ctx.dialog(
           'Dừng khoản chi dự kiến?',
-          `Khoản ${ctx.e(item.description)} sẽ dừng từ ${ctx.e(month)}; các tháng trước vẫn giữ nguyên.`,
+          `Khoản ${ctx.e(item.description)} sẽ dừng từ ${ctx.e(formatMonth(month))}; các tháng trước vẫn giữ nguyên.`,
           '',
           (form) =>
             ctx.submit(form, 'planned-stop', async () => {

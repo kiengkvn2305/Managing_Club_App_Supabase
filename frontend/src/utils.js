@@ -139,8 +139,17 @@ export function validDate(value) {
 }
 export function formatDate(value) {
   if (!value) return '';
-  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return match && validDate(match[0]) ? `${match[3]}/${match[2]}/${match[1]}` : String(value);
+  const str = String(value).trim();
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+  return match && validDate(`${match[1]}-${match[2]}-${match[3]}`)
+    ? `${match[3]}/${match[2]}/${match[1]}`
+    : str;
+}
+export function formatMonth(value) {
+  if (!value) return '';
+  const str = String(value).trim();
+  const match = str.match(/^(\d{4})-(\d{2})(?:-\d{2}.*)?$/);
+  return match ? `${match[2]}/${match[1]}` : str;
 }
 export function vietnamToday(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);

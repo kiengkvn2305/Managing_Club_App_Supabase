@@ -5,6 +5,7 @@ import {
   canManageRoster,
   canManageClub,
   formatDate,
+  formatMonth,
 } from './utils.js';
 import { icon, button, empty } from './components/ui.js';
 import { clubDirectoryPage, teamRosterPage } from './roster-pages.js';
@@ -90,7 +91,7 @@ function teams() {
                 c?.can_view_finance
                   ? `<div>
                       <span>Mức quỹ tháng</span>
-                      <strong>${t.monthly_dues ? `${e(number(t.monthly_dues.amount))} đ · từ ${e(t.monthly_dues.effective_month.slice(0, 7))}` : 'Chưa thiết lập'}</strong>
+                      <strong>${t.monthly_dues ? `${e(number(t.monthly_dues.amount))} đ · từ ${e(formatMonth(t.monthly_dues.effective_month))}` : 'Chưa thiết lập'}</strong>
                     </div>`
                   : ''
               }
