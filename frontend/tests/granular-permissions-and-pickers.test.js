@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { compareVietnameseNames } from '../src/utils.js';
+import { compareVietnameseNames, matchesSearch, footLabel } from '../src/utils.js';
 import { check, SupabaseApiError } from '../src/services/service-helpers.js';
 import { openMemberPickerModal } from '../src/components/ui.js';
+import { openCaptain } from '../src/lineups.js';
 import { createDuesService } from '../src/services/dues-service.js';
 import { createRosterService } from '../src/services/roster-service.js';
 
@@ -253,4 +254,63 @@ test('rosterService sync_team_players fallback handles team_membership_periods w
   });
   const res = await service.handleRosterRequest('/clubs/1/teams/2/players', 'PATCH', { player_ids: [10, 20] }, new URLSearchParams(), 1, {});
   assert.equal(res.data, true);
+});
+
+test('matchesSearch supports Vietnamese accented and unaccented queries and footLabel translates cleanly', () => {
+  assert.equal(matchesSearch('Nguyễn Trung Kiên · Đối ngoại', 'kien'), true);
+  assert.equal(matchesSearch('Nguyễn Trung Kiên · Đối ngoại', 'doi ngoai'), true);
+  assert.equal(matchesSearch('Đỗ Hữu Cường', 'do huu cuong'), true);
+  assert.equal(matchesSearch('Nguyễn Duy Minh', 'thịnh'), false);
+  assert.equal(footLabel('right'), 'Phải');
+  assert.equal(footLabel('left'), 'Trái');
+  assert.equal(footLabel('both'), 'Hai chân');
+  assert.equal(footLabel(null), 'Chưa cập nhật');
+});
+
+test('openCaptain renders interactive captain cards with current captain at top and clear option', () => {
+  const prevDoc = globalThis.document;
+  let capturedHtml = '';
+  const fakeEl = () => ({
+    setAttribute() {},
+    addEventListener() {},
+    append() {},
+    showModal() {},
+    close() {},
+    remove() {},
+    querySelectorAll: () => [],
+    querySelector: () => ({
+      addEventListener() {},
+      querySelectorAll: () => [],
+      value: '2',
+      hidden: false,
+      onsubmit: null,
+    }),
+    classList: { add() {}, toggle() {} },
+    set innerHTML(val) { capturedHtml = val; },
+    get innerHTML() { return capturedHtml; },
+  });
+  globalThis.document = {
+    activeElement: null,
+    createElement: () => fakeEl(),
+    body: { append() {} },
+  };
+  try {
+    const modal = openCaptain({
+      team: { id: 5, name: 'Đội 1', format: '7', captain_id: 2 },
+      players: [
+        { id: 1, full_name: 'Nguyễn Văn An', teams: [{ id: 5, jersey_number: 9, position: 'ST' }] },
+        { id: 2, full_name: 'Trần Minh Bảo', date_of_birth: '2004-06-15', teams: [{ id: 5, jersey_number: 10, position: 'CM' }] },
+      ],
+      api: { patch: async () => ({}) },
+      base: (s) => `/clubs/1${s}`,
+      reload: async () => {},
+    });
+    assert.ok(modal);
+    assert.match(capturedHtml, /data-captain-search/);
+    assert.match(capturedHtml, /data-captain-clear/);
+    assert.match(capturedHtml, /C · ĐỘI TRƯỞNG/);
+    assert.ok(capturedHtml.indexOf('Trần Minh Bảo') < capturedHtml.indexOf('Nguyễn Văn An'), 'current captain appears first');
+  } finally {
+    globalThis.document = prevDoc;
+  }
 });

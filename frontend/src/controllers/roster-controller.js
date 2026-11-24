@@ -6,7 +6,7 @@ import {
 } from '../spreadsheets.js';
 import { reviewImport } from '../import-review.js';
 import { avatar, imageUrl } from '../images.js';
-import { currentAcademicYear, TITLE_PRESETS } from '../utils.js';
+import { currentAcademicYear, TITLE_PRESETS, footLabel as formatFootLabel, statusLabel, matchesSearch } from '../utils.js';
 
 export function createRosterController(ctx) {
   function editMember(member = { status: 'active' }) {
@@ -120,12 +120,13 @@ export function createRosterController(ctx) {
       const details = [
         m.title ? `Chức danh: ${m.title}` : '',
         m.role ? `Vai trò: ${ctx.roleLabel(m.role)}` : '',
+        m.date_of_birth ? `NS: ${ctx.formatDate(m.date_of_birth)}` : '',
         m.preferred_foot ? footLabel(m.preferred_foot) : '',
         m.notes ? `Ghi chú: ${m.notes}` : '',
         m.email || '',
       ].filter(Boolean).join(' · ');
 
-      const searchBlob = [displayName, m.email, m.title, m.notes, m.preferred_foot].filter(Boolean).join(' ').toLocaleLowerCase('vi');
+      const searchBlob = [displayName, m.email, m.title, m.notes, m.preferred_foot, m.date_of_birth, m.date_of_birth ? ctx.formatDate(m.date_of_birth) : ''].filter(Boolean).join(' ');
 
       return `
         <label data-mgr-row
@@ -134,7 +135,7 @@ export function createRosterController(ctx) {
           data-notes="${ctx.e(m.notes || '')}"
           data-foot="${ctx.e(m.preferred_foot || '')}"
           data-search="${ctx.e(searchBlob)}"
-          style="display:flex;align-items:flex-start;gap:10px;padding:8px;border:1px solid var(--line);border-radius:6px;cursor:pointer;margin-bottom:4px;"
+          class="picker-card-row"
         >
           <input type="checkbox" name="manager_ids" value="${ctx.e(m.id)}" ${isChecked ? 'checked' : ''}>
           <span style="flex:1;min-width:0;">
@@ -149,7 +150,7 @@ export function createRosterController(ctx) {
       <fieldset class="field" style="grid-column:1/-1;">
         <legend>Người quản lý đội (Có thể chọn nhiều người từ bất kỳ thành viên nào trong CLB)</legend>
         ${sortOptions}
-        <div data-mgr-list style="max-height:220px;overflow-y:auto;display:grid;">
+        <div data-mgr-list class="member-picker-list" style="max-height:220px;">
           ${managerRows}
         </div>
       </fieldset>
@@ -215,11 +216,11 @@ export function createRosterController(ctx) {
     const mgrSort = modal.querySelector('[data-mgr-sort]');
 
     const filterMgrs = (shouldSort = false) => {
-      const q = (mgrSearch.value || '').trim().toLocaleLowerCase('vi');
+      const q = (mgrSearch.value || '').trim();
       const sortVal = mgrSort.value;
       const rows = [...mgrList.querySelectorAll('[data-mgr-row]')];
       rows.forEach((row) => {
-        row.hidden = q && !row.dataset.search.includes(q);
+        row.hidden = Boolean(q && !matchesSearch(row.dataset.search, q));
       });
       if (shouldSort) {
         rows.sort((a, b) => {
@@ -466,8 +467,8 @@ export function createRosterController(ctx) {
         ['Email', m.email],
         ['Điện thoại', m.phone],
         ['Ngày sinh', ctx.formatDate(m.date_of_birth)],
-        ['Chân thuận', m.preferred_foot],
-        ['Trạng thái', m.status],
+        ['Chân thuận', formatFootLabel(m.preferred_foot)],
+        ['Trạng thái', statusLabel(m.status)],
         [
           'Đội bóng',
           (m.teams || [])
@@ -737,7 +738,7 @@ export function createRosterController(ctx) {
 
       const warningNotice = `
         <div class="lineup-editor" style="grid-column:1/-1;">
-          <p class="notice" style="background:#ffe8e8;color:#a32323;border-left:4px solid #a32323;padding:12px;border-radius:4px;margin-bottom:12px;">
+          <p class="notice danger-notice">
             <strong>CẢNH BÁO NGUY HIỂM:</strong> Khi bạn chuyển giao quyền Chủ nhiệm cho <strong>${ctx.e(targetName)}</strong>, bạn sẽ trở thành thành viên thông thường và <strong>MẤT TOÀN BỘ QUYỀN HẠN CỦA CHỦ NHIỆM CLB</strong>. Quyền lực tối cao sẽ được chuyển giao hoàn toàn cho người nhận.
           </p>
           <div class="field" style="margin-top:12px;">
@@ -846,7 +847,8 @@ export function createRosterController(ctx) {
 
     if (a === 'team-captain') {
       if (!ctx.requirePermission(ctx.canManageRoster(), 'Chọn đội trưởng')) return true;
-      const team = ctx.state.teams.find((t) => String(t.id) === el.dataset.id);
+      const targetTeamId = el.dataset.id || ctx.state.teamRosterId;
+      const team = ctx.state.teams.find((t) => String(t.id) === String(targetTeamId));
       if (team) {
         const players = ctx.unpackList(
           await ctx.api.get(ctx.base(`/members?team_id=${encodeURIComponent(team.id)}&per_page=1000`))

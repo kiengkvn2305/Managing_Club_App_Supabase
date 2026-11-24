@@ -182,7 +182,7 @@ export function createClubController(ctx) {
 
       const warningNotice = `
         <div class="lineup-editor" style="grid-column:1/-1;">
-          <p class="notice" style="background:#ffe8e8;color:#a32323;border-left:4px solid #a32323;padding:12px;border-radius:4px;margin-bottom:12px;">
+          <p class="notice danger-notice">
             <strong>CẢNH BÁO NGUY HIỂM:</strong> Khi bạn chuyển giao quyền Chủ nhiệm, bạn sẽ trở thành thành viên thông thường và <strong>MẤT TOÀN BỘ QUYỀN HẠN CỦA CHỦ NHIỆM CLB</strong>. Quyền lực tối cao sẽ được chuyển giao hoàn toàn cho người được chọn.
           </p>
           ${ctx.select(

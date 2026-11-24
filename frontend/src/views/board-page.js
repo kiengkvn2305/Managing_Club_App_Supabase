@@ -6,6 +6,7 @@ import {
   canManageClub,
   compareVietnameseNames,
   boardTitleRank,
+  initials,
 } from '../utils.js';
 import { button, empty } from '../components/ui.js';
 
@@ -69,51 +70,63 @@ export function boardPage() {
   const sortedBoard = sortBoard(s.boardMembers || [], s.boardSort || 'title');
 
   const board = sortedBoard.length
-    ? sortedBoard
-        .map(
-          (m) => `
-        <div class="member-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line);gap:12px;">
-          <div>
-            <strong>${e(m.full_name)}</strong>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;">
-              <span class="badge ${boardTitleRank(m.title) <= 2 ? 'active' : ''}">${e(m.title)}</span>
-              <small style="color:var(--muted);">${m.date_of_birth ? `Ngày sinh: ${e(formatDate(m.date_of_birth))}` : ''}${m.email ? ` · ${e(m.email)}` : ''}</small>
+    ? `<div class="roster-list">${sortedBoard
+        .map((m) => {
+          const rank = boardTitleRank(m.title);
+          const metaItems = [
+            m.date_of_birth ? `Ngày sinh: ${formatDate(m.date_of_birth)}` : '',
+            m.email || '',
+          ].filter(Boolean);
+          return `
+        <div class="roster-item ${rank === 1 ? 'rank-leader' : rank === 2 ? 'rank-vice' : ''}">
+          <div class="roster-item-left">
+            <span class="avatar ${rank === 1 ? 'avatar-gold' : rank === 2 ? 'avatar-emerald' : ''}">${e(initials(m.full_name))}</span>
+            <div class="roster-item-main">
+              <strong>${e(m.full_name)}</strong>
+              <div class="roster-item-meta">
+                <span class="badge ${rank === 1 ? 'gold' : rank === 2 ? 'active' : ''}">${e(m.title)}</span>
+                ${metaItems.length ? `<small class="roster-meta-text">${e(metaItems.join(' · '))}</small>` : ''}
+              </div>
             </div>
           </div>
-          <div class="team-actions">
-            <button class="text-button" data-action="board-edit" data-id="${m.id}">Sửa</button>
-            <button class="text-button danger" data-action="board-remove" data-id="${m.id}">Bỏ khỏi BCN</button>
+          <div class="action-chips">
+            <button type="button" class="chip-button" data-action="board-edit" data-id="${m.id}">Sửa</button>
+            <button type="button" class="chip-button danger" data-action="board-remove" data-id="${m.id}">Bỏ khỏi BCN</button>
           </div>
-        </div>`
-        )
-        .join('')
+        </div>`;
+        })
+        .join('')}</div>`
     : empty(
         'Chưa có thành viên BCN',
         'Chọn thành viên CLB để thêm vào ban chủ nhiệm.'
       );
 
   const rates = s.boardSharedRates.length
-    ? s.boardSharedRates
+    ? `<div class="roster-list">${s.boardSharedRates
         .map(
           (r) => `
-        <div class="member-row">
-          <div>
-            <strong>${e(r.team_name)} · ${number(r.amount)} đ/tháng</strong>
-            <small>Áp dụng từ ${e(r.effective_month.slice(5, 7))}/${e(r.effective_month.slice(0, 4))}</small>
+        <div class="roster-item">
+          <div class="roster-item-left">
+            <div class="roster-item-main">
+              <strong>${e(r.team_name)} · ${number(r.amount)} đ/tháng</strong>
+              <div class="roster-item-meta">
+                <small class="roster-meta-text">Áp dụng từ ${e(r.effective_month.slice(5, 7))}/${e(r.effective_month.slice(0, 4))}</small>
+              </div>
+            </div>
           </div>
-          <div class="team-actions">
-            <button class="text-button danger" data-action="delete-board-shared-rate" data-id="${r.id}">Xóa</button>
+          <div class="action-chips">
+            <button type="button" class="chip-button danger" data-action="delete-board-shared-rate" data-id="${r.id}">Xóa</button>
           </div>
         </div>`
         )
-        .join('')
+        .join('')}</div>`
     : empty(
         'Chưa có mức quỹ chung',
         'Thiết lập mức quỹ ưu đãi cho từng đội.'
       );
 
   const permissionSummary = (m) => {
-    if (m.role === 'owner') return '<span class="badge" style="background:#ddf5e9;color:#126047;">Toàn quyền (Chủ sở hữu)</span>';
+    if (m.role === 'owner') return '<span class="badge gold">Toàn quyền (Chủ sở hữu)</span>';
     const perms = m.permissions || {};
     const granted = [];
     if (perms.can_view_finance) granted.push('Xem thu chi');
@@ -122,7 +135,7 @@ export function boardPage() {
     if (perms.can_manage_inventory) granted.push('Quản lý kho');
     if (perms.can_manage_activities) granted.push('Quản lý hoạt động');
     if (perms.can_manage_club) granted.push('Quản lý CLB');
-    if (!granted.length) return '<span class="badge" style="background:var(--subtle);color:var(--muted);">Quyền mặc định</span>';
+    if (!granted.length) return '<span class="badge inactive">Quyền mặc định</span>';
     return `<span class="badge">${e(granted.join(', '))}</span>`;
   };
 
@@ -157,24 +170,28 @@ export function boardPage() {
   const sortedMemberships = sortMemberships(s.clubMemberships || [], s.membershipsSort || 'role');
 
   const membershipsList = sortedMemberships.length
-    ? sortedMemberships
-        .map(
-          (m) => `
-        <div class="member-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line);gap:12px;">
-          <div>
-            <strong>${e(m.name || m.email || ('Thành viên #' + m.id))}</strong>
-            <small style="display:block;color:var(--muted);">${e(m.email || '')}${m.title ? ` · Chức danh: ${e(m.title)}` : ''} · Vai trò: ${e(m.role)}</small>
-            <div style="margin-top:4px;">${permissionSummary(m)}</div>
+    ? `<div class="roster-list">${sortedMemberships
+        .map((m) => {
+          const displayName = m.name || m.email || `Thành viên #${m.id}`;
+          return `
+        <div class="roster-item ${m.role === 'owner' ? 'rank-leader' : ''}">
+          <div class="roster-item-left">
+            <span class="avatar ${m.role === 'owner' ? 'avatar-gold' : ''}">${e(initials(displayName))}</span>
+            <div class="roster-item-main">
+              <strong>${e(displayName)}</strong>
+              <small class="roster-meta-text">${e(m.email || '')}${m.title ? ` · Chức danh: ${e(m.title)}` : ''} · Vai trò: ${e(m.role)}</small>
+              <div class="roster-item-meta">${permissionSummary(m)}</div>
+            </div>
           </div>
-          <div class="team-actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-            ${isOwner && m.role !== 'owner' ? `<button class="text-button" data-action="edit-permissions" data-id="${m.id}">Chức vụ & Phân quyền</button>` : ''}
-            ${isOwner && m.role === 'owner' ? `<span class="badge" style="background:#ddf5e9;color:#126047;">Chủ nhiệm tối cao</span>` : ''}
-            ${isOwner && m.role !== 'owner' ? `<button class="text-button danger" data-action="transfer-ownership" data-id="${m.user_id}" data-name="${e(m.name || m.email)}">Trao quyền Chủ nhiệm</button>` : ''}
-            ${isOwner && m.role !== 'owner' ? `<button class="text-button danger" data-action="remove-club-member" data-id="${m.id}" data-name="${e(m.name || m.email)}" title="Xóa tài khoản khỏi CLB và BCN">Xóa khỏi CLB</button>` : ''}
+          <div class="action-chips">
+            ${isOwner && m.role !== 'owner' ? `<button type="button" class="chip-button" data-action="edit-permissions" data-id="${m.id}">Chức vụ & Phân quyền</button>` : ''}
+            ${isOwner && m.role === 'owner' ? `<span class="badge gold">Chủ nhiệm tối cao</span>` : ''}
+            ${isOwner && m.role !== 'owner' ? `<button type="button" class="chip-button secondary" data-action="transfer-ownership" data-id="${m.user_id}" data-name="${e(m.name || m.email)}">Trao quyền Chủ nhiệm</button>` : ''}
+            ${isOwner && m.role !== 'owner' ? `<button type="button" class="chip-button danger" data-action="remove-club-member" data-id="${m.id}" data-name="${e(m.name || m.email)}" title="Xóa tài khoản khỏi CLB và BCN">Xóa khỏi CLB</button>` : ''}
           </div>
-        </div>`
-        )
-        .join('')
+        </div>`;
+        })
+        .join('')}</div>`
     : empty('Chưa có tài khoản thành viên', 'Mời thành viên tham gia để phân quyền sử dụng.');
 
   return `

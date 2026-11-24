@@ -1,4 +1,4 @@
-import { escapeHtml as e, compareVietnameseNames, formatDate } from "../utils.js";
+import { escapeHtml as e, compareVietnameseNames, formatDate, matchesSearch, initials } from "../utils.js";
 export const icons = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
   users:
@@ -12,6 +12,10 @@ export const icons = {
   edit: '<path d="m16 3 5 5-12 12-6 1 1-6L16 3Zm-2 2 5 5"/>',
   trash: '<path d="M3 6h18M9 6V3h6v3m-10 0 1 15h12l1-15M10 10v7m4-7v7"/>',
   moon: '<path d="M21 13A9 9 0 0 1 11 3a9 9 0 1 0 10 10Z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6m12 5h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16m-10-7.34V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22m7-7.34V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+  star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
   user: '<circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
@@ -163,9 +167,13 @@ export function openMemberPickerModal({
   ];
 
   const filterBar = `
-    <div class="filters" style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px;">
+    <div class="picker-status-bar">
+      <span data-picker-count>Đã chọn <strong>${selectedSet.size}</strong> / ${orderedItems.length} thành viên</span>
+      <small>Gõ không dấu hoặc có dấu để lọc nhanh</small>
+    </div>
+    <div class="filters picker-toolbar">
       <label style="margin:0;">
-        <input type="search" data-picker-search placeholder="Tìm theo tên, ghi chú, email…" aria-label="Tìm kiếm">
+        <input type="search" data-picker-search placeholder="Tìm theo tên, ngày sinh, ghi chú, email…" aria-label="Tìm kiếm">
       </label>
       <label style="margin:0;">
         <select data-picker-sort aria-label="Sắp xếp">
@@ -198,8 +206,9 @@ export function openMemberPickerModal({
       x.notes,
       x.position,
       x.preferred_foot,
+      x.preferred_foot ? footLabel(x.preferred_foot) : "",
       x.title,
-    ].filter(Boolean).join(" ").toLocaleLowerCase("vi");
+    ].filter(Boolean).join(" ");
 
     return `
       <label data-picker-row
@@ -211,9 +220,9 @@ export function openMemberPickerModal({
         data-pos="${e(x.position || "")}"
         data-jersey="${e(x.jersey_number ?? 9999)}"
         data-search="${e(searchBlob)}"
-        style="cursor:pointer;"
       >
         <input type="${multi ? "checkbox" : "radio"}" name="${name}" value="${e(x.id)}" ${isChecked ? "checked" : ""}>
+        <span class="avatar picker-avatar">${e(initials(displayName))}</span>
         <span style="flex:1;min-width:0;">
           <strong>${e(displayName)}</strong>
           <small style="display:block;color:var(--muted);">${e(details || "Chưa có thông tin bổ sung")}</small>
@@ -225,10 +234,10 @@ export function openMemberPickerModal({
   const listHtml = `
     <div class="member-picker" style="grid-column:1/-1;">
       ${filterBar}
-      <div class="member-picker-list" data-picker-list style="max-height:50dvh;overflow-y:auto;display:grid;gap:6px;">
+      <div class="member-picker-list" data-picker-list>
         ${orderedItems.map(renderRow).join("")}
       </div>
-      <p data-picker-empty hidden style="text-align:center;color:var(--muted);padding:12px;">Không tìm thấy kết quả phù hợp.</p>
+      <p data-picker-empty hidden class="picker-empty">Không tìm thấy kết quả phù hợp.</p>
     </div>
   `;
 
@@ -251,6 +260,13 @@ export function openMemberPickerModal({
   const searchInput = modal.querySelector("[data-picker-search]");
   const sortSelect = modal.querySelector("[data-picker-sort]");
   const emptyEl = modal.querySelector("[data-picker-empty]");
+  const countEl = modal.querySelector("[data-picker-count]");
+
+  const updateCount = () => {
+    if (countEl) {
+      countEl.innerHTML = `Đã chọn <strong>${selectedSet.size}</strong> / ${orderedItems.length} thành viên`;
+    }
+  };
 
   listEl.addEventListener("change", (event) => {
     const input = event.target.closest(`input[name="${name}"]`);
@@ -262,16 +278,17 @@ export function openMemberPickerModal({
       selectedSet.clear();
       if (input.checked) selectedSet.add(String(input.value));
     }
+    updateCount();
   });
 
   const applyFilterAndSort = (shouldSort = false) => {
-    const query = (searchInput.value || "").trim().toLocaleLowerCase("vi");
+    const query = (searchInput.value || "").trim();
     const sortVal = sortSelect.value;
     const rows = [...listEl.querySelectorAll("[data-picker-row]")];
 
     let visibleCount = 0;
     rows.forEach((row) => {
-      const match = !query || row.dataset.search.includes(query);
+      const match = !query || matchesSearch(row.dataset.search, query);
       row.hidden = !match;
       if (match) visibleCount++;
     });

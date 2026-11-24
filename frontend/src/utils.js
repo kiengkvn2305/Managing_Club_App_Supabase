@@ -16,6 +16,23 @@ export const initials = (value) =>
     .toLocaleUpperCase("vi");
 export const number = (value) =>
   new Intl.NumberFormat("vi-VN").format(Number(value) || 0);
+export const normalizeSearch = (value) =>
+  String(value ?? "")
+    .toLocaleLowerCase("vi")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ")
+    .trim();
+export const matchesSearch = (haystack, query) => {
+  const rawQuery = String(query ?? "").trim().toLocaleLowerCase("vi");
+  if (!rawQuery) return true;
+  const rawHay = String(haystack ?? "").toLocaleLowerCase("vi");
+  if (rawHay.includes(rawQuery)) return true;
+  return normalizeSearch(rawHay).includes(normalizeSearch(rawQuery));
+};
+export const footLabel = (foot, fallback = "Chưa cập nhật") =>
+  ({ right: "Phải", left: "Trái", both: "Hai chân" })[foot] || fallback;
 export const compareVietnameseNames = (a, b) => {
   const clean = (name) => String(name || '').trim();
   const first = (name) => clean(name).split(/\s+/).pop();

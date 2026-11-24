@@ -1,9 +1,12 @@
+import { matchesSearch, formatDate } from '../utils.js';
+
 const boardTitles = [
   'Chủ nhiệm',
   'Phó chủ nhiệm',
   'Thủ quỹ',
   'Thư ký',
   'Truyền thông',
+  'Đối ngoại',
   'Hậu cần',
   'Huấn luyện viên',
 ];
@@ -55,15 +58,31 @@ export function createBoardController(ctx) {
   }
 
   function canManage(role) {
-    return (
-      ctx.canManageClub(role) ||
-      role === 'owner' ||
-      ctx.currentClub()?.can_manage_finance
+    const c = ctx.currentClub();
+    return Boolean(
+      c?.is_system_admin ||
+        role === 'owner' ||
+        c?.membership_role === 'owner' ||
+        ctx.canManageClub(c || role) ||
+        c?.can_manage_finance ||
+        c?.can_manage_roster
+    );
+  }
+
+  function canManageBoardDues(role) {
+    const c = ctx.currentClub();
+    return Boolean(
+      c?.is_system_admin ||
+        role === 'owner' ||
+        c?.membership_role === 'owner' ||
+        ctx.canManageClub(c || role) ||
+        c?.can_manage_finance
     );
   }
 
   async function handleAction(a, el) {
-    if (a === 'board-new' && canManage(ctx.currentRole())) {
+    if (a === 'board-new') {
+      if (!ctx.requirePermission(canManage(ctx.currentRole()), 'Thêm thành viên Ban chủ nhiệm')) return true;
       const players = ctx.unpackList(
         await ctx.api.get(ctx.base('/members?per_page=1000'))
       ).rows;
@@ -80,12 +99,12 @@ export function createBoardController(ctx) {
         ({ right: 'Chân phải', left: 'Chân trái', both: 'Hai chân' })[f] || (f ? String(f) : '');
 
       const fields =
-        `<div class="member-picker">${ctx.field('board_search', 'Tìm theo tên hoặc ghi chú', '', 'search')}<label>Sắp xếp <select data-board-sort><option value="asc">Tên A–Z</option><option value="desc">Tên Z–A</option><option value="notes">Theo ghi chú</option><option value="foot">Theo chân thuận</option></select></label><div class="member-picker-list" data-board-list>${available.map((p) => `<label data-board-row data-full-name="${ctx.e(p.full_name)}" data-notes="${ctx.e(p.notes || '')}" data-foot="${ctx.e(p.preferred_foot || '')}" data-search="${ctx.e([p.full_name, p.notes, p.preferred_foot].filter(Boolean).join(' ').toLocaleLowerCase('vi'))}"><input type="radio" name="player_id" value="${ctx.e(p.id)}"><span><strong>${ctx.e(p.full_name)}</strong><small>${ctx.e([p.preferred_foot ? footLabel(p.preferred_foot) : '', ctx.formatDate(p.date_of_birth), p.email, p.notes].filter(Boolean).join(' · ') || 'Chưa có thông tin bổ sung')}</small></span></label>`).join('')}</div><p data-board-empty hidden>Không tìm thấy thành viên.</p></div>` +
+        `<div class="member-picker"><div class="filters picker-toolbar"><input type="search" name="board_search" placeholder="Tìm theo họ tên, ngày sinh, email hoặc ghi chú…" aria-label="Tìm thành viên BCN"><select data-board-sort aria-label="Sắp xếp"><option value="asc">Tên A–Z</option><option value="desc">Tên Z–A</option><option value="dob">Theo ngày sinh</option><option value="notes">Theo ghi chú</option><option value="foot">Theo chân thuận</option></select></div><div class="member-picker-list" data-board-list>${available.map((p) => `<label data-board-row data-full-name="${ctx.e(p.full_name)}" data-dob="${ctx.e(p.date_of_birth || '')}" data-notes="${ctx.e(p.notes || '')}" data-foot="${ctx.e(p.preferred_foot || '')}" data-search="${ctx.e([p.full_name, p.date_of_birth, formatDate(p.date_of_birth), p.email, p.phone, p.notes, p.preferred_foot].filter(Boolean).join(' '))}"><input type="radio" name="player_id" value="${ctx.e(p.id)}"><span style="flex:1;min-width:0;"><strong>${ctx.e(p.full_name)}</strong><small>${ctx.e([p.date_of_birth ? `NS: ${ctx.formatDate(p.date_of_birth)}` : '', p.preferred_foot ? footLabel(p.preferred_foot) : '', p.email, p.notes ? `Ghi chú: ${p.notes}` : ''].filter(Boolean).join(' · ') || 'Chưa có thông tin bổ sung')}</small></span></label>`).join('')}</div><p data-board-empty hidden class="picker-empty">Không tìm thấy thành viên phù hợp.</p></div>` +
         boardTitleFields();
 
       const modal = ctx.dialog(
-        'Thêm BCN',
-        'Chọn thành viên và ghi chức danh; không cần tài khoản riêng.',
+        'Thêm thành viên Ban chủ nhiệm',
+        'Chọn hồ sơ thành viên trong CLB và gán chức danh BCN.',
         fields,
         (form) =>
           ctx.submit(form, 'board', async (data) => {
@@ -108,20 +127,21 @@ export function createBoardController(ctx) {
 
       const search = modal.querySelector('[name="board_search"]');
       const filterBoard = () => {
-        const query = search.value.trim().toLocaleLowerCase('vi');
+        const query = search.value.trim();
         let visible = 0;
         const list = modal.querySelector('[data-board-list]');
         const rows = [...list.querySelectorAll('[data-board-row]')];
         const sortVal = modal.querySelector('[data-board-sort]').value;
 
         rows.forEach((row) => {
-          row.hidden = !row.dataset.search.includes(query);
+          row.hidden = !matchesSearch(row.dataset.search, query);
           if (!row.hidden) visible++;
         });
 
         rows.sort((a, b) => {
           if (sortVal === 'asc') return ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
           if (sortVal === 'desc') return -1 * ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+          if (sortVal === 'dob') return (a.dataset.dob || '9999').localeCompare(b.dataset.dob || '9999') || ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
           if (sortVal === 'notes') return (b.dataset.notes ? 1 : 0) - (a.dataset.notes ? 1 : 0) || ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
           if (sortVal === 'foot') return (a.dataset.foot || '').localeCompare(b.dataset.foot || '') || ctx.compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
           return 0;
@@ -138,10 +158,8 @@ export function createBoardController(ctx) {
       return modal;
     }
 
-    if (
-      ['board-edit', 'board-remove'].includes(a) &&
-      canManage(ctx.currentRole())
-    ) {
+    if (['board-edit', 'board-remove'].includes(a)) {
+      if (!ctx.requirePermission(canManage(ctx.currentRole()), 'Cập nhật Ban chủ nhiệm')) return true;
       const member = ctx.state.boardMembers.find(
         (m) => String(m.id) === el.dataset.id
       );
@@ -181,7 +199,8 @@ export function createBoardController(ctx) {
       return modal;
     }
 
-    if (a === 'board-shared-dues' && canManage(ctx.currentRole())) {
+    if (a === 'board-shared-dues') {
+      if (!ctx.requirePermission(canManageBoardDues(ctx.currentRole()), 'Đặt mức quỹ ưu đãi BCN')) return true;
       if (!ctx.state.teams.length) {
         ctx.toast('Hãy tạo đội bóng trước khi đặt mức quỹ.');
         return true;
@@ -243,7 +262,8 @@ export function createBoardController(ctx) {
       );
     }
 
-    if (a === 'delete-board-shared-rate' && canManage(ctx.currentRole())) {
+    if (a === 'delete-board-shared-rate') {
+      if (!ctx.requirePermission(canManageBoardDues(ctx.currentRole()), 'Xóa mức quỹ ưu đãi BCN')) return true;
       const rate = ctx.state.boardSharedRates.find(
         (r) => String(r.id) === el.dataset.id
       );

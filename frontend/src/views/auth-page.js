@@ -24,8 +24,8 @@ export function authPage() {
 
       <main id="main-content" class="auth-content" tabindex="-1">
         <time class="app-clock auth-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
-        <button class="icon-button theme-control" data-action="theme" aria-label="Đổi giao diện sáng tối">
-          ${icon('moon')}
+        <button class="icon-button theme-control theme-toggle" data-action="theme" aria-label="Đổi giao diện sáng tối" title="${(typeof document !== 'undefined' && document.documentElement?.dataset?.theme === 'light') ? 'Chuyển sang nền tối' : 'Chuyển sang nền sáng'}">
+          ${icon((typeof document !== 'undefined' && document.documentElement?.dataset?.theme === 'light') ? 'moon' : 'sun')}
         </button>
 
         <div class="auth-card">

@@ -17,7 +17,7 @@ export function createRosterService({ supabase, authService }) {
     'Quản lý tài chính',
   ];
 
-  async function teams(clubId, userId) {
+  async function teams(clubId, userId, isSysAdmin = false) {
     const [teamResult, managerResult, membershipResult, playerResult] =
       await Promise.all([
         supabase.from('teams').select('*').eq('club_id', clubId).order('name'),
@@ -27,7 +27,7 @@ export function createRosterService({ supabase, authService }) {
           .eq('club_id', clubId),
         supabase
           .from('club_members')
-          .select('id,role,title,user_id,profile:profiles(name,email)')
+          .select('id,role,title,permissions,user_id,profile:profiles(name,email)')
           .eq('club_id', clubId)
           .eq('status', 'active'),
         supabase
@@ -44,10 +44,17 @@ export function createRosterService({ supabase, authService }) {
     const viewer = membershipRows.find(
       (membership) => membership.user_id === userId
     );
+    const isOwner = isSysAdmin || viewer?.role === 'owner';
+    const customViewFinance = viewer?.permissions?.can_view_finance;
     const canViewFinance =
-      viewer &&
-      (financeRoles.includes(viewer.role) ||
-        financeTitles.includes((viewer.title || '').trim()));
+      isOwner ||
+      (customViewFinance !== undefined
+        ? Boolean(customViewFinance)
+        : Boolean(
+            viewer &&
+              (financeRoles.includes(viewer.role) ||
+                financeTitles.includes((viewer.title || '').trim()))
+          ));
 
     const duesRates = canViewFinance
       ? check(
@@ -221,7 +228,7 @@ export function createRosterService({ supabase, authService }) {
           .order('id'),
         supabase
           .from('player_profiles')
-          .select('id,user_id,email,full_name,notes,preferred_foot')
+          .select('id,user_id,email,full_name,notes,preferred_foot,date_of_birth,phone')
           .eq('club_id', clubId),
       ]);
       const members = check(membersResult) || [];
@@ -247,6 +254,8 @@ export function createRosterService({ supabase, authService }) {
             name: displayName,
             full_name: displayName,
             email: row.profile?.email || player?.email,
+            phone: player?.phone || '',
+            date_of_birth: player?.date_of_birth || null,
             notes: player?.notes || '',
             preferred_foot: player?.preferred_foot || '',
           };
@@ -508,6 +517,15 @@ export function createRosterService({ supabase, authService }) {
 
         try {
           await supabase
+            .from('teams')
+            .update({ captain_id: null })
+            .eq('club_id', clubId)
+            .eq('id', pTeamId)
+            .in('captain_id', toDelete);
+        } catch {}
+
+        try {
+          await supabase
             .from('team_membership_periods')
             .update({ left_on: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() })
             .eq('club_id', clubId)
@@ -576,7 +594,7 @@ export function createRosterService({ supabase, authService }) {
     }
 
     if (clean.endsWith('/teams') && method === 'GET') {
-      return teams(clubId, current.id);
+      return teams(clubId, current.id, Boolean(current?.is_system_admin));
     }
 
     if (clean.endsWith('/teams') && method === 'POST') {

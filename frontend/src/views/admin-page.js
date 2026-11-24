@@ -97,64 +97,28 @@ export function adminPage() {
 
     <!-- Overview Stats Cards -->
     <div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:1rem;margin-bottom:1.5rem;">
-      <article class="panel stat-card" style="padding:1.25rem;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <small style="color:var(--muted);text-transform:uppercase;font-size:0.75rem;letter-spacing:0.5px;">CÂU LẠC BỘ TOÀN HỆ THỐNG</small>
-            <div style="font-size:2rem;font-weight:700;margin:0.25rem 0;color:var(--text);">${stats.total_clubs}</div>
-            <p style="margin:0;font-size:0.875rem;color:var(--muted);">
-              <span style="color:var(--success,#28a745);">● ${stats.active_clubs} hoạt động</span> · <span>${stats.archived_clubs} lưu trữ</span>
-            </p>
-          </div>
-          <div style="padding:0.6rem;background:var(--accent-surface,#f0f7ff);border-radius:10px;color:var(--primary);">
-            ${icon('shield')}
-          </div>
-        </div>
+      <article class="stat">
+        <div><span>CÂU LẠC BỘ TOÀN HỆ THỐNG</span><i>${icon('shield')}</i></div>
+        <strong class="tabular-nums">${stats.total_clubs}</strong>
+        <small><b class="text-green">● ${stats.active_clubs} hoạt động</b> · ${stats.archived_clubs} lưu trữ</small>
       </article>
 
-      <article class="panel stat-card" style="padding:1.25rem;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <small style="color:var(--muted);text-transform:uppercase;font-size:0.75rem;letter-spacing:0.5px;">NGƯỜI DÙNG & TÀI KHOẢN</small>
-            <div style="font-size:2rem;font-weight:700;margin:0.25rem 0;color:var(--text);">${stats.total_users}</div>
-            <p style="margin:0;font-size:0.875rem;color:var(--muted);">
-              <span>${stats.active_users} kích hoạt</span> · <span style="color:var(--primary,#0066cc);">👑 ${stats.admin_users} Quản trị viên</span>
-            </p>
-          </div>
-          <div style="padding:0.6rem;background:var(--accent-surface,#f0f7ff);border-radius:10px;color:var(--primary);">
-            ${icon('users')}
-          </div>
-        </div>
+      <article class="stat">
+        <div><span>NGƯỜI DÙNG & TÀI KHOẢN</span><i>${icon('users')}</i></div>
+        <strong class="tabular-nums">${stats.total_users}</strong>
+        <small>${stats.active_users} kích hoạt · 👑 ${stats.admin_users} Quản trị viên</small>
       </article>
 
-      <article class="panel stat-card" style="padding:1.25rem;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <small style="color:var(--muted);text-transform:uppercase;font-size:0.75rem;letter-spacing:0.5px;">HỒ SƠ THÀNH VIÊN / CẦU THỦ</small>
-            <div style="font-size:2rem;font-weight:700;margin:0.25rem 0;color:var(--text);">${stats.total_players}</div>
-            <p style="margin:0;font-size:0.875rem;color:var(--muted);">
-              Cầu thủ & thành viên trong các câu lạc bộ
-            </p>
-          </div>
-          <div style="padding:0.6rem;background:var(--accent-surface,#f0f7ff);border-radius:10px;color:var(--primary);">
-            ${icon('user')}
-          </div>
-        </div>
+      <article class="stat">
+        <div><span>HỒ SƠ THÀNH VIÊN / CẦU THỦ</span><i>${icon('user')}</i></div>
+        <strong class="tabular-nums">${stats.total_players}</strong>
+        <small>Cầu thủ & thành viên trong các câu lạc bộ</small>
       </article>
 
-      <article class="panel stat-card" style="padding:1.25rem;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div>
-            <small style="color:var(--muted);text-transform:uppercase;font-size:0.75rem;letter-spacing:0.5px;">GIAO DỊCH TÀI CHÍNH</small>
-            <div style="font-size:2rem;font-weight:700;margin:0.25rem 0;color:var(--text);">${stats.total_transactions}</div>
-            <p style="margin:0;font-size:0.875rem;color:var(--muted);">
-              Thu: <strong style="color:var(--success,#28a745);">${number(stats.total_income)} đ</strong>
-            </p>
-          </div>
-          <div style="padding:0.6rem;background:var(--accent-surface,#f0f7ff);border-radius:10px;color:var(--primary);">
-            ${icon('layers')}
-          </div>
-        </div>
+      <article class="stat">
+        <div><span>GIAO DỊCH TÀI CHÍNH</span><i>${icon('layers')}</i></div>
+        <strong class="tabular-nums">${stats.total_transactions}</strong>
+        <small>Thu: <b class="text-green">${number(stats.total_income)} đ</b></small>
       </article>
     </div>
 
@@ -256,7 +220,7 @@ export function adminPage() {
                           <td><strong>${e(u.name || 'Người dùng')}</strong></td>
                           <td>${e(u.email)}</td>
                           <td>
-                            ${u.is_system_admin ? '<span class="badge" style="background:#ffd700;color:#000;font-weight:700;">👑 Quản trị viên</span>' : '<span class="badge secondary">Người dùng</span>'}
+                            ${u.is_system_admin ? '<span class="badge gold">👑 Quản trị viên</span>' : '<span class="badge secondary">Người dùng</span>'}
                           </td>
                           <td class="text-center">
                             <span class="badge ${u.is_active ? 'active' : 'injured'}">${u.is_active ? 'Hoạt động' : 'Đã khóa'}</span>
@@ -432,7 +396,7 @@ export function adminPage() {
                             <td>
                               ${
                                 u.is_system_admin
-                                  ? '<span class="badge" style="background:#ffd700;color:#000;font-weight:700;">👑 Quản trị viên tối cao</span>'
+                                  ? '<span class="badge gold">👑 Quản trị viên tối cao</span>'
                                   : '<span class="badge secondary">Người dùng thông thường</span>'
                               }
                             </td>

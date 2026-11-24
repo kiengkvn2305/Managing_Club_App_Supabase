@@ -58,7 +58,7 @@ function teams() {
   return (
     heading(
       'Đội bóng',
-      'Tổ chức đội hình cho từng sân chơi và mục tiêu.',
+      'Tổ chức đội hình cho từng sân chơi và mục tiêu thi đấu.',
       canManageRoster(c) ? button('new-team', 'Tạo đội bóng') : ''
     ) +
     (s.teams.length
@@ -66,31 +66,49 @@ function teams() {
           .map(
             (t) => `
           <section class="panel team-card">
-            <div class="team-symbol">${icon('shield')}</div>
-            <span class="pill">SÂN ${e(t.format)} NGƯỜI</span>
+            <div class="team-card-top">
+              <div class="team-symbol">${icon('shield')}</div>
+              <div class="team-card-badges">
+                <span class="pill">SÂN ${e(t.format)} NGƯỜI</span>
+                <span class="badge">${number(t.members_count)} cầu thủ</span>
+              </div>
+            </div>
             <h2>${e(t.name)}</h2>
-            <p>${e(c.name)} - ${number(t.members_count)} thành viên</p>
-            ${
-              c?.can_view_finance
-                ? `<p>Quỹ gần nhất: ${t.monthly_dues ? `${e(number(t.monthly_dues.amount))} đ/tháng · từ ${e(t.monthly_dues.effective_month.slice(0, 7))}` : 'Chưa thiết lập'}</p>`
-                : ''
-            }
-            <p>Đội trưởng: ${e(t.captain_name || 'Chưa chọn')}<br>Quản lý: ${e((t.managers || []).map((m) => m.name).join(', ') || 'Chưa chọn')}</p>
-            <div class="team-actions">
-              <button class="text-button" data-action="team-members" data-id="${t.id}">Xem thành viên →</button>
+            <p class="team-card-club">${e(c.name)}</p>
+            <div class="team-specs">
+              <div>
+                <span>Đội trưởng</span>
+                <strong>${t.captain_name ? `<b class="armband-tag">C</b> ${e(t.captain_name)}` : 'Chưa chọn'}</strong>
+              </div>
+              <div>
+                <span>Ban quản lý</span>
+                <strong>${e((t.managers || []).map((m) => m.name).join(', ') || 'Chưa chọn')}</strong>
+              </div>
               ${
-                canManageRoster(c)
-                  ? `<button class="text-button" data-action="select-team-players" data-id="${t.id}">Chọn thành viên</button>
-                     <button class="text-button" data-action="rename-team" data-id="${t.id}">Chỉnh sửa</button>
-                     <button class="text-button danger" data-action="delete-team" data-id="${t.id}">Xóa đội</button>`
+                c?.can_view_finance
+                  ? `<div>
+                      <span>Mức quỹ tháng</span>
+                      <strong>${t.monthly_dues ? `${e(number(t.monthly_dues.amount))} đ · từ ${e(t.monthly_dues.effective_month.slice(0, 7))}` : 'Chưa thiết lập'}</strong>
+                    </div>`
                   : ''
               }
             </div>
-            ${
-              c?.can_manage_finance && !canManageRoster(c)
-                ? `<button class="text-button" data-action="edit-dues-rate" data-id="${t.id}">Chỉnh sửa quỹ</button>`
-                : ''
-            }
+            <div class="team-actions team-card-footer">
+              <button class="chip-button primary" data-action="team-members" data-id="${t.id}">Xem đội hình →</button>
+              ${
+                canManageRoster(c)
+                  ? `<button class="chip-button" data-action="select-team-players" data-id="${t.id}">Chọn thành viên</button>
+                     <button class="chip-button" data-action="team-captain" data-id="${t.id}">Chọn đội trưởng</button>
+                     <button class="chip-button" data-action="rename-team" data-id="${t.id}">Chỉnh sửa</button>
+                     <button class="chip-button danger" data-action="delete-team" data-id="${t.id}">Xóa đội</button>`
+                  : ''
+              }
+              ${
+                c?.can_manage_finance && !canManageRoster(c)
+                  ? `<button class="chip-button" data-action="edit-dues-rate" data-id="${t.id}">Chỉnh sửa quỹ</button>`
+                  : ''
+              }
+            </div>
           </section>`
           )
           .join('')}</div>`

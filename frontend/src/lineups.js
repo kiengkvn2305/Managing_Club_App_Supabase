@@ -1,10 +1,34 @@
-import { dialog, field, select, showErrors, toast } from "./components/ui.js";
-import { escapeHtml as e, compareVietnameseNames } from "./utils.js";
+import { dialog, field, select, showErrors, toast, empty } from "./components/ui.js";
+import { escapeHtml as e, compareVietnameseNames, formatDate, matchesSearch, initials } from "./utils.js";
 
 export function openCaptain({ team, players, api, base, reload }) {
   if (!team) return;
-  const candidates = players.filter((p) => (p.teams || []).some((t) => String(t.id) === String(team.id)));
-  let selected = String(team.captain_id || '');
+  const candidates = (players || []).filter((p) =>
+    (p.teams || []).some((t) => String(t.id) === String(team.id))
+  );
+
+  if (!candidates.length) {
+    const emptyModal = dialog(
+      `Chọn đội trưởng · ${e(team.name)}`,
+      `Sân ${e(team.format)} người`,
+      `<div class="lineup-editor">${empty(
+        "Đội bóng chưa có cầu thủ",
+        "Hãy chọn thành viên vào đội bóng trước, sau đó mới có thể trao băng Đội trưởng."
+      )}</div>`,
+      async () => true,
+      "Đóng"
+    );
+    return emptyModal;
+  }
+
+  let selected = String(team.captain_id || "");
+
+  const getJersey = (p) =>
+    p.teams?.find((t) => String(t.id) === String(team.id))?.jersey_number ?? null;
+  const getPos = (p) =>
+    p.teams?.find((t) => String(t.id) === String(team.id))?.position || p.position || "";
+  const footText = (f) =>
+    ({ right: "Chân phải", left: "Chân trái", both: "Hai chân" })[f] || "";
 
   // Pre-selected captain at top on open
   const selectedCandidates = candidates.filter((p) => String(p.id) === selected);
@@ -13,51 +37,210 @@ export function openCaptain({ team, players, api, base, reload }) {
   unselectedCandidates.sort((a, b) => compareVietnameseNames(a.full_name, b.full_name));
   const ordered = [...selectedCandidates, ...unselectedCandidates];
 
-  const sortHtml = `<label>Sắp xếp <select data-captain-sort>
-    <option value="asc">Tên A–Z</option>
-    <option value="desc">Tên Z–A</option>
-    <option value="notes">Theo ghi chú</option>
-    <option value="foot">Theo chân thuận</option>
-    <option value="jersey">Theo số áo</option>
-    <option value="position">Theo vị trí</option>
-  </select></label>`;
+  const currentCaptainObj = candidates.find((p) => String(p.id) === selected);
 
-  const modal = dialog("Chọn đội trưởng", `Đội ${e(team.name)}`, field('captain_search', 'Tìm tên hoặc ghi chú', '', 'search') + sortHtml + select("captain_id", "Đội trưởng", [["", "Chưa chọn"]], ""), async (form) => {
-    try {
-      await api.patch(base(`/teams/${team.id}/captain`), { captain_id: form.elements.captain_id.value ? Number(form.elements.captain_id.value) : null });
-      await reload();
-      toast("Đã cập nhật đội trưởng.");
-      return true;
-    } catch (error) { showErrors(form, error.errors, error.message); return false; }
+  const renderCaptainRow = (p) => {
+    const isChecked = String(p.id) === selected;
+    const jersey = getJersey(p);
+    const pos = getPos(p);
+    const foot = footText(p.preferred_foot);
+    const dob = p.date_of_birth ? formatDate(p.date_of_birth) : "";
+    const metaParts = [
+      pos ? `Vị trí: ${pos}` : "",
+      foot,
+      dob ? `NS: ${dob}` : "",
+      p.notes ? `Ghi chú: ${p.notes}` : "",
+      p.email || "",
+    ].filter(Boolean);
+
+    const searchBlob = [
+      p.full_name,
+      jersey != null ? `#${jersey} ${jersey}` : "",
+      pos,
+      foot,
+      p.preferred_foot,
+      p.date_of_birth,
+      dob,
+      p.notes,
+      p.email,
+      p.phone,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return `
+      <label
+        data-captain-row
+        data-id="${e(p.id)}"
+        data-full-name="${e(p.full_name)}"
+        data-dob="${e(p.date_of_birth || "")}"
+        data-notes="${e(p.notes || "")}"
+        data-foot="${e(p.preferred_foot || "")}"
+        data-pos="${e(pos)}"
+        data-jersey="${e(jersey ?? 9999)}"
+        data-search="${e(searchBlob)}"
+        class="captain-row ${isChecked ? "is-captain" : ""}"
+      >
+        <input type="radio" name="captain_pick" value="${e(p.id)}" ${isChecked ? "checked" : ""}>
+        <span class="avatar picker-avatar">${e(initials(p.full_name))}</span>
+        <span class="captain-row-body">
+          <span class="captain-row-head">
+            <strong>${e(p.full_name)}</strong>
+            ${jersey != null ? `<span class="jersey-pill">#${e(jersey)}</span>` : ""}
+            ${pos ? `<span class="pos-pill">${e(pos)}</span>` : ""}
+            <span class="captain-armband" data-captain-badge ${isChecked ? "" : "hidden"}>C · ĐỘI TRƯỞNG</span>
+          </span>
+          <small>${e(metaParts.join(" · ") || "Thành viên trong đội")}</small>
+        </span>
+      </label>
+    `;
+  };
+
+  const fieldsHtml = `
+    <div class="member-picker captain-picker">
+      <input type="hidden" name="captain_id" value="${e(selected)}">
+      <div class="captain-status-banner">
+        <div>
+          <span class="eyebrow">BĂNG ĐỘI TRƯỞNG</span>
+          <strong data-captain-current-label>${
+            currentCaptainObj
+              ? `${e(currentCaptainObj.full_name)}${getJersey(currentCaptainObj) != null ? ` (#${e(getJersey(currentCaptainObj))})` : ""}`
+              : "Chưa chọn đội trưởng"
+          }</strong>
+        </div>
+        <button type="button" class="chip-button secondary" data-captain-clear ${selected ? "" : "hidden"}>Bỏ chọn đội trưởng</button>
+      </div>
+
+      <div class="filters picker-toolbar">
+        <label style="margin:0;">
+          <input type="search" name="captain_search" data-captain-search placeholder="Tìm theo họ tên, #số áo, vị trí, ngày sinh, ghi chú…" aria-label="Tìm kiếm cầu thủ làm đội trưởng">
+        </label>
+        <label style="margin:0;">
+          <select data-captain-sort aria-label="Sắp xếp danh sách cầu thủ">
+            <option value="asc">Tên A–Z</option>
+            <option value="desc">Tên Z–A</option>
+            <option value="jersey">Theo số áo</option>
+            <option value="position">Theo vị trí</option>
+            <option value="dob">Theo ngày sinh</option>
+            <option value="notes">Theo ghi chú</option>
+            <option value="foot">Theo chân thuận</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="picker-meta-line">
+        <span data-captain-count>Hiển thị <strong>${ordered.length}</strong> / ${ordered.length} cầu thủ trong đội</span>
+        <small>Click trực tiếp vào cầu thủ để trao băng Đội trưởng</small>
+      </div>
+
+      <div class="member-picker-list captain-picker-list" data-captain-list>
+        ${ordered.map(renderCaptainRow).join("")}
+      </div>
+      <p data-captain-empty hidden class="picker-empty">Không tìm thấy cầu thủ nào khớp với từ khóa tìm kiếm.</p>
+    </div>
+  `;
+
+  const modal = dialog(
+    `Chọn đội trưởng · ${e(team.name)}`,
+    `Sân ${e(team.format)} người · Tìm kiếm và chọn trực tiếp một cầu thủ trong đội để trao băng Đội trưởng.`,
+    fieldsHtml,
+    async (form) => {
+      try {
+        const rawVal = form.elements.captain_id.value;
+        await api.patch(base(`/teams/${team.id}/captain`), {
+          captain_id: rawVal ? Number(rawVal) : null,
+        });
+        await reload();
+        toast(rawVal ? "Đã cập nhật đội trưởng." : "Đã bỏ chọn đội trưởng.");
+        return true;
+      } catch (error) {
+        showErrors(form, error.errors, error.message);
+        return false;
+      }
+    },
+    "Lưu đội trưởng"
+  );
+
+  modal.classList.add("member-picker-dialog");
+
+  const hiddenInput = modal.querySelector('[name="captain_id"]');
+  const searchInput = modal.querySelector("[data-captain-search]");
+  const sortSelect = modal.querySelector("[data-captain-sort]");
+  const listEl = modal.querySelector("[data-captain-list]");
+  const emptyEl = modal.querySelector("[data-captain-empty]");
+  const countEl = modal.querySelector("[data-captain-count]");
+  const currentLabelEl = modal.querySelector("[data-captain-current-label]");
+  const clearBtn = modal.querySelector("[data-captain-clear]");
+
+  const syncSelectedUi = () => {
+    hiddenInput.value = selected;
+    const chosen = candidates.find((p) => String(p.id) === selected);
+    if (currentLabelEl) {
+      const j = chosen ? getJersey(chosen) : null;
+      currentLabelEl.textContent = chosen
+        ? `${chosen.full_name}${j != null ? ` (#${j})` : ""}`
+        : "Chưa chọn đội trưởng";
+    }
+    if (clearBtn) clearBtn.hidden = !selected;
+
+    listEl.querySelectorAll("[data-captain-row]").forEach((row) => {
+      const active = row.dataset.id === selected;
+      row.classList.toggle("is-captain", active);
+      const radio = row.querySelector('input[name="captain_pick"]');
+      if (radio) radio.checked = active;
+      const badge = row.querySelector("[data-captain-badge]");
+      if (badge) badge.hidden = !active;
+    });
+  };
+
+  listEl.addEventListener("change", (event) => {
+    const radio = event.target.closest('input[name="captain_pick"]');
+    if (!radio) return;
+    selected = radio.checked ? String(radio.value) : "";
+    syncSelectedUi();
   });
 
-  const search = modal.querySelector('[name="captain_search"]'), picker = modal.querySelector('[name="captain_id"]'), sort = modal.querySelector('[data-captain-sort]');
-  picker.addEventListener('change', () => { selected = picker.value; });
+  clearBtn?.addEventListener("click", () => {
+    selected = "";
+    syncSelectedUi();
+  });
 
-  const getJersey = (p) => p.teams?.find((t) => String(t.id) === String(team.id))?.jersey_number ?? 9999;
-  const getPos = (p) => p.teams?.find((t) => String(t.id) === String(team.id))?.position || p.position || '';
+  const applyFilterAndSort = (shouldSort = false) => {
+    const query = (searchInput.value || "").trim();
+    const sortVal = sortSelect.value;
+    const rows = [...listEl.querySelectorAll("[data-captain-row]")];
 
-  const refresh = (shouldSort = false) => {
-    const query = search.value.trim().toLocaleLowerCase('vi');
-    const sortVal = sort.value;
-    let filtered = ordered.filter((p) => String(p.id) === selected || [p.full_name, p.notes, p.preferred_foot, p.email].some((v) => String(v || '').toLocaleLowerCase('vi').includes(query)));
+    let visibleCount = 0;
+    rows.forEach((row) => {
+      const match = !query || matchesSearch(row.dataset.search, query);
+      row.hidden = !match;
+      if (match) visibleCount++;
+    });
+
+    if (emptyEl) emptyEl.hidden = visibleCount > 0;
+    if (countEl) {
+      countEl.innerHTML = `Hiển thị <strong>${visibleCount}</strong> / ${ordered.length} cầu thủ trong đội`;
+    }
+
     if (shouldSort) {
-      filtered.sort((a, b) => {
-        if (sortVal === 'asc') return compareVietnameseNames(a.full_name, b.full_name);
-        if (sortVal === 'desc') return -1 * compareVietnameseNames(a.full_name, b.full_name);
-        if (sortVal === 'notes') return (b.notes ? 1 : 0) - (a.notes ? 1 : 0) || compareVietnameseNames(a.full_name, b.full_name);
-        if (sortVal === 'foot') return (a.preferred_foot || '').localeCompare(b.preferred_foot || '') || compareVietnameseNames(a.full_name, b.full_name);
-        if (sortVal === 'jersey') return Number(getJersey(a)) - Number(getJersey(b));
-        if (sortVal === 'position') return getPos(a).localeCompare(getPos(b)) || compareVietnameseNames(a.full_name, b.full_name);
+      rows.sort((a, b) => {
+        if (sortVal === "asc") return compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "desc") return -1 * compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "jersey") return Number(a.dataset.jersey) - Number(b.dataset.jersey) || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "position") return (a.dataset.pos || "ZZZ").localeCompare(b.dataset.pos || "ZZZ") || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "dob") return (a.dataset.dob || "9999").localeCompare(b.dataset.dob || "9999") || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "notes") return (b.dataset.notes ? 1 : 0) - (a.dataset.notes ? 1 : 0) || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
+        if (sortVal === "foot") return (a.dataset.foot || "z").localeCompare(b.dataset.foot || "z") || compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);
         return 0;
       });
+      rows.forEach((r) => listEl.append(r));
     }
-    picker.innerHTML = '<option value="">Chưa chọn</option>' + filtered.map((p) => `<option value="${e(p.id)}">${e(p.full_name)}${p.teams.find((t) => String(t.id) === String(team.id))?.jersey_number == null ? '' : ` #${e(p.teams.find((t) => String(t.id) === String(team.id)).jersey_number)}`}${p.preferred_foot ? ` (${p.preferred_foot === 'right' ? 'Chân phải' : p.preferred_foot === 'left' ? 'Chân trái' : 'Hai chân'})` : ''}</option>`).join('');
-    picker.value = selected;
   };
-  search.addEventListener('input', () => refresh(false));
-  sort.addEventListener('change', () => refresh(true));
-  refresh(false);
+
+  searchInput.addEventListener("input", () => applyFilterAndSort(false));
+  sortSelect.addEventListener("change", () => applyFilterAndSort(true));
+
+  return modal;
 }
 
 export function openLineup({ teams, players, lineup, linkedMatch, api, base, reload }) {

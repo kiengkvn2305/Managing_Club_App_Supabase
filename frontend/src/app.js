@@ -28,11 +28,19 @@ import {
   unpackList,
 } from './utils.js';
 
+function syncThemeMeta(theme) {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'light' ? '#eef3f7' : '#07111e');
+}
+
 try {
   const savedTheme = localStorage.getItem('fcms-theme');
-  document.documentElement.dataset.theme = savedTheme === 'light' ? 'light' : 'dark';
+  const activeTheme = savedTheme === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = activeTheme;
+  syncThemeMeta(activeTheme);
 } catch {
   document.documentElement.dataset.theme = 'dark';
+  syncThemeMeta('dark');
 }
 
 import { createClubController } from './controllers/club-controller.js';
@@ -379,8 +387,8 @@ function render() {
           </a>
           <time class="mobile-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
           <div class="header-actions">
-            <button class="icon-button" data-action="theme" aria-label="Đổi giao diện sáng tối">
-              ${icon('moon')}
+            <button class="icon-button theme-toggle" data-action="theme" aria-label="Đổi giao diện sáng tối" title="${document.documentElement.dataset.theme === 'light' ? 'Chuyển sang nền tối' : 'Chuyển sang nền sáng'}">
+              ${icon(document.documentElement.dataset.theme === 'light' ? 'moon' : 'sun')}
             </button>
             <a class="user-link" href="#profile">
               ${avatar(s.user.name, imageUrl('account', s.user.id, s.user.avatar_version))}
@@ -898,9 +906,14 @@ async function action(el) {
     const theme =
       document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = theme;
+    syncThemeMeta(theme);
     try {
       localStorage.setItem('fcms-theme', theme);
     } catch {}
+    document.querySelectorAll('[data-action="theme"]').forEach((btn) => {
+      btn.innerHTML = icon(theme === 'light' ? 'moon' : 'sun');
+      btn.setAttribute('title', theme === 'light' ? 'Chuyển sang nền tối' : 'Chuyển sang nền sáng');
+    });
     return;
   }
 
@@ -1118,6 +1131,11 @@ root.addEventListener('change', (event) => {
     s.birthdayMonth = '';
     s.friendlyPage = 1;
     s.matchesPage = 1;
+    s.financePage = 1;
+    s.financeAdjustmentPage = 1;
+    s.duesSearch = '';
+    s.duesTeam = '';
+    s.duesStatus = '';
     s.inventoryPage = 1;
     s.inventorySearch = '';
     s.inventoryLowStock = false;
@@ -1131,6 +1149,11 @@ root.addEventListener('change', (event) => {
     s.boardSort = 'title';
     s.membershipsSort = 'role';
     s.filters = { q: '', team_id: '', status: '', page: 1 };
+    if (s.route === 'team-roster') {
+      s.teamRosterId = '';
+      s.route = 'teams';
+      history.replaceState(null, '', location.pathname + '#teams');
+    }
     loadView();
   }
 });
