@@ -215,7 +215,7 @@ begin
       end if;
 
       -- Tìm bản ghi đóng quỹ đã có
-      select id, status, amount, notes into v_entry
+      select id, status, amount into v_entry
       from public.team_dues_entries
       where club_id = p_club_id
         and team_id = v_team.team_id
@@ -239,7 +239,7 @@ begin
         'name', v_team.team_name,
         'amount', v_rate,
         'status', v_status,
-        'notes', coalesce(v_entry.notes, ''),
+        'notes', '',
         'is_maintenance', (v_player.status = 'inactive')
       );
     end loop;
