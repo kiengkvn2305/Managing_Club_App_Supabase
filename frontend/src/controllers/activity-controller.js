@@ -1,24 +1,46 @@
 import { activityAction } from '../activities.js';
 import { openAttendanceReport } from '../attendance-report.js';
-import { vietnamToday } from '../utils.js';
+import { vietnamToday, canManageAttendance, isCoOwnerOrOwner } from '../utils.js';
 
 export function createActivityController(ctx) {
   async function handleAction(a, el) {
+    if (['new-training', 'attendance'].includes(a)) {
+      if (
+        !ctx.requirePermission(
+          canManageAttendance(ctx.currentClub()),
+          'quản lý lịch tập và điểm danh'
+        )
+      ) {
+        return true;
+      }
+      return activityAction(a, el.dataset.id, {
+        state: ctx.state,
+        api: ctx.api,
+        base: ctx.base,
+        reload: ctx.loadView,
+      });
+    }
+
     if (
       [
         'new-celebration',
-        'new-training',
         'new-award',
-        'attendance',
         'edit-activity',
         'delete-activity',
         'approve-activity',
       ].includes(a)
     ) {
+      const isTrainingTarget = String(el?.dataset?.id || '').startsWith('trainings:');
+      const allowed = isTrainingTarget
+        ? canManageAttendance(ctx.currentClub())
+        : Boolean(
+            isCoOwnerOrOwner(ctx.currentClub()) ||
+              ctx.currentClub()?.can_manage_activities
+          );
       if (
         !ctx.requirePermission(
-          ctx.currentClub()?.can_manage_activities,
-          'quản lý hoạt động và khen thưởng'
+          allowed,
+          isTrainingTarget ? 'quản lý lịch tập và điểm danh' : 'quản lý hoạt động và khen thưởng'
         )
       ) {
         return true;
@@ -32,7 +54,7 @@ export function createActivityController(ctx) {
     }
 
     if (a === 'attendance-report') {
-      if (!ctx.requirePermission(ctx.canManageRoster(), 'Xem tiến độ điểm danh')) return true;
+      if (!ctx.requirePermission(Boolean(ctx.currentClub()), 'Xem tiến độ điểm danh')) return true;
       return openAttendanceReport({
         teams: ctx.state.teams,
         trainings: ctx.state.activities.trainings || [],

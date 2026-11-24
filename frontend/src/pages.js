@@ -18,6 +18,7 @@ import { recruitmentPage } from './recruitment-page.js';
 import { dashboardPage } from './views/dashboard-page.js';
 import { boardPage } from './views/board-page.js';
 import { activitiesPage } from './views/activities-page.js';
+import { attendancePage } from './views/attendance-page.js';
 import { clubPage } from './views/club-page.js';
 import { adminPage } from './views/admin-page.js';
 import { profilePage, acceptPage } from './views/profile-page.js';
@@ -32,6 +33,7 @@ export const titles = {
   'team-roster': 'Thành viên đội bóng',
   finance: 'Sổ thu chi CLB',
   dues: 'Đóng quỹ',
+  attendance: 'Điểm danh',
   activities: 'Hoạt động CLB',
   inventory: 'Kho trang bị',
   'club-members': 'Thành viên BCN',
@@ -284,6 +286,7 @@ export function page() {
           `<section class="panel">${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem tuyển dụng.')}</section>`,
     finance: financePage,
     dues: duesPage,
+    attendance: attendancePage,
     activities: activitiesPage,
     'club-members': boardPage,
     club: clubPage,

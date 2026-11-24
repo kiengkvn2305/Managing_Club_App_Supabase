@@ -76,10 +76,24 @@ export function currentAcademicYear(date = new Date()) {
   const year = d.getFullYear();
   return month >= 9 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 }
+export const isCoOwnerOrOwner = (target) => {
+  if (!target) return false;
+  if (typeof target === 'object') {
+    return Boolean(
+      target.is_system_admin ||
+      target.membership_role === 'owner' ||
+      target.is_co_owner ||
+      target.membership_role === 'co_owner' ||
+      /phó chủ nhiệm/i.test(target.membership_title || target.title || '')
+    );
+  }
+  return ['owner', 'co_owner'].includes(target);
+};
+
 export const canManageRoster = (target) => {
   if (!target) return false;
   if (typeof target === 'object') {
-    if (target.is_system_admin || target.membership_role === 'owner') return true;
+    if (isCoOwnerOrOwner(target)) return true;
     if (target.can_manage_roster !== undefined) return Boolean(target.can_manage_roster);
     return [
       "owner",
@@ -101,11 +115,20 @@ export const canManageRoster = (target) => {
 export const canManageClub = (target) => {
   if (!target) return false;
   if (typeof target === 'object') {
-    if (target.is_system_admin || target.membership_role === 'owner') return true;
+    if (isCoOwnerOrOwner(target)) return true;
     if (target.can_manage_club !== undefined) return Boolean(target.can_manage_club);
     return ["owner", "co_owner", "general_manager"].includes(target.membership_role);
   }
   return ["owner", "co_owner", "general_manager"].includes(target);
+};
+
+export const canManageAttendance = (target) => {
+  if (!target) return false;
+  if (typeof target === 'object') {
+    if (isCoOwnerOrOwner(target)) return true;
+    return Boolean(target.can_manage_attendance);
+  }
+  return ['owner', 'co_owner'].includes(target);
 };
 export function validDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -201,6 +224,7 @@ export const TITLE_PRESETS = {
     can_manage_roster: true,
     can_manage_inventory: true,
     can_manage_activities: true,
+    can_manage_attendance: true,
     can_manage_club: true,
   },
   'Thủ quỹ': {
@@ -209,6 +233,25 @@ export const TITLE_PRESETS = {
     can_manage_roster: false,
     can_manage_inventory: false,
     can_manage_activities: false,
+    can_manage_attendance: false,
+    can_manage_club: false,
+  },
+  'Truyền thông': {
+    can_view_finance: false,
+    can_manage_finance: false,
+    can_manage_roster: false,
+    can_manage_inventory: false,
+    can_manage_activities: true,
+    can_manage_attendance: false,
+    can_manage_club: false,
+  },
+  'Đối ngoại': {
+    can_view_finance: false,
+    can_manage_finance: false,
+    can_manage_roster: false,
+    can_manage_inventory: false,
+    can_manage_activities: true,
+    can_manage_attendance: false,
     can_manage_club: false,
   },
   'Trưởng ban chuyên môn / HLV': {
@@ -216,7 +259,8 @@ export const TITLE_PRESETS = {
     can_manage_finance: false,
     can_manage_roster: true,
     can_manage_inventory: false,
-    can_manage_activities: true,
+    can_manage_activities: false,
+    can_manage_attendance: true,
     can_manage_club: false,
   },
   'Phụ trách hậu cần / Trang thiết bị': {
@@ -224,7 +268,8 @@ export const TITLE_PRESETS = {
     can_manage_finance: false,
     can_manage_roster: false,
     can_manage_inventory: true,
-    can_manage_activities: true,
+    can_manage_activities: false,
+    can_manage_attendance: false,
     can_manage_club: false,
   },
   'Ủy viên BCN / Cán sự': {
@@ -232,7 +277,8 @@ export const TITLE_PRESETS = {
     can_manage_finance: false,
     can_manage_roster: false,
     can_manage_inventory: false,
-    can_manage_activities: true,
+    can_manage_activities: false,
+    can_manage_attendance: false,
     can_manage_club: false,
   },
   'Thành viên': {
@@ -241,6 +287,7 @@ export const TITLE_PRESETS = {
     can_manage_roster: false,
     can_manage_inventory: false,
     can_manage_activities: false,
+    can_manage_attendance: false,
     can_manage_club: false,
   },
 };

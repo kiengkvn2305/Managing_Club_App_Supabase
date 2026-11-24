@@ -81,7 +81,7 @@ test('award recipient search and sort handles name, date of birth, and notes acc
   assert.equal(sortedDobAsc[2].id, 2); // 2005
 });
 
-test('activitiesPage filters by date and sorts training sessions chronologically', () => {
+test('attendancePage filters by date, sorts chronologically, and restricts marking to authorized users', () => {
   const t1 = {
     id: 1,
     team_name: 'Futsal Đội Lớn',
@@ -122,8 +122,8 @@ test('activitiesPage filters by date and sorts training sessions chronologically
   Object.assign(state, {
     loading: false,
     error: '',
-    route: 'activities',
-    clubs: [{ id: 1, membership_role: 'owner', can_manage_activities: true }],
+    route: 'attendance',
+    clubs: [{ id: 1, membership_role: 'owner', can_manage_attendance: true }],
     clubId: 1,
     teams: [
       { id: 'team-1', name: 'Futsal Đội Lớn' },
@@ -151,6 +151,25 @@ test('activitiesPage filters by date and sorts training sessions chronologically
   assert.match(html, /data-training-date/);
   assert.match(html, /data-training-sort/);
   assert.match(html, /3<\/strong> lịch tập/);
+  assert.match(html, /data-action="attendance"/);
+  assert.match(html, /data-action="new-training"/);
+
+  // Regular member: read-only attendance view, no Điểm danh button or Tạo lịch tập
+  state.clubs = [{ id: 1, membership_role: 'member', can_manage_attendance: false }];
+  html = page();
+  assert.match(html, /22\/11\/2026 15:39/);
+  assert.match(html, /Chỉ xem/);
+  assert.doesNotMatch(html, /data-action="attendance"/);
+  assert.doesNotMatch(html, /data-action="new-training"/);
+
+  // Member granted attendance permission: can mark attendance & create trainings
+  state.clubs = [{ id: 1, membership_role: 'member', can_manage_attendance: true }];
+  html = page();
+  assert.match(html, /data-action="attendance"/);
+  assert.match(html, /data-action="new-training"/);
+
+  // Restore owner for filter checks
+  state.clubs = [{ id: 1, membership_role: 'owner', can_manage_attendance: true }];
 
   // Descending sort: 23rd 18:00 -> 22nd 17:00 -> 22nd 15:39
   state.trainingSort = 'desc';
@@ -176,6 +195,12 @@ test('activitiesPage filters by date and sorts training sessions chronologically
   html = page();
   assert.match(html, /Không có lịch tập nào vào ngày 25\/11\/2026/);
   assert.match(html, /0<\/strong> lịch tập/);
+
+  // Activities page no longer contains Lịch tập & điểm danh
+  state.route = 'activities';
+  state.clubs = [{ id: 1, membership_role: 'owner', can_manage_activities: true }];
+  const actHtml = page();
+  assert.doesNotMatch(actHtml, /Lịch tập & điểm danh/);
 
   // Reset filter
   state.trainingFilterDate = '';

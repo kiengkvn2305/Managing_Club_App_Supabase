@@ -4,6 +4,7 @@ import {
   number,
   formatDate,
   canManageClub,
+  isCoOwnerOrOwner,
   compareVietnameseNames,
   boardTitleRank,
   initials,
@@ -13,11 +14,8 @@ import { button, empty } from '../components/ui.js';
 export function boardPage() {
   const c = currentClub();
   const isOwner = c?.membership_role === 'owner' || c?.is_system_admin;
-  const canManage =
-    isOwner ||
-    canManageClub(c) ||
-    c?.can_manage_finance ||
-    c?.can_manage_roster;
+  const isLeader = isCoOwnerOrOwner(c);
+  const canManage = isLeader || canManageClub(c);
 
   if (!canManage) {
     return `
@@ -134,6 +132,7 @@ export function boardPage() {
     if (perms.can_manage_roster) granted.push('Quản lý nhân sự');
     if (perms.can_manage_inventory) granted.push('Quản lý kho');
     if (perms.can_manage_activities) granted.push('Quản lý hoạt động');
+    if (perms.can_manage_attendance) granted.push('Quản lý điểm danh');
     if (perms.can_manage_club) granted.push('Quản lý CLB');
     if (!granted.length) return '<span class="badge inactive">Quyền mặc định</span>';
     return `<span class="badge">${e(granted.join(', '))}</span>`;
@@ -184,10 +183,10 @@ export function boardPage() {
             </div>
           </div>
           <div class="action-chips">
-            ${isOwner && m.role !== 'owner' ? `<button type="button" class="chip-button" data-action="edit-permissions" data-id="${m.id}">Chức vụ & Phân quyền</button>` : ''}
-            ${isOwner && m.role === 'owner' ? `<span class="badge gold">Chủ nhiệm tối cao</span>` : ''}
+            ${isLeader && m.role !== 'owner' ? `<button type="button" class="chip-button" data-action="edit-permissions" data-id="${m.id}">Chức vụ & Phân quyền</button>` : ''}
+            ${m.role === 'owner' ? `<span class="badge gold">Chủ nhiệm tối cao</span>` : ''}
             ${isOwner && m.role !== 'owner' ? `<button type="button" class="chip-button secondary" data-action="transfer-ownership" data-id="${m.user_id}" data-name="${e(m.name || m.email)}">Trao quyền Chủ nhiệm</button>` : ''}
-            ${isOwner && m.role !== 'owner' ? `<button type="button" class="chip-button danger" data-action="remove-club-member" data-id="${m.id}" data-name="${e(m.name || m.email)}" title="Xóa tài khoản khỏi CLB và BCN">Xóa khỏi CLB</button>` : ''}
+            ${isLeader && m.role !== 'owner' ? `<button type="button" class="chip-button danger" data-action="remove-club-member" data-id="${m.id}" data-name="${e(m.name || m.email)}" title="Xóa tài khoản khỏi CLB và BCN">Xóa khỏi CLB</button>` : ''}
           </div>
         </div>`;
         })

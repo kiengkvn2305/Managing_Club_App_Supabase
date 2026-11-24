@@ -3,12 +3,19 @@ import {
   escapeHtml as e,
   formatDate,
   vietnamToday,
-  canManageRoster,
+  isCoOwnerOrOwner,
 } from '../utils.js';
 import { button, empty } from '../components/ui.js';
 
 export function activitiesPage() {
-  if (!currentClub()?.can_manage_activities) {
+  const club = currentClub();
+  const canManage = Boolean(
+    isCoOwnerOrOwner(club) ||
+    club?.can_manage_activities ||
+    club?.can_view_activities
+  );
+
+  if (!canManage) {
     return `
       <div class="page-top">
         <div>
@@ -18,7 +25,7 @@ export function activitiesPage() {
         </div>
       </div>
       <section class="panel">
-        ${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền quản lý hoạt động CLB.')}
+        ${empty('Quyền truy cập được bảo vệ', 'Chỉ Chủ nhiệm, Phó chủ nhiệm, Truyền thông, Đối ngoại hoặc người được cấp quyền mới có thể quản lý hoạt động CLB.')}
       </section>
     `;
   }
@@ -26,46 +33,10 @@ export function activitiesPage() {
   const {
     celebrations = [],
     birthdays = [],
-    trainings = [],
     awards = [],
   } = s.activities;
 
-  // Sắp xếp thứ tự ngày tháng và lọc theo ngày/đội bóng
-  const sortDir = s.trainingSort === 'desc' ? -1 : 1;
-  const filteredTrainings = trainings
-    .filter((t) => {
-      if (s.trainingFilterDate && t.training_date !== s.trainingFilterDate) {
-        return false;
-      }
-      if (
-        s.trainingFilterTeam &&
-        String(t.team_id) !== String(s.trainingFilterTeam)
-      ) {
-        return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      const dateCmp = String(a.training_date || '').localeCompare(
-        String(b.training_date || '')
-      );
-      if (dateCmp !== 0) return sortDir * dateCmp;
-      const timeCmp = String(a.training_time || '').localeCompare(
-        String(b.training_time || '')
-      );
-      if (timeCmp !== 0) return sortDir * timeCmp;
-      return sortDir * (a.id - b.id);
-    });
-
-  // Đếm số buổi tập theo từng ngày để hỗ trợ chọn nhanh
-  const dateCounts = new Map();
-  trainings.forEach((t) => {
-    if (t.training_date) {
-      dateCounts.set(t.training_date, (dateCounts.get(t.training_date) || 0) + 1);
-    }
-  });
-  const availableDates = [...dateCounts.keys()].sort();
-  const owner = currentClub().membership_role === 'owner';
+  const owner = isCoOwnerOrOwner(club);
   const birthdayMonth = s.birthdayMonth || vietnamToday().slice(5, 7);
   const monthlyBirthdays = birthdays
     .filter((p) => p.date_of_birth?.slice(5, 7) === birthdayMonth)
@@ -92,11 +63,6 @@ export function activitiesPage() {
     </label>
   `;
 
-  const canManage =
-    owner ||
-    currentClub()?.is_system_admin ||
-    currentClub()?.can_manage_activities;
-
   const controls = (kind, x) =>
     canManage
       ? `<span class="team-actions">${x.approval_status === 'pending' ? `<button class="text-button" data-action="approve-activity" data-id="${kind}:${x.id}">Duyệt</button>` : ''}<button class="text-button" data-action="edit-activity" data-id="${kind}:${x.id}">Sửa</button><button class="text-button danger" data-action="delete-activity" data-id="${kind}:${x.id}">Xóa</button></span>`
@@ -121,7 +87,7 @@ export function activitiesPage() {
       <div>
         <div class="eyebrow">KHÔNG GIAN CÂU LẠC BỘ</div>
         <h1>Hoạt động CLB</h1>
-        <p>Dịp lễ, sinh nhật, lịch tập, điểm danh và khen thưởng.</p>
+        <p>Dịp lễ, sinh nhật thành viên và khen thưởng nội bộ (phần Điểm danh đã được tách riêng ở menu Điểm danh).</p>
       </div>
     </div>
 
@@ -175,99 +141,7 @@ export function activitiesPage() {
         }
       </section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>Lịch tập & điểm danh</h2>
-            <p style="margin:2px 0 0;font-size:12px;color:var(--muted);">Lịch tập của các đội bóng, quản lý điểm danh và theo dõi tiến độ tham gia.</p>
-          </div>
-          <div class="team-actions">
-            ${canManageRoster(currentClub()) ? button('attendance-report', 'Tiến độ điểm danh', 'check', 'secondary') : ''}
-            ${button('new-training', 'Tạo lịch tập')}
-          </div>
-        </div>
-
-        <div class="training-filter-bar">
-          <div class="training-filter-controls">
-            <label class="training-filter-item">
-              <span class="training-filter-label">Chọn ngày tập</span>
-              <input type="date" data-training-date value="${e(s.trainingFilterDate || '')}" aria-label="Chọn ngày lọc lịch tập">
-            </label>
-            <label class="training-filter-item">
-              <span class="training-filter-label">Đội bóng</span>
-              <select data-training-team aria-label="Lọc theo đội bóng">
-                <option value="">Tất cả đội bóng</option>
-                ${(s.teams || []).map((t) => `<option value="${e(t.id)}" ${String(s.trainingFilterTeam || '') === String(t.id) ? 'selected' : ''}>${e(t.name)}</option>`).join('')}
-              </select>
-            </label>
-            <label class="training-filter-item">
-              <span class="training-filter-label">Thứ tự ngày tháng</span>
-              <select data-training-sort aria-label="Sắp xếp theo thứ tự ngày tháng">
-                <option value="asc" ${s.trainingSort !== 'desc' ? 'selected' : ''}>Ngày tăng dần (Cũ → Mới)</option>
-                <option value="desc" ${s.trainingSort === 'desc' ? 'selected' : ''}>Ngày giảm dần (Mới → Cũ)</option>
-              </select>
-            </label>
-            <div class="training-quick-buttons">
-              <button type="button" class="button secondary small" data-action="training-today" title="Xem lịch tập hôm nay">Hôm nay</button>
-              ${s.trainingFilterDate || s.trainingFilterTeam ? `<button type="button" class="button secondary small" data-action="training-all" title="Xóa bộ lọc xem tất cả">Xem tất cả</button>` : ''}
-            </div>
-          </div>
-
-          ${
-            availableDates.length > 1
-              ? `
-            <div class="training-date-pills">
-              <span class="training-pills-label">Ngày có lịch:</span>
-              <button type="button" class="training-date-pill ${!s.trainingFilterDate ? 'active' : ''}" data-action="training-select-date" data-date="">Tất cả (${trainings.length})</button>
-              ${availableDates
-                .map(
-                  (d) =>
-                    `<button type="button" class="training-date-pill ${s.trainingFilterDate === d ? 'active' : ''}" data-action="training-select-date" data-date="${e(d)}">${formatDate(d)} (${dateCounts.get(d)})</button>`
-                )
-                .join('')}
-            </div>
-          `
-              : ''
-          }
-
-          <div class="training-filter-status">
-            <span class="training-count-badge">
-              <strong>${filteredTrainings.length}</strong> lịch tập
-            </span>
-            <span class="training-count-info">
-              ${
-                s.trainingFilterDate
-                  ? `ngày <strong>${formatDate(s.trainingFilterDate)}</strong>${s.trainingFilterTeam ? ` · ${e((s.teams || []).find((t) => String(t.id) === String(s.trainingFilterTeam))?.name || 'Đội đã chọn')}` : ''} (trên tổng số ${trainings.length} buổi tập)`
-                  : `(hiển thị toàn bộ ${trainings.length} buổi tập theo thứ tự ngày tháng)`
-              }
-            </span>
-          </div>
-        </div>
-
-        ${
-          filteredTrainings.length
-            ? filteredTrainings
-                .map((t) =>
-                  row(
-                    `${t.team_name} · ${formatDate(t.training_date)} ${t.training_time}`,
-                    `${t.location} · ${{ scheduled: 'Theo kế hoạch', cancelled: 'Không tập', postponed: 'Hoãn' }[t.training_status] || 'Theo kế hoạch'} · Đã điểm danh ${(t.attendance || []).length}${t.training_status === 'scheduled' ? ' · Tự ghi vắng sau 10 phút' : ''}`,
-                    `${canManageRoster(currentClub()) && t.team_id && t.training_status === 'scheduled' && t.approval_status === 'approved' ? `<button class="text-button" data-action="attendance" data-id="${t.id}">Điểm danh</button>` : ''}${controls('trainings', t)}`,
-                    t.approval_status === 'pending'
-                  )
-                )
-                .join('')
-            : empty(
-                s.trainingFilterDate
-                  ? `Không có lịch tập nào vào ngày ${formatDate(s.trainingFilterDate)}`
-                  : 'Chưa có lịch tập',
-                s.trainingFilterDate
-                  ? 'Chọn ngày khác từ thanh lọc hoặc nhấn "Xem tất cả" để xem toàn bộ danh sách.'
-                  : 'Tạo lịch tập cho đội bóng.'
-              )
-        }
-      </section>
-
-      <section class="panel">
+      <section class="panel" style="grid-column:1/-1;">
         <div class="panel-head">
           <div>
             <h2>Khen thưởng & phần quà</h2>

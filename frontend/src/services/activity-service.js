@@ -4,6 +4,20 @@ export function createActivityService({ supabase }) {
   async function handleActivityRequest(clean, method, data, params, clubId, current) {
     if (!clubId) return null;
 
+    if (clean.endsWith('/attendance') && method === 'GET') {
+      const t = await supabase
+        .from('team_trainings')
+        .select('*')
+        .eq('club_id', clubId)
+        .order('training_date', { ascending: false });
+
+      return {
+        data: {
+          trainings: check(t) || [],
+        },
+      };
+    }
+
     if (clean.endsWith('/activities') && method === 'GET') {
       const [a, t, w, b, p] = await Promise.all([
         supabase

@@ -13,14 +13,28 @@ test('TITLE_PRESETS defines expected permissions for all club roles', () => {
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_roster, true);
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_view_finance, true);
   assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_finance, true);
+  assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_activities, true);
+  assert.equal(TITLE_PRESETS['Phó chủ nhiệm CLB'].can_manage_attendance, true);
 
   assert.equal(TITLE_PRESETS['Thủ quỹ'].can_view_finance, true);
   assert.equal(TITLE_PRESETS['Thủ quỹ'].can_manage_finance, true);
   assert.equal(TITLE_PRESETS['Thủ quỹ'].can_manage_roster, false);
+  assert.equal(TITLE_PRESETS['Thủ quỹ'].can_manage_activities, false);
+  assert.equal(TITLE_PRESETS['Thủ quỹ'].can_manage_attendance, false);
+
+  assert.equal(TITLE_PRESETS['Truyền thông'].can_manage_activities, true);
+  assert.equal(TITLE_PRESETS['Truyền thông'].can_view_finance, false);
+  assert.equal(TITLE_PRESETS['Truyền thông'].can_manage_attendance, false);
+
+  assert.equal(TITLE_PRESETS['Đối ngoại'].can_manage_activities, true);
+  assert.equal(TITLE_PRESETS['Đối ngoại'].can_view_finance, false);
+  assert.equal(TITLE_PRESETS['Đối ngoại'].can_manage_attendance, false);
 
   assert.equal(TITLE_PRESETS['Thành viên'].can_view_finance, false);
   assert.equal(TITLE_PRESETS['Thành viên'].can_manage_roster, false);
   assert.equal(TITLE_PRESETS['Thành viên'].can_manage_club, false);
+  assert.equal(TITLE_PRESETS['Thành viên'].can_manage_activities, false);
+  assert.equal(TITLE_PRESETS['Thành viên'].can_manage_attendance, false);
 });
 
 test('clubService handles invitation creation, listing, and revocation RPCs', async () => {

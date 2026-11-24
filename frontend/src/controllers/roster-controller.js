@@ -6,7 +6,7 @@ import {
 } from '../spreadsheets.js';
 import { reviewImport } from '../import-review.js';
 import { avatar, imageUrl } from '../images.js';
-import { currentAcademicYear, TITLE_PRESETS, footLabel as formatFootLabel, statusLabel, matchesSearch } from '../utils.js';
+import { currentAcademicYear, TITLE_PRESETS, footLabel as formatFootLabel, statusLabel, matchesSearch, isCoOwnerOrOwner } from '../utils.js';
 
 export function createRosterController(ctx) {
   function editMember(member = { status: 'active' }) {
@@ -261,8 +261,10 @@ export function createRosterController(ctx) {
     let created;
     const titleOptions = [
       ['Thành viên', 'Thành viên (Mặc định)'],
-      ['Phó chủ nhiệm CLB', 'Phó chủ nhiệm CLB'],
-      ['Thủ quỹ', 'Thủ quỹ'],
+      ['Phó chủ nhiệm CLB', 'Phó chủ nhiệm CLB (Đầy đủ quyền)'],
+      ['Thủ quỹ', 'Thủ quỹ (Sổ thu chi & Đóng quỹ)'],
+      ['Truyền thông', 'Truyền thông (Hoạt động CLB)'],
+      ['Đối ngoại', 'Đối ngoại (Hoạt động CLB)'],
       ['Trưởng ban chuyên môn / HLV', 'Trưởng ban chuyên môn / HLV'],
       ['Phụ trách hậu cần / Trang thiết bị', 'Phụ trách hậu cần / Trang thiết bị'],
       ['Ủy viên BCN / Cán sự', 'Ủy viên BCN / Cán sự'],
@@ -284,7 +286,8 @@ export function createRosterController(ctx) {
           <label><input type="checkbox" name="can_manage_finance"> <strong>Quản lý thu chi & quỹ</strong><br><small class="muted">Tạo giao dịch, thu quỹ, sửa quỹ</small></label>
           <label><input type="checkbox" name="can_manage_roster"> <strong>Quản lý thành viên & đội</strong><br><small class="muted">Thêm/sửa thành viên, xếp đội bóng</small></label>
           <label><input type="checkbox" name="can_manage_inventory"> <strong>Quản lý kho trang bị</strong><br><small class="muted">Nhập/xuất, bàn giao thiết bị</small></label>
-          <label><input type="checkbox" name="can_manage_activities"> <strong>Quản lý hoạt động CLB</strong><br><small class="muted">Lịch tập, điểm danh, khen thưởng</small></label>
+          <label><input type="checkbox" name="can_manage_activities"> <strong>Quản lý hoạt động CLB</strong><br><small class="muted">Dịp lễ, sinh nhật, khen thưởng</small></label>
+          <label><input type="checkbox" name="can_manage_attendance"> <strong>Quản lý điểm danh</strong><br><small class="muted">Tạo lịch tập, bấm điểm danh</small></label>
           <label><input type="checkbox" name="can_manage_club"> <strong>Quản trị thông tin CLB</strong><br><small class="muted">Đổi thông tin, ảnh, cài đặt công khai</small></label>
         </div>
       </fieldset>`;
@@ -306,10 +309,12 @@ export function createRosterController(ctx) {
             can_manage_roster: Boolean(form.elements.can_manage_roster?.checked),
             can_manage_inventory: Boolean(form.elements.can_manage_inventory?.checked),
             can_manage_activities: Boolean(form.elements.can_manage_activities?.checked),
+            can_manage_attendance: Boolean(form.elements.can_manage_attendance?.checked),
             can_manage_club: Boolean(form.elements.can_manage_club?.checked),
           };
           let role = 'member';
-          if (permissions.can_manage_club) role = 'co_owner';
+          if (titleChoice === 'Phó chủ nhiệm CLB' || permissions.can_manage_club) role = 'co_owner';
+          else if (titleChoice === 'Thủ quỹ') role = 'treasurer';
           else if (
             permissions.can_manage_finance ||
             permissions.can_manage_roster ||
@@ -363,6 +368,7 @@ export function createRosterController(ctx) {
               can_manage_roster: 'Quản lý thành viên & đội',
               can_manage_inventory: 'Quản lý kho trang bị',
               can_manage_activities: 'Quản lý hoạt động',
+              can_manage_attendance: 'Quản lý điểm danh',
               can_manage_club: 'Quản trị CLB',
             };
             return labels[k] || k;
@@ -608,8 +614,8 @@ export function createRosterController(ctx) {
     }
 
     if (a === 'edit-permissions') {
-      const isOwner = ctx.currentRole() === 'owner' || ctx.currentClub()?.is_system_admin;
-      if (!ctx.requirePermission(isOwner, 'Phân quyền thành viên')) return true;
+      const canEditPerms = isCoOwnerOrOwner(ctx.currentClub());
+      if (!ctx.requirePermission(canEditPerms, 'Phân quyền thành viên')) return true;
       const member = (ctx.state.clubMemberships || []).find(
         (m) => String(m.id) === el.dataset.id
       );
@@ -620,6 +626,8 @@ export function createRosterController(ctx) {
       const presetTitles = [
         'Phó chủ nhiệm CLB',
         'Thủ quỹ',
+        'Truyền thông',
+        'Đối ngoại',
         'Trưởng ban chuyên môn / HLV',
         'Phụ trách hậu cần / Trang thiết bị',
         'Ủy viên BCN / Cán sự',
@@ -666,7 +674,11 @@ export function createRosterController(ctx) {
             </label>
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
               <input type="checkbox" name="can_manage_activities" ${perms.can_manage_activities ? 'checked' : ''}>
-              <span><strong>Quản lý hoạt động & sự kiện</strong> <small style="display:block;color:var(--muted);">Tạo buổi tập, điểm danh, sự kiện sinh nhật và khen thưởng</small></span>
+              <span><strong>Quản lý hoạt động & sự kiện</strong> <small style="display:block;color:var(--muted);">Tạo và quản lý dịp lễ, sinh nhật và khen thưởng CLB</small></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="can_manage_attendance" ${perms.can_manage_attendance ? 'checked' : ''}>
+              <span><strong>Quản lý điểm danh & lịch tập</strong> <small style="display:block;color:var(--muted);">Tạo lịch tập, bấm điểm danh buổi tập và theo dõi chuyên cần</small></span>
             </label>
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
               <input type="checkbox" name="can_manage_club" ${perms.can_manage_club ? 'checked' : ''}>
@@ -697,6 +709,7 @@ export function createRosterController(ctx) {
               can_manage_roster: form.elements.can_manage_roster.checked,
               can_manage_inventory: form.elements.can_manage_inventory.checked,
               can_manage_activities: form.elements.can_manage_activities.checked,
+              can_manage_attendance: form.elements.can_manage_attendance.checked,
               can_manage_club: form.elements.can_manage_club.checked,
             };
             await ctx.api.patch(

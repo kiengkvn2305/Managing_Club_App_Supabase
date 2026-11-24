@@ -44,6 +44,7 @@ export function createClubService({ supabase, authService }) {
             formats: club.formats || (club.format ? [club.format] : ['7']),
             membership_role: memberData.role,
             membership_title: memberData.title,
+            is_co_owner: Boolean(memberData.is_co_owner),
             is_system_admin: Boolean(memberData.is_system_admin),
             permissions: memberData.permissions || club.permissions || {},
             can_view_finance: Boolean(memberData.can_view_finance),
@@ -54,6 +55,8 @@ export function createClubService({ supabase, authService }) {
             can_view_inventory: Boolean(memberData.can_view_inventory),
             can_manage_activities: Boolean(memberData.can_manage_activities),
             can_view_activities: Boolean(memberData.can_view_activities),
+            can_manage_attendance: Boolean(memberData.can_manage_attendance),
+            can_view_attendance: memberData.can_view_attendance !== false,
             can_view_club: true,
             avatar_version: club.avatar_version || club.avatar_path || null,
             background_version: club.background_version || club.background_path || null,
@@ -105,37 +108,47 @@ export function createClubService({ supabase, authService }) {
     }
 
     const isOwner = role === 'owner' || isSystemAdmin;
+    const isCoOwner = role === 'co_owner' || /phó chủ nhiệm/i.test(title);
+    const isFullLeader = isOwner || isCoOwner;
+    const isTreasurer = role === 'treasurer' || /(thủ quỹ|kế toán)/i.test(title);
+    const isCommsOrExternal = /(truyền thông|đối ngoại|media)/i.test(title);
 
-    const canViewFinance = isOwner || (customPerms.can_view_finance !== undefined
-      ? Boolean(customPerms.can_view_finance)
-      : (financeRoles.includes(role) || isFinanceTitle(title) || isBoardMember || ['hlv', 'huấn luyện viên'].includes(title.toLowerCase())));
-
-    const canManageFinance = isOwner || (customPerms.can_manage_finance !== undefined
+    const canManageFinance = isFullLeader || (customPerms.can_manage_finance !== undefined
       ? Boolean(customPerms.can_manage_finance)
-      : (financeManageRoles.includes(role) || isFinanceTitle(title) || isBoardMember));
+      : (role === 'general_manager' || isTreasurer));
 
-    const canManageRoster = isOwner || (customPerms.can_manage_roster !== undefined
+    const canViewFinance = isFullLeader || canManageFinance || (customPerms.can_view_finance !== undefined
+      ? Boolean(customPerms.can_view_finance)
+      : (role === 'general_manager' || isTreasurer));
+
+    const canManageRoster = isFullLeader || (customPerms.can_manage_roster !== undefined
       ? Boolean(customPerms.can_manage_roster)
       : Boolean(perms.roster));
 
-    const canManageClub = isOwner || (customPerms.can_manage_club !== undefined
+    const canManageClub = isFullLeader || (customPerms.can_manage_club !== undefined
       ? Boolean(customPerms.can_manage_club)
       : Boolean(perms.club));
 
-    const canManageInventory = isOwner || (customPerms.can_manage_inventory !== undefined
+    const canManageInventory = isFullLeader || (customPerms.can_manage_inventory !== undefined
       ? Boolean(customPerms.can_manage_inventory)
       : ['owner', 'co_owner', 'general_manager', 'equipment_manager'].includes(role));
 
-    const canViewInventory = canManageInventory || ['owner', 'co_owner', 'general_manager', 'equipment_manager', 'sporting_manager'].includes(role);
+    const canViewInventory = isFullLeader || canManageInventory || (customPerms.can_view_inventory !== undefined
+      ? Boolean(customPerms.can_view_inventory)
+      : ['owner', 'co_owner', 'general_manager', 'equipment_manager', 'sporting_manager'].includes(role));
 
-    const canManageActivities = isOwner || (customPerms.can_manage_activities !== undefined
+    const canManageActivities = isFullLeader || (customPerms.can_manage_activities !== undefined
       ? Boolean(customPerms.can_manage_activities)
-      : Boolean(perms.roster || isBoardMember || isFinanceTitle(title)));
+      : (role === 'general_manager' || isCommsOrExternal));
+
+    const canManageAttendance = isFullLeader || Boolean(customPerms.can_manage_attendance);
 
     return {
       ...club,
       formats: club.formats || [club.format],
       membership_role: role,
+      membership_title: title,
+      is_co_owner: isCoOwner,
       is_system_admin: isSystemAdmin,
       permissions: customPerms,
       can_view_finance: canViewFinance,
@@ -145,6 +158,9 @@ export function createClubService({ supabase, authService }) {
       can_manage_inventory: canManageInventory,
       can_view_inventory: canViewInventory,
       can_manage_activities: canManageActivities,
+      can_view_activities: canManageActivities,
+      can_manage_attendance: canManageAttendance,
+      can_view_attendance: true,
       avatar_version: club.avatar_path || null,
       background_version: club.background_path || null,
     };

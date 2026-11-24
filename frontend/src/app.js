@@ -20,6 +20,7 @@ import {
   roleLabel,
   canManageRoster,
   canManageClub,
+  isCoOwnerOrOwner,
   validate,
   formatDate,
   formatVietnamClock,
@@ -214,6 +215,7 @@ const navItems = [
   ['dashboard', 'Tổng quan', 'grid'],
   ['members', 'Thành viên CLB', 'users'],
   ['teams', 'Đội bóng', 'layers'],
+  ['attendance', 'Điểm danh', 'check'],
   ['club-members', 'Thành viên BCN', 'users'],
   ['finance', 'Sổ thu chi CLB', 'layers'],
   ['dues', 'Đóng quỹ', 'layers'],
@@ -223,6 +225,14 @@ const navItems = [
   ['admin', 'Quản trị hệ thống 👑', 'shield'],
   ['profile', 'Tài khoản', 'user'],
 ];
+
+const isSidebarCollapsed = () => {
+  try {
+    return localStorage.getItem('fcms-sidebar-collapsed') === '1';
+  } catch {
+    return false;
+  }
+};
 
 const nav = () => {
   if (s.user?.is_system_admin) {
@@ -250,9 +260,9 @@ const nav = () => {
       }
       const c = currentClub();
       if (!c) return true;
-      if (c.is_system_admin || c.membership_role === 'owner') return true;
+      if (isCoOwnerOrOwner(c)) return true;
       if (route === 'club-members') {
-        return canManageClub(c) || c.can_manage_finance || c.can_manage_roster;
+        return Boolean(canManageClub(c));
       }
       if (['finance', 'dues'].includes(route)) {
         return Boolean(c.can_view_finance);
@@ -261,7 +271,7 @@ const nav = () => {
         return Boolean(c.can_view_inventory);
       }
       if (route === 'activities') {
-        return Boolean(c.can_manage_activities);
+        return Boolean(c.can_manage_activities || c.can_view_activities);
       }
       return true;
     })
@@ -320,8 +330,10 @@ function render() {
     ? `<div class="breadcrumb">${icon('shield')} FCMS PRO HỆ THỐNG <span>/</span> <strong>${adminBreadcrumbTitle}</strong></div>`
     : `<div class="breadcrumb">${icon('shield')} ${e(currentClub()?.name || 'FCMS PRO')} <span>/</span> <strong>${titles[s.route] || 'Tổng quan'}</strong></div>`;
 
+  const collapsed = isSidebarCollapsed();
+
   root.innerHTML = `
-    <div class="shell">
+    <div class="shell ${collapsed ? 'sidebar-collapsed' : ''}">
       <aside class="sidebar">
         <a class="brand" href="${isSysAdmin ? '#admin' : '#dashboard'}">
           <img src="/icons/crest.svg" alt="">FCMS <small>${isSysAdmin ? 'ADMIN' : 'PRO'}</small>
@@ -379,8 +391,13 @@ function render() {
 
       <div class="workspace ${background ? 'has-club-background' : ''}" ${background ? `style="--club-background: url('${e(background)}')"` : ''}>
         <header class="topbar">
-          <div class="topbar-context">
-            ${topbarContextHtml}
+          <div class="topbar-left">
+            <button type="button" class="icon-button sidebar-toggle" data-action="toggle-sidebar" aria-label="${collapsed ? 'Hiện thanh công cụ' : 'Ẩn thanh công cụ'}" title="${collapsed ? 'Hiện thanh công cụ' : 'Ẩn thanh công cụ'}" aria-expanded="${!collapsed}">
+              ${icon('sidebar')}
+            </button>
+            <div class="topbar-context">
+              ${topbarContextHtml}
+            </div>
           </div>
           <a class="brand mobile-brand" href="${isSysAdmin ? '#admin' : '#dashboard'}">
             <img src="/icons/crest.svg" alt="">FCMS <small>${isSysAdmin ? 'ADMIN' : 'PRO'}</small>
@@ -650,6 +667,7 @@ async function loadView() {
         'club-members',
         'finance',
         'dues',
+        'attendance',
         'activities',
         'profile',
       ].includes(route)
@@ -749,7 +767,10 @@ async function loadView() {
           )
         );
       }
-      if (route === 'activities' && currentClub()?.can_manage_activities) {
+      if (route === 'attendance') {
+        tasks.push(api.get(base('/attendance'), { signal }));
+      }
+      if (route === 'activities' && (isCoOwnerOrOwner(currentClub()) || currentClub()?.can_manage_activities || currentClub()?.can_view_activities)) {
         tasks.push(api.get(base('/activities'), { signal }));
       }
       if (route === 'profile') {
@@ -808,6 +829,9 @@ async function loadView() {
         s.plannedExpenses = results[2].data;
       }
       if (route === 'dues') s.dues = results[1]?.data || [];
+      if (route === 'attendance' && results[1]) {
+        s.activities = { ...s.activities, trainings: results[1].data?.trainings || [] };
+      }
       if (route === 'activities' && results[1]) {
         s.activities = results[1].data;
       }
@@ -827,6 +851,7 @@ async function loadView() {
         'club-members',
         'finance',
         'dues',
+        'attendance',
         'activities',
         'profile',
         'club',
@@ -901,6 +926,22 @@ async function loadView() {
 
 async function action(el) {
   const a = el.dataset.action;
+
+  if (a === 'toggle-sidebar') {
+    const shell = document.querySelector('.shell');
+    const collapsed = shell ? !shell.classList.contains('sidebar-collapsed') : !isSidebarCollapsed();
+    if (shell) shell.classList.toggle('sidebar-collapsed', collapsed);
+    try {
+      localStorage.setItem('fcms-sidebar-collapsed', collapsed ? '1' : '0');
+    } catch {}
+    document.querySelectorAll('[data-action="toggle-sidebar"]').forEach((btn) => {
+      const label = collapsed ? 'Hiện thanh công cụ' : 'Ẩn thanh công cụ';
+      btn.setAttribute('aria-label', label);
+      btn.setAttribute('title', label);
+      btn.setAttribute('aria-expanded', String(!collapsed));
+    });
+    return;
+  }
 
   if (a === 'theme') {
     const theme =
