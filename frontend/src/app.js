@@ -1205,13 +1205,16 @@ root.addEventListener('change', (event) => {
       '[data-training-date], [data-training-team], [data-training-sort]'
     )
   ) {
-    if (event.target.matches('[data-training-date]'))
-      s.trainingFilterDate = event.target.value;
+    const isDateChange = event.target.matches('[data-training-date]');
+    if (isDateChange) s.trainingFilterDate = event.target.value;
     if (event.target.matches('[data-training-team]'))
       s.trainingFilterTeam = event.target.value;
     if (event.target.matches('[data-training-sort]'))
       s.trainingSort = event.target.value;
     render();
+    if (isDateChange) {
+      root.querySelector('.training-filter-item [data-date-display]')?.focus();
+    }
     return;
   }
 
@@ -1422,11 +1425,6 @@ root.addEventListener('submit', (event) => {
 });
 
 root.addEventListener('input', (event) => {
-  if (event.target.matches('[data-training-date]')) {
-    s.trainingFilterDate = event.target.value;
-    render();
-    return;
-  }
   if (event.target.hasAttribute('data-admin-search')) {
     s.adminQuery = event.target.value;
     render();

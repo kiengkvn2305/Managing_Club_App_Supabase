@@ -165,37 +165,44 @@ function lineups() {
 function roadmap() {
   const sections = [
     [
-      'Nền tảng & tài khoản',
-      'ĐANG HOÀN THIỆN',
-      'Đã có đăng nhập, xác minh email, ảnh đại diện và đổi/khôi phục mật khẩu. Gửi email thực cần cấu hình; quản lý phiên và chuyển quyền sở hữu vẫn cần phát triển.',
+      'Nền tảng, Tài khoản & Quản trị',
+      'ĐÃ HOÀN THIỆN',
+      'Đăng ký, đăng nhập, xác minh email, đổi/khôi phục mật khẩu, giao diện sáng/tối, ảnh nền CLB, thanh công cụ ẩn/hiện và cổng Quản trị hệ thống.',
       '#profile',
       'Tài khoản',
     ],
     [
-      'CLB & thành viên',
-      'ĐÃ CÓ MỘT PHẦN',
-      'Đã có nhiều CLB, đội bóng, thành viên, chọn ảnh, danh sách và nhập/xuất Excel. Liên kết tài khoản với hồ sơ và quản lý vai trò nâng cao còn thiếu.',
+      'CLB, Đội bóng & Phân quyền BCN',
+      'ĐÃ HOÀN THIỆN',
+      'Quản lý nhiều CLB, đội bóng, chọn đội trưởng trực quan, kiểm tra trùng số áo, phân vùng quyền BCN (Chủ nhiệm, Phó chủ nhiệm, Thủ quỹ, Truyền thông, Đối ngoại), mã mời và Excel 500 dòng.',
       '#members',
       'Thành viên',
     ],
     [
-      'Tài chính & quỹ',
-      'ĐÃ CÓ MỘT PHẦN',
-      'Đã có sổ thu chi, chi dự kiến hằng tháng, biểu đồ, đóng quỹ, công nợ và điều chỉnh. Phê duyệt tài chính, khóa kỳ và đối soát nâng cao còn thiếu.',
+      'Điểm danh & Hoạt động CLB',
+      'ĐÃ HOÀN THIỆN',
+      'Mục Điểm danh tách riêng với phân quyền độc lập, tự ghi vắng sau 10 phút và bảng tiến độ chuyên cần; Hoạt động CLB quản lý dịp lễ, sinh nhật và khen thưởng.',
+      '#attendance',
+      'Điểm danh',
+    ],
+    [
+      'Tài chính & Đóng quỹ',
+      'ĐÃ HOÀN THIỆN',
+      'Sổ thu chi qua RPC giao dịch bảo mật, biểu đồ cột đôi dòng tiền ròng, chi dự kiến hằng tháng, đóng quỹ, phí duy trì, đối soát và xuất Excel.',
       '#finance',
       'Sổ thu chi',
     ],
     [
       'Kho trang bị',
-      'ĐÃ CÓ MỘT PHẦN',
-      'Đã có danh mục, nhập/xuất, kiểm kê từng vật tư, cấp phát/thu hồi và lịch sử. Báo cáo và xử lý hỏng/mất còn thiếu.',
+      'ĐÃ TRIỂN KHAI',
+      'Danh mục trang bị, nhập/xuất kho, cảnh báo tồn thấp, cấp phát/thu hồi tài sản và lưu trữ lịch sử sử dụng.',
       '#inventory',
       'Kho trang bị',
     ],
     [
       'Tính năng mở rộng',
-      'CHƯA TRIỂN KHAI',
-      'Tài trợ, website CLB đầy đủ và tự động hóa vẫn nằm trong lộ trình.',
+      'ĐANG PHÁT TRIỂN',
+      'Báo cáo hỏng/mất thiết bị, trang công khai CLB nâng cao và thông báo tự động.',
       '#roadmap',
       'Xem lộ trình',
     ],
@@ -204,7 +211,7 @@ function roadmap() {
   return (
     heading(
       'Lộ trình phát triển',
-      'Theo dõi tính năng đã có và những phần còn đang xây dựng.'
+      'Theo dõi các phân hệ đã hoàn thiện và hướng nâng cấp tiếp theo của hệ thống.'
     ) +
     `<div class="team-grid">
       ${sections
