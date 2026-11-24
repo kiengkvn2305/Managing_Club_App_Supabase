@@ -314,3 +314,45 @@ test('openCaptain renders interactive captain cards with current captain at top 
     globalThis.document = prevDoc;
   }
 });
+
+test('rosterService rejects duplicate jersey number in team and includes conflicting player name', async () => {
+  const service = createRosterService({
+    supabase: {
+      from: (table) => {
+        if (table === 'team_players') {
+          const q = {
+            select() { return q; },
+            eq() { return q; },
+            neq() { return q; },
+            maybeSingle: async () => ({
+              data: { player_id: 99, player: { full_name: 'Nguyễn Văn Hùng' } },
+              error: null,
+            }),
+          };
+          return q;
+        }
+        return {};
+      },
+      rpc: async () => ({ data: true, error: null }),
+    },
+    authService: {},
+  });
+
+  await assert.rejects(
+    () =>
+      service.handleRosterRequest(
+        '/clubs/1/teams/2/players/10/jersey',
+        'PATCH',
+        { jersey_number: '10' },
+        new URLSearchParams(),
+        1,
+        {}
+      ),
+    (err) => {
+      assert.equal(err.status, 422);
+      assert.match(err.message, /Số áo #10 đã có trùng với Nguyễn Văn Hùng/);
+      assert.match(err.errors.jersey_number[0], /Nguyễn Văn Hùng/);
+      return true;
+    }
+  );
+});

@@ -104,6 +104,11 @@ export function check(result) {
       msg = 'Bạn không phải là thành viên của câu lạc bộ này.';
     } else if (msg.includes('not_authenticated')) {
       msg = 'Vui lòng đăng nhập để thực hiện thao tác này.';
+    } else if (
+      result.error.code === '23505' &&
+      (msg.includes('jersey') || msg.includes('team_players_team_id_jersey_number_key'))
+    ) {
+      msg = 'Số áo này đã có trùng với thành viên khác trong đội.';
     }
     throw new SupabaseApiError(msg, status, { database: [msg] });
   }

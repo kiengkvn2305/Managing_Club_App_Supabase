@@ -4,6 +4,7 @@ import {
   numeric,
   hashValue,
   latestTeamDuesRate,
+  SupabaseApiError,
 } from './service-helpers.js';
 import { compareVietnameseNames } from '../utils.js';
 
@@ -575,18 +576,34 @@ export function createRosterService({ supabase, authService }) {
       /\/teams\/(\d+)\/players\/(\d+)\/(jersey|position)$/
     );
     if (teamPlayer && method === 'PATCH') {
+      const pTeamId = Number(teamPlayer[1]);
+      const pPlayerId = Number(teamPlayer[2]);
+      const isJersey = teamPlayer[3] === 'jersey';
+      if (isJersey && data.jersey_number !== '' && data.jersey_number != null) {
+        const jerseyNum = Number(data.jersey_number);
+        const { data: conflict } = await supabase
+          .from('team_players')
+          .select('player_id,player:player_profiles(full_name)')
+          .eq('club_id', clubId)
+          .eq('team_id', pTeamId)
+          .eq('jersey_number', jerseyNum)
+          .neq('player_id', pPlayerId)
+          .maybeSingle();
+        if (conflict) {
+          const holderName = conflict.player?.full_name || `thành viên #${conflict.player_id}`;
+          const msg = `Số áo #${jerseyNum} đã có trùng với ${holderName}.`;
+          throw new SupabaseApiError(msg, 422, { jersey_number: [msg] });
+        }
+      }
       return {
         data: check(
           await supabase.rpc('set_team_player_attribute', {
             p_club_id: clubId,
-            p_team_id: Number(teamPlayer[1]),
-            p_player_id: Number(teamPlayer[2]),
-            p_attribute:
-              teamPlayer[3] === 'jersey' ? 'jersey_number' : 'position',
+            p_team_id: pTeamId,
+            p_player_id: pPlayerId,
+            p_attribute: isJersey ? 'jersey_number' : 'position',
             p_value: String(
-              teamPlayer[3] === 'jersey'
-                ? data.jersey_number ?? ''
-                : data.position ?? ''
+              isJersey ? data.jersey_number ?? '' : data.position ?? ''
             ),
           })
         ),
