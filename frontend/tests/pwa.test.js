@@ -36,3 +36,30 @@ test("service worker never intercepts private API, auth, writes or cross-origin 
     assert.equal(intercepted, false, `${method} ${path}`);
   }
 });
+
+test("PWA manifest, offline page, Cloudflare headers/redirects and mobile responsive CSS are complete", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"));
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.start_url, "/");
+  assert.ok(manifest.icons.some((i) => i.sizes === "192x192"));
+  assert.ok(manifest.icons.some((i) => i.sizes === "512x512"));
+  assert.ok(manifest.icons.some((i) => i.purpose === "maskable"));
+
+  const offlineHtml = readFileSync(new URL("../public/offline.html", import.meta.url), "utf8");
+  assert.match(offlineHtml, /viewport/);
+  assert.match(offlineHtml, /Kết nối lại/);
+
+  const headers = readFileSync(new URL("../public/_headers", import.meta.url), "utf8");
+  assert.match(headers, /\/sw\.js[\s\S]*Cache-Control:\s*no-cache/);
+  assert.match(headers, /\/manifest\.webmanifest[\s\S]*application\/manifest\+json/);
+  assert.match(headers, /X-Content-Type-Options:\s*nosniff/);
+
+  const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(indexHtml, /manifest\.webmanifest/);
+  assert.match(indexHtml, /viewport-fit=cover/);
+
+  const css = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(css, /@media\s*\(max-width:\s*760px\)/);
+  assert.match(css, /@media\s*\(max-width:\s*390px\)/);
+  assert.match(css, /safe-area-inset-bottom/);
+});

@@ -91,7 +91,7 @@ export function sanitizeCell(value) {
   const text = String(value);
   return /^[=+@\-\t\r]/.test(text) ? `'${text}` : text;
 }
-export async function exportFinance(items, summary, adjustments = []) {
+export async function buildFinanceWorkbook(items, summary = {}, adjustments = []) {
   const book = await workbook(), sheet = book.addWorksheet('Thu chi');
   sheet.addRow(['Ngày', 'Loại', 'Nội dung', 'Số tiền (đồng)', 'Có ảnh xác nhận', 'Danh mục', 'Người thu / chi', 'Ghi chú / chứng từ']);
   sheet.getRow(1).font = { bold: true };
@@ -104,6 +104,10 @@ export async function exportFinance(items, summary, adjustments = []) {
   const labels = { unpaid: 'Chưa đóng', paid: 'Đã đóng', exempt: 'Miễn đóng' };
   for (const a of adjustments) changes.addRow([formatVietnamDateTime(a.created_at), sanitizeCell(a.player_name), sanitizeCell(a.team_name), a.month, labels[a.old_status] || a.old_status, labels[a.new_status] || a.new_status, Number(a.amount), sanitizeCell(a.reason)]);
   changes.columns.forEach((c) => { c.width = 24; }); changes.getColumn(8).width = 45;
+  return book;
+}
+export async function exportFinance(items, summary, adjustments = []) {
+  const book = await buildFinanceWorkbook(items, summary, adjustments);
   await download(book, 'so-thu-chi.xlsx');
 }
 export async function buildMembersWorkbook(items, teamId = '', club = null) {
