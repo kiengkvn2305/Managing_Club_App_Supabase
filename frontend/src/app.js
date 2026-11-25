@@ -1,6 +1,6 @@
 import { createApiClient } from './api-supabase.js';
 import { state as s, currentClub } from './state.js';
-import { page, authPage, publicClubPage, titles } from './pages.js';
+import { page, authPage, titles } from './pages.js';
 import { exportFinance } from './spreadsheets.js';
 import { avatar, imageUrl, primeImageUrls } from './images.js';
 import { calendarRange } from './matches-page.js';
@@ -325,11 +325,6 @@ function render() {
     startVietnamClock();
     return;
   }
-  if (!s.user && s.route === 'public-club') {
-    root.innerHTML = publicClubPage();
-    startVietnamClock();
-    return;
-  }
   if (!s.user) {
     root.innerHTML = authPage();
     startVietnamClock();
@@ -561,8 +556,6 @@ function readRoute() {
   }
   s.teamRosterId =
     route === 'team-roster' ? params.get('id') || '' : '';
-  s.publicClubSlug = route === 'public-club' ? params.get('slug') || '' : '';
-  s.publicClubId = route === 'public-club' ? params.get('id') || '' : '';
 
   if (token) {
     s.invite = token;
@@ -626,30 +619,6 @@ async function loadView() {
   render();
 
   try {
-    if (route === 'public-club') {
-      s.publicClub = null;
-      const q = new URLSearchParams({
-        ...(s.publicClubSlug ? { slug: s.publicClubSlug } : {}),
-        ...(s.publicClubId ? { id: s.publicClubId } : {}),
-      });
-      try {
-        const res = await api.get(`/public/clubs?${q}`, {
-          signal,
-          silentUnauthorized: true,
-        });
-        if (signal.aborted || route !== s.route) return;
-        s.publicClub = res.data || null;
-        s.error = '';
-      } catch (err) {
-        if (signal.aborted || route !== s.route) return;
-        s.publicClub = null;
-        s.error = err.message;
-      }
-      s.loading = false;
-      render();
-      return;
-    }
-
     if (s.user && tenant && !s.user.is_system_admin) {
       api
         .get(base('/notifications'), { signal })
@@ -855,7 +824,6 @@ async function loadView() {
       }
       if (route === 'club') {
         tasks.push(api.get(base('/invitations'), { signal }).catch(() => ({ data: [] })));
-        tasks.push(api.get(base('/public-settings'), { signal }).catch(() => ({ data: null })));
       }
       if (
         route === 'dashboard' ||
@@ -920,7 +888,6 @@ async function loadView() {
       if (route === 'dashboard') s.dashboard = results[1].data;
       if (route === 'club') {
         s.clubInvitations = results[1]?.data || [];
-        s.publicSettings = results[2]?.data || null;
       }
 
       const list = [
@@ -1445,32 +1412,6 @@ root.addEventListener('submit', (event) => {
 
   const kind = form.dataset.form;
 
-  if (kind === 'public-recruitment-apply') {
-    submit(form, kind, async (data) => {
-      if (!data.full_name) {
-        throw new Error('Vui lòng nhập họ và tên ứng viên.');
-      }
-      if (!data.phone && !data.email) {
-        throw new Error('Vui lòng nhập số điện thoại hoặc email liên hệ.');
-      }
-      await api.post(
-        `/public/clubs/${encodeURIComponent(data.club_id)}/apply`,
-        {
-          post_id: Number(data.post_id),
-          full_name: data.full_name,
-          date_of_birth: data.date_of_birth || null,
-          phone: data.phone || null,
-          email: data.email || null,
-          notes: data.notes || null,
-        },
-        { silentUnauthorized: true }
-      );
-      form.reset();
-      toast('Đã gửi hồ sơ ứng tuyển thành công! Ban nhân sự CLB sẽ liên hệ với bạn.');
-    });
-    return;
-  }
-
   if (kind === 'forgot-password' || kind === 'reset-password') {
     submit(form, kind, async (data) => {
       if (kind === 'forgot-password') {
@@ -1672,10 +1613,6 @@ api
     return loadApp();
   })
   .catch(() => {
-    if (s.route === 'public-club') {
-      loadView();
-      return;
-    }
     s.loading = false;
     render();
   });

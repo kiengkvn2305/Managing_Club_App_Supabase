@@ -21,12 +21,11 @@ import { boardPage } from './views/board-page.js';
 import { activitiesPage } from './views/activities-page.js';
 import { attendancePage } from './views/attendance-page.js';
 import { clubPage } from './views/club-page.js';
-import { publicClubPage } from './views/public-club-page.js';
 import { adminPage } from './views/admin-page.js';
 import { profilePage, acceptPage } from './views/profile-page.js';
 import { authPage } from './views/auth-page.js';
 
-export { authPage, publicClubPage };
+export { authPage };
 
 export const titles = {
   dashboard: 'Tổng quan',
@@ -45,7 +44,6 @@ export const titles = {
   polls: 'Biểu quyết CLB',
   matches: 'Trận đấu',
   lineups: 'Đội hình trận đấu',
-  'public-club': 'Cổng thông tin CLB',
   profile: 'Tài khoản',
   accept: 'Nhận lời mời',
   roadmap: 'Lộ trình',
@@ -207,11 +205,11 @@ function roadmap() {
       'Kho trang bị',
     ],
     [
-      'Trang công khai, Tuyển quân & Thông báo tự động',
+      'Thông báo tự động & Vận hành thông minh',
       'ĐÃ HOÀN THIỆN',
-      'Cổng thông tin công khai CLB nâng cao không cần đăng nhập, nhận đơn ứng tuyển trực tuyến, kết nạp ứng viên, mời giao hữu và trung tâm thông báo tự động theo vai trò.',
-      '#club',
-      'Câu lạc bộ',
+      'Trung tâm thông báo tự động theo vai trò (lịch tập sắp tới, sinh nhật, sự kiện CLB, nhắc đóng quỹ, cảnh báo tồn kho thấp và sự cố thiết bị) kèm đánh dấu đã đọc.',
+      '#dashboard',
+      'Tổng quan',
     ],
   ];
 
@@ -245,7 +243,6 @@ export function page() {
     return `${heading(titles[s.route] || 'Tổng quan', 'Dữ liệu cần được tải lại.')}<div class="panel">${empty('Chưa tải được dữ liệu', e(s.error), 'retry', 'Thử lại')}</div>`;
   }
 
-  if (s.route === 'public-club') return publicClubPage();
   if (s.route === 'profile') return profilePage();
   if (s.route === 'accept') return acceptPage();
   if (s.route === 'roadmap') return roadmap();

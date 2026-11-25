@@ -2,20 +2,41 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { state } from '../src/state.js';
 import { page } from '../src/pages.js';
+import { clubPage } from '../src/views/club-page.js';
 import { inventoryPage } from '../src/inventory-page.js';
 import { financePage } from '../src/finance-page.js';
-import { publicClubPage } from '../src/views/public-club-page.js';
 import { createSupabaseApiClient } from '../src/supabase-api.js';
 import { check } from '../src/services/service-helpers.js';
 
-test('roadmap marks all 6 platform modules as ĐÃ HOÀN THIỆN', () => {
+test('roadmap marks all 6 platform modules as ĐÃ HOÀN THIỆN and omits Trang công khai', () => {
   state.loading = false;
   state.error = '';
   state.route = 'roadmap';
   const html = page();
   const completedBadges = [...html.matchAll(/ĐÃ HOÀN THIỆN/g)].length;
   assert.equal(completedBadges, 6);
-  assert.doesNotMatch(html, /ĐANG PHÁT TRIỂN|CHƯA TRIỂN KHAI/);
+  assert.doesNotMatch(html, /ĐANG PHÁT TRIỂN|CHƯA TRIỂN KHAI|Trang công khai/);
+});
+
+test('clubPage omits Trang công khai button and Cổng thông tin mở portal strip', () => {
+  state.clubId = 1;
+  state.clubs = [
+    {
+      id: 1,
+      name: 'FC Nội Bộ',
+      membership_role: 'owner',
+      can_manage_club: true,
+      can_manage_roster: true,
+      status: 'active',
+    },
+  ];
+  state.clubInvitations = [];
+
+  const html = clubPage();
+  assert.doesNotMatch(html, /edit-public-settings/);
+  assert.doesNotMatch(html, /Trang công khai/);
+  assert.doesNotMatch(html, /Cổng thông tin mở/);
+  assert.doesNotMatch(html, /club-portal-strip/);
 });
 
 test('inventoryPage renders incident KPIs and damage/loss action controls', () => {
@@ -116,63 +137,16 @@ test('inventoryService routes damage/loss movements, assignment incidents, and i
   assert.equal(report.data.lost_count, 1);
 });
 
-test('publicClubPage renders safely for anonymous visitors and escapes untrusted fields', () => {
-  state.loading = false;
-  state.user = null;
-  state.publicClub = {
-    club: {
-      id: 9,
-      name: 'FC <script>alert(1)</script> Sài Gòn',
-      slug: 'fc-saigon',
-      city: 'TP.HCM',
-      home_ground: 'Sân Phú Thọ',
-      formats: ['7', '11'],
-      activity_start_date: '2024-05-10',
-      is_published: true,
-      headline: 'Chơi đẹp & Đoàn kết',
-      content: {
-        schedule_text: 'Thứ 4 & Chủ nhật 19:00',
-        contact_phone: '0909123456',
-      },
-    },
-    stats: { teams_count: 2, active_players_count: 28, matches_count: 14 },
-    teams: [{ id: 1, name: 'Đội Hình A', format: '7', members_count: 15 }],
-    awards: [{ id: 1, award_year: 2026, title: 'Cầu thủ xuất sắc', player_name: 'Nguyễn Văn A' }],
-    open_posts: [
-      {
-        id: 3,
-        title: 'Tuyển thủ môn & hậu vệ',
-        position: 'GK / CB',
-        requirements: 'Nhiệt huyết, đúng giờ',
-        deadline: '2026-12-20',
-      },
-    ],
-  };
-
-  const html = publicClubPage();
-  assert.doesNotMatch(html, /<script>/);
-  assert.match(html, /FC &lt;script&gt;alert\(1\)&lt;\/script&gt; Sài Gòn/);
-  assert.match(html, /10\/05\/2024/);
-  assert.match(html, /20\/12\/2026/);
-  assert.match(html, /data-form="public-recruitment-apply"/);
-});
-
-test('public club endpoints work without user session and notifications/promotion RPCs wire cleanly', async () => {
+test('notifications and recruitment promotion RPCs wire cleanly', async () => {
   const rpcCalls = [];
   const client = {
     auth: {
       async getUser() {
-        return { data: { user: null }, error: null };
+        return { data: { user: { id: 'u-1', email: 'a@b.c' } }, error: null };
       },
     },
     async rpc(fn, args) {
       rpcCalls.push({ fn, args });
-      if (fn === 'get_public_club_page') {
-        return { data: { club: { id: 5, name: 'FC Mở' }, stats: {}, teams: [], awards: [], open_posts: [] }, error: null };
-      }
-      if (fn === 'submit_public_recruitment_application') {
-        return { data: { id: 88, status: 'new' }, error: null };
-      }
       if (fn === 'promote_recruitment_application') {
         return { data: { application_id: args.p_application_id, player_id: 301, full_name: 'Lê Tân Binh' }, error: null };
       }
@@ -194,20 +168,6 @@ test('public club endpoints work without user session and notifications/promotio
   };
 
   const api = createSupabaseApiClient({ client });
-
-  // Unauthenticated public reads & applications succeed without throwing 401
-  const pub = await api.get('/public/clubs?slug=fc-mo', { silentUnauthorized: true });
-  assert.equal(pub.data.club.name, 'FC Mở');
-
-  const appRes = await api.post(
-    '/public/clubs/5/apply',
-    { post_id: 2, full_name: 'Lê Tân Binh', phone: '0912345678' },
-    { silentUnauthorized: true }
-  );
-  assert.equal(appRes.data.id, 88);
-
-  // Switch mock user to authenticated for club-scoped endpoints
-  client.auth.getUser = async () => ({ data: { user: { id: 'u-1', email: 'a@b.c' } }, error: null });
 
   const promoted = await api.post('/clubs/5/recruitment/applications/88/promote', {});
   assert.equal(promoted.data.player_id, 301);
@@ -254,14 +214,10 @@ test('financePage renders reversal controls for posted entries and period lock b
   assert.match(html, /Bút toán đảo/);
 });
 
-test('check() translates new financial, inventory, and public recruitment errors to Vietnamese', () => {
+test('check() translates new financial and inventory errors to Vietnamese', () => {
   assert.throws(
     () => check({ error: { message: 'financial_period_closed' } }),
     /khóa sổ/
-  );
-  assert.throws(
-    () => check({ error: { message: 'duplicate_application' } }),
-    /đã được gửi/
   );
   assert.throws(
     () => check({ error: { message: 'invalid_incident_report' } }),

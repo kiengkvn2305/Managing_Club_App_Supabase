@@ -16,13 +16,13 @@
 - [x] Tạo CLB, đội, thành viên, lời mời và phân quyền.
 - [x] Import/export Excel có validation và giới hạn kích thước (đã test 500 dòng, chặn >500 dòng & >5 MB, chống formula injection).
 - [x] Giao dịch tài chính dùng RPC transaction, idempotency và audit.
-- [x] Kho, trận đấu, điểm danh, báo cáo, trang công khai CLB, thông báo tự động và các module mục tiêu đã có test (91/91 frontend tests PASS).
+- [x] Kho, trận đấu, điểm danh, báo cáo, thông báo tự động và các module mục tiêu đã có test (91/91 frontend tests PASS).
 
 ## Deploy
 
 - [x] `npm run setup`.
 - [x] `npm test` (91/91 frontend tests + 9/9 structural tests PASS).
-- [x] `npm run build` (128 modules, sạch sẽ).
+- [x] `npm run build` (127 modules, sạch sẽ).
 - [x] Cloudflare root directory là `frontend`.
 - [x] Build command là `npm run build`.
 - [x] Output directory là `dist`.

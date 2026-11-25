@@ -83,14 +83,12 @@ export function createSupabaseApiClient({
     const params = paramsOf(path);
     const data = bodyOf(body);
 
-    const authWithoutSession =
-      [
-        '/auth/register',
-        '/auth/login',
-        '/auth/forgot-password',
-        '/auth/reset-password',
-        '/public/clubs',
-      ].includes(clean) || /^\/public\/clubs\/\d+\/apply$/.test(clean);
+    const authWithoutSession = [
+      '/auth/register',
+      '/auth/login',
+      '/auth/forgot-password',
+      '/auth/reset-password',
+    ].includes(clean);
 
     const current = await authService.user(
       !authWithoutSession && !silentUnauthorized

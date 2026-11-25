@@ -6,7 +6,7 @@
 | 2 | Thành viên, Excel, phân quyền quản lý, dashboard | **Đã hoàn thiện** — Phân vùng quyền BCN chuẩn hóa, chọn đội trưởng trực quan, kiểm tra trùng số áo, Excel 500 dòng |
 | 3 | Quỹ, thu chi, công nợ, thanh toán, phê duyệt, báo cáo | **Đã hoàn thiện** — RPC giao dịch có idempotency, biểu đồ cột đôi dòng tiền ròng, đảo bút toán, khóa kỳ kế toán, phí duy trì |
 | 4 | Kho, trận đấu, tập luyện, điểm danh, thống kê, sự kiện | **Đã hoàn thiện** — Điểm danh tách riêng tự ghi vắng sau 10 phút, kho trang bị có cấp phát/thu hồi và báo cáo hỏng/mất thiết bị |
-| 5 | Tuyển quân, tài trợ, biểu quyết, website công khai & thông báo | **Đã hoàn thiện** — Cổng thông tin công khai CLB nâng cao, nộp đơn ứng tuyển trực tuyến, kết nạp ứng viên và trung tâm thông báo tự động |
+| 5 | Thông báo tự động & tiện ích nội bộ CLB | **Đã hoàn thiện** — Trung tâm thông báo tự động theo vai trò (lịch tập, sinh nhật, sự kiện, nhắc quỹ, cảnh báo tồn kho & sự cố) |
 | 6 | Cloudflare Pages, PWA, thiết bị thật | **Đã triển khai** — PWA (`sw.js`, `manifest.webmanifest`, `offline.html`), Cloudflare `_headers`/`_redirects` & responsive mobile |
 | 7 | Release security, backup, performance, staging | **Đã đồng bộ Production** — 36 migrations trên Supabase (`dandxiwdedbwxtvokeag`), `db lint` sạch, bundle 0 secret leaks |
 

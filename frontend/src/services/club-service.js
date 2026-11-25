@@ -523,30 +523,6 @@ export function createClubService({ supabase, authService }) {
       return { data: updated };
     }
 
-    if (clean === '/public/clubs' && method === 'GET') {
-      const slug = params.get('slug') || null;
-      const targetId = params.get('id') ? Number(params.get('id')) : null;
-      const res = await supabase.rpc('get_public_club_page', {
-        p_slug: slug,
-        p_club_id: targetId,
-      });
-      return { data: check(res) };
-    }
-
-    const publicApplyMatch = clean.match(/^\/public\/clubs\/(\d+)\/apply$/);
-    if (publicApplyMatch && method === 'POST') {
-      const res = await supabase.rpc('submit_public_recruitment_application', {
-        p_club_id: Number(publicApplyMatch[1]),
-        p_post_id: Number(data.post_id),
-        p_full_name: data.full_name,
-        p_phone: data.phone || null,
-        p_email: data.email || null,
-        p_date_of_birth: data.date_of_birth || null,
-        p_notes: data.notes || null,
-      });
-      return { data: check(res) };
-    }
-
     if (clean === '/discover/clubs') {
       let b = supabase
         .from('clubs')
