@@ -1,6 +1,6 @@
 import { createApiClient } from './api-supabase.js';
 import { state as s, currentClub } from './state.js';
-import { page, authPage, titles } from './pages.js';
+import { page, authPage, publicClubPage, titles } from './pages.js';
 import { exportFinance } from './spreadsheets.js';
 import { avatar, imageUrl, primeImageUrls } from './images.js';
 import { calendarRange } from './matches-page.js';
@@ -299,9 +299,34 @@ function startVietnamClock() {
   clockTimer = setInterval(update, 1000);
 }
 
+function updateNotificationBadge() {
+  const count = Number(s.notifications?.unread_count || 0);
+  document.querySelectorAll('[data-action="open-notifications"]').forEach((btn) => {
+    const existing = btn.querySelector('.notif-badge');
+    if (count > 0) {
+      const text = count > 99 ? '99+' : String(count);
+      if (existing) {
+        existing.textContent = text;
+      } else {
+        const span = document.createElement('span');
+        span.className = 'notif-badge';
+        span.textContent = text;
+        btn.append(span);
+      }
+    } else if (existing) {
+      existing.remove();
+    }
+  });
+}
+
 function render() {
   if (['forgot', 'reset'].includes(s.authMode)) {
     root.innerHTML = passwordResetPage(s);
+    startVietnamClock();
+    return;
+  }
+  if (!s.user && s.route === 'public-club') {
+    root.innerHTML = publicClubPage();
     startVietnamClock();
     return;
   }
@@ -405,6 +430,18 @@ function render() {
           </a>
           <time class="mobile-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
           <div class="header-actions">
+            ${
+              !isSysAdmin && club
+                ? `<button type="button" class="icon-button notif-bell" data-action="open-notifications" aria-label="Thông báo tự động" title="Thông báo tự động của CLB">
+                    ${icon('bell')}
+                    ${
+                      Number(s.notifications?.unread_count || 0) > 0
+                        ? `<span class="notif-badge">${s.notifications.unread_count > 99 ? '99+' : number(s.notifications.unread_count)}</span>`
+                        : ''
+                    }
+                  </button>`
+                : ''
+            }
             <button class="icon-button theme-toggle" data-action="theme" aria-label="Đổi giao diện sáng tối" title="${document.documentElement.dataset.theme === 'light' ? 'Chuyển sang nền tối' : 'Chuyển sang nền sáng'}">
               ${icon(document.documentElement.dataset.theme === 'light' ? 'moon' : 'sun')}
             </button>
@@ -524,6 +561,8 @@ function readRoute() {
   }
   s.teamRosterId =
     route === 'team-roster' ? params.get('id') || '' : '';
+  s.publicClubSlug = route === 'public-club' ? params.get('slug') || '' : '';
+  s.publicClubId = route === 'public-club' ? params.get('id') || '' : '';
 
   if (token) {
     s.invite = token;
@@ -587,6 +626,42 @@ async function loadView() {
   render();
 
   try {
+    if (route === 'public-club') {
+      s.publicClub = null;
+      const q = new URLSearchParams({
+        ...(s.publicClubSlug ? { slug: s.publicClubSlug } : {}),
+        ...(s.publicClubId ? { id: s.publicClubId } : {}),
+      });
+      try {
+        const res = await api.get(`/public/clubs?${q}`, {
+          signal,
+          silentUnauthorized: true,
+        });
+        if (signal.aborted || route !== s.route) return;
+        s.publicClub = res.data || null;
+        s.error = '';
+      } catch (err) {
+        if (signal.aborted || route !== s.route) return;
+        s.publicClub = null;
+        s.error = err.message;
+      }
+      s.loading = false;
+      render();
+      return;
+    }
+
+    if (s.user && tenant && !s.user.is_system_admin) {
+      api
+        .get(base('/notifications'), { signal })
+        .then((res) => {
+          if (!signal.aborted && tenant === s.clubId) {
+            s.notifications = res.data || { items: [], unread_count: 0 };
+            updateNotificationBadge();
+          }
+        })
+        .catch(() => {});
+    }
+
     if (route === 'discover') {
       const tasks = [
         api.get(
@@ -671,6 +746,7 @@ async function loadView() {
         'attendance',
         'activities',
         'profile',
+        'club',
       ].includes(route)
     ) {
       const tasks = [api.get(base('/teams'), { signal })];
@@ -779,6 +855,7 @@ async function loadView() {
       }
       if (route === 'club') {
         tasks.push(api.get(base('/invitations'), { signal }).catch(() => ({ data: [] })));
+        tasks.push(api.get(base('/public-settings'), { signal }).catch(() => ({ data: null })));
       }
       if (
         route === 'dashboard' ||
@@ -841,7 +918,10 @@ async function loadView() {
         s.canClaimPlayer = Boolean(results[1]?.eligible);
       }
       if (route === 'dashboard') s.dashboard = results[1].data;
-      if (route === 'club') s.clubInvitations = results[1]?.data || [];
+      if (route === 'club') {
+        s.clubInvitations = results[1]?.data || [];
+        s.publicSettings = results[2]?.data || null;
+      }
 
       const list = [
         'lineups',
@@ -980,6 +1060,92 @@ async function action(el) {
   }
 
   if (!s.user) return;
+
+  if (a === 'open-notifications') {
+    if (s.clubId) {
+      try {
+        const latest = await api.get(base('/notifications'));
+        s.notifications = latest.data || { items: [], unread_count: 0 };
+        updateNotificationBadge();
+      } catch {}
+    }
+    const items = s.notifications?.items || [];
+    const unreadKeys = items.filter((x) => !x.read).map((x) => x.key);
+    const host = document.createElement('dialog');
+    host.setAttribute('aria-label', 'Thông báo tự động');
+    host.innerHTML = `
+      <div class="dialog-head">
+        <div>
+          <h2>Thông báo tự động CLB</h2>
+          <p>Cập nhật tự động lịch tập, sinh nhật, nhắc quỹ, cảnh báo kho và hoạt động CLB.</p>
+        </div>
+        <button type="button" class="icon-button" data-close aria-label="Đóng">${icon('close')}</button>
+      </div>
+      <div class="dialog-body">
+        ${
+          unreadKeys.length
+            ? `<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+                <button type="button" class="chip-button primary" data-mark-all-read>Đánh dấu tất cả đã đọc (${number(unreadKeys.length)})</button>
+              </div>`
+            : ''
+        }
+        ${
+          items.length
+            ? `<div class="notif-list">
+                ${items
+                  .map(
+                    (n) => `
+                  <a href="${e(n.href || '#dashboard')}" class="notif-item tone-${e(n.tone || 'info')} ${n.read ? 'is-read' : 'is-unread'}" data-notif-key="${e(n.key)}">
+                    <div class="notif-item-main">
+                      <strong>${!n.read ? '<span class="notif-dot"></span>' : ''}${e(n.title)}</strong>
+                      <p>${e(n.body || '')}</p>
+                    </div>
+                    <small class="tabular-nums">${e(formatDate(n.date))}</small>
+                  </a>`
+                  )
+                  .join('')}
+              </div>`
+            : '<p class="muted" style="text-align:center;padding:18px 0;">Hiện không có thông báo hay cảnh báo mới nào trong câu lạc bộ.</p>'
+        }
+      </div>
+    `;
+    document.body.append(host);
+    host.querySelector('[data-close]').onclick = () => host.close();
+    host.querySelector('[data-mark-all-read]')?.addEventListener('click', async (ev) => {
+      ev.currentTarget.disabled = true;
+      try {
+        await api.post(base('/notifications/read'), { keys: unreadKeys });
+        s.notifications = {
+          items: items.map((x) => ({ ...x, read: true })),
+          unread_count: 0,
+        };
+        updateNotificationBadge();
+        host.close();
+        toast('Đã đánh dấu tất cả thông báo là đã đọc.');
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+    host.querySelectorAll('[data-notif-key]').forEach((link) => {
+      link.addEventListener('click', () => {
+        const key = link.dataset.notifKey;
+        const target = items.find((x) => x.key === key);
+        if (target && !target.read && s.clubId) {
+          target.read = true;
+          s.notifications.unread_count = Math.max(
+            0,
+            Number(s.notifications.unread_count || 1) - 1
+          );
+          updateNotificationBadge();
+          api.post(base('/notifications/read'), { keys: [key] }).catch(() => {});
+        }
+        host.close();
+      });
+    });
+    host.addEventListener('close', () => host.remove(), { once: true });
+    host.showModal();
+    return;
+  }
 
   if (a === 'retry') return loadApp();
 
@@ -1279,6 +1445,32 @@ root.addEventListener('submit', (event) => {
 
   const kind = form.dataset.form;
 
+  if (kind === 'public-recruitment-apply') {
+    submit(form, kind, async (data) => {
+      if (!data.full_name) {
+        throw new Error('Vui lòng nhập họ và tên ứng viên.');
+      }
+      if (!data.phone && !data.email) {
+        throw new Error('Vui lòng nhập số điện thoại hoặc email liên hệ.');
+      }
+      await api.post(
+        `/public/clubs/${encodeURIComponent(data.club_id)}/apply`,
+        {
+          post_id: Number(data.post_id),
+          full_name: data.full_name,
+          date_of_birth: data.date_of_birth || null,
+          phone: data.phone || null,
+          email: data.email || null,
+          notes: data.notes || null,
+        },
+        { silentUnauthorized: true }
+      );
+      form.reset();
+      toast('Đã gửi hồ sơ ứng tuyển thành công! Ban nhân sự CLB sẽ liên hệ với bạn.');
+    });
+    return;
+  }
+
   if (kind === 'forgot-password' || kind === 'reset-password') {
     submit(form, kind, async (data) => {
       if (kind === 'forgot-password') {
@@ -1480,6 +1672,10 @@ api
     return loadApp();
   })
   .catch(() => {
+    if (s.route === 'public-club') {
+      loadView();
+      return;
+    }
     s.loading = false;
     render();
   });

@@ -101,6 +101,20 @@ export function createRecruitmentService({ supabase }) {
       };
     }
 
+    const promoteApp = clean.match(
+      /\/recruitment\/applications\/(\d+)\/promote$/
+    );
+    if (promoteApp && method === 'POST') {
+      return {
+        data: check(
+          await supabase.rpc('promote_recruitment_application', {
+            p_club_id: clubId,
+            p_application_id: Number(promoteApp[1]),
+          })
+        ),
+      };
+    }
+
     return null;
   }
 

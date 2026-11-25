@@ -72,6 +72,25 @@ export function clubPage() {
             )
             .join('')}
         </dl>
+        <hr>
+        <div class="club-portal-strip">
+          <div>
+            <strong>Cổng thông tin mở, Tuyển quân & Giao hữu</strong>
+            <p class="muted" style="margin:4px 0 0;font-size:12.5px;">
+              ${
+                s.publicSettings?.is_published
+                  ? `Đang xuất bản công khai tại đường dẫn <code>#public-club?slug=${e(s.publicSettings.public_slug || c.slug || c.id)}</code>`
+                  : 'Trang công khai hiện ở chế độ nháp. Nhấn "Trang công khai" để cấu hình và xuất bản.'
+              }
+            </p>
+          </div>
+          <div class="team-actions">
+            <a class="chip-button primary" href="#public-club?${s.publicSettings?.public_slug ? `slug=${encodeURIComponent(s.publicSettings.public_slug)}` : `id=${encodeURIComponent(c.id)}`}" style="text-decoration:none;">Xem trang công khai →</a>
+            <button type="button" class="chip-button" data-action="copy-public-link" data-slug="${e(s.publicSettings?.public_slug || '')}" data-id="${e(c.id)}">Sao chép link</button>
+            <a class="chip-button" href="#discover" style="text-decoration:none;">Khám phá & Giao hữu</a>
+            ${c.can_manage_roster || canManageClub(c) ? `<a class="chip-button" href="#recruitment" style="text-decoration:none;">Tuyển thành viên</a>` : ''}
+          </div>
+        </div>
       </section>
 
       <section class="panel">

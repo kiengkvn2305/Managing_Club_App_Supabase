@@ -11,6 +11,45 @@ export function createInventoryService({ supabase }) {
     return page(check(result) || [], params, 50);
   }
 
+  async function inventoryIncidents(clubId) {
+    if (typeof supabase?.rpc === 'function') {
+      try {
+        const res = await supabase.rpc('get_inventory_incidents_report', {
+          p_club_id: clubId,
+        });
+        if (!res.error && res.data) {
+          return { data: res.data };
+        }
+      } catch {}
+    }
+
+    const movements =
+      check(
+        await supabase
+          .from('inventory_movements')
+          .select('*,item:inventory_items(name,unit),assignment:inventory_assignments(player_name)')
+          .eq('club_id', clubId)
+          .in('type', ['damaged', 'lost'])
+          .order('id', { ascending: false })
+          .limit(100)
+      ) || [];
+
+    const mapped = movements.map((m) => ({
+      ...m,
+      item_name: m.item?.name || '',
+      unit: m.item?.unit || '',
+      player_name: m.assignment?.player_name || null,
+    }));
+
+    return {
+      data: {
+        damaged_count: mapped.filter((m) => m.type === 'damaged').length,
+        lost_count: mapped.filter((m) => m.type === 'lost').length,
+        data: mapped,
+      },
+    };
+  }
+
   async function inventory(clubId, params) {
     let b = supabase
       .from('inventory_items')
@@ -20,14 +59,41 @@ export function createInventoryService({ supabase }) {
     if (!truthy(params.get('archived'))) b = b.eq('archived', false);
     if (params.get('search')) b = b.ilike('name', `%${params.get('search')}%`);
     let rows = check(await b) || [];
+    const lowStockCount = rows.filter(
+      (x) => !x.archived && x.quantity <= x.low_stock_threshold
+    ).length;
+
+    let incidentCount = 0;
+    try {
+      const inc = await supabase
+        .from('inventory_movements')
+        .select('id', { count: 'exact', head: true })
+        .eq('club_id', clubId)
+        .in('type', ['damaged', 'lost']);
+      incidentCount = inc?.count || 0;
+    } catch {}
+
+    const totalItems = rows.length;
     if (truthy(params.get('low_stock'))) {
       rows = rows.filter((x) => x.quantity <= x.low_stock_threshold);
     }
-    return { ...page(rows, params), total: rows.length };
+    return {
+      ...page(rows, params),
+      total: rows.length,
+      summary: {
+        total_items: totalItems,
+        low_stock_count: lowStockCount,
+        incident_count: incidentCount,
+      },
+    };
   }
 
   async function handleInventoryRequest(clean, method, data, params, clubId) {
     if (!clubId) return null;
+
+    if (clean === `/clubs/${clubId}/inventory/incidents` && method === 'GET') {
+      return inventoryIncidents(clubId);
+    }
 
     if (clean.endsWith('/inventory') && method === 'GET') {
       return inventory(clubId, params);
@@ -107,7 +173,7 @@ export function createInventoryService({ supabase }) {
       const change =
         data.type === 'in'
           ? quantity
-          : data.type === 'out'
+          : ['out', 'damaged', 'lost'].includes(data.type)
             ? -quantity
             : quantity - Number(item.quantity);
       return {
@@ -173,6 +239,24 @@ export function createInventoryService({ supabase }) {
             p_club_id: clubId,
             p_item_id: Number(inventoryReturn[1]),
             p_assignment_id: Number(inventoryReturn[2]),
+            p_quantity: Number(data.quantity),
+            p_reason: data.reason,
+          })
+        ),
+      };
+    }
+
+    const inventoryIncident = clean.match(
+      /\/inventory\/(\d+)\/assignments\/(\d+)\/incident$/
+    );
+    if (inventoryIncident && method === 'POST') {
+      return {
+        data: check(
+          await supabase.rpc('report_inventory_assignment_incident', {
+            p_club_id: clubId,
+            p_item_id: Number(inventoryIncident[1]),
+            p_assignment_id: Number(inventoryIncident[2]),
+            p_incident_type: data.incident_type,
             p_quantity: Number(data.quantity),
             p_reason: data.reason,
           })

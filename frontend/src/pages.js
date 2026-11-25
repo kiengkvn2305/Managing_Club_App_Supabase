@@ -21,11 +21,12 @@ import { boardPage } from './views/board-page.js';
 import { activitiesPage } from './views/activities-page.js';
 import { attendancePage } from './views/attendance-page.js';
 import { clubPage } from './views/club-page.js';
+import { publicClubPage } from './views/public-club-page.js';
 import { adminPage } from './views/admin-page.js';
 import { profilePage, acceptPage } from './views/profile-page.js';
 import { authPage } from './views/auth-page.js';
 
-export { authPage };
+export { authPage, publicClubPage };
 
 export const titles = {
   dashboard: 'Tổng quan',
@@ -39,6 +40,12 @@ export const titles = {
   inventory: 'Kho trang bị',
   'club-members': 'Thành viên BCN',
   club: 'Câu lạc bộ',
+  discover: 'Khám phá & Giao hữu',
+  recruitment: 'Tuyển thành viên',
+  polls: 'Biểu quyết CLB',
+  matches: 'Trận đấu',
+  lineups: 'Đội hình trận đấu',
+  'public-club': 'Cổng thông tin CLB',
   profile: 'Tài khoản',
   accept: 'Nhận lời mời',
   roadmap: 'Lộ trình',
@@ -188,30 +195,30 @@ function roadmap() {
     [
       'Tài chính & Đóng quỹ',
       'ĐÃ HOÀN THIỆN',
-      'Sổ thu chi qua RPC giao dịch bảo mật, biểu đồ cột đôi dòng tiền ròng, chi dự kiến hằng tháng, đóng quỹ, phí duy trì, đối soát và xuất Excel.',
+      'Sổ thu chi qua RPC giao dịch bảo mật, đảo bút toán đối ứng, khóa kỳ kế toán, biểu đồ cột đôi dòng tiền ròng, chi dự kiến hằng tháng, đóng quỹ, phí duy trì và xuất Excel.',
       '#finance',
       'Sổ thu chi',
     ],
     [
-      'Kho trang bị',
-      'ĐÃ TRIỂN KHAI',
-      'Danh mục trang bị, nhập/xuất kho, cảnh báo tồn thấp, cấp phát/thu hồi tài sản và lưu trữ lịch sử sử dụng.',
+      'Kho trang bị & Kiểm soát sự cố',
+      'ĐÃ HOÀN THIỆN',
+      'Danh mục trang bị, nhập/xuất/kiểm kê kho, cảnh báo tồn thấp, cấp phát/thu hồi tài sản cho thành viên và báo cáo xử lý hỏng/mất thiết bị.',
       '#inventory',
       'Kho trang bị',
     ],
     [
-      'Tính năng mở rộng',
-      'ĐANG PHÁT TRIỂN',
-      'Báo cáo hỏng/mất thiết bị, trang công khai CLB nâng cao và thông báo tự động.',
-      '#roadmap',
-      'Xem lộ trình',
+      'Trang công khai, Tuyển quân & Thông báo tự động',
+      'ĐÃ HOÀN THIỆN',
+      'Cổng thông tin công khai CLB nâng cao không cần đăng nhập, nhận đơn ứng tuyển trực tuyến, kết nạp ứng viên, mời giao hữu và trung tâm thông báo tự động theo vai trò.',
+      '#club',
+      'Câu lạc bộ',
     ],
   ];
 
   return (
     heading(
       'Lộ trình phát triển',
-      'Theo dõi các phân hệ đã hoàn thiện và hướng nâng cấp tiếp theo của hệ thống.'
+      'Toàn bộ các phân hệ mục tiêu trong lộ trình phát triển đã được triển khai và đồng bộ hoàn chỉnh.'
     ) +
     `<div class="team-grid">
       ${sections
@@ -238,6 +245,7 @@ export function page() {
     return `${heading(titles[s.route] || 'Tổng quan', 'Dữ liệu cần được tải lại.')}<div class="panel">${empty('Chưa tải được dữ liệu', e(s.error), 'retry', 'Thử lại')}</div>`;
   }
 
+  if (s.route === 'public-club') return publicClubPage();
   if (s.route === 'profile') return profilePage();
   if (s.route === 'accept') return acceptPage();
   if (s.route === 'roadmap') return roadmap();

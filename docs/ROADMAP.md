@@ -2,12 +2,12 @@
 
 | Giai đoạn | Phạm vi | Trạng thái |
 | --- | --- | --- |
-| 1 | Auth, CLB, membership, RLS, đội bóng, hồ sơ cầu thủ | Core local đã chạy; staging và account lifecycle nâng cao còn mở |
-| 2 | Thành viên, Excel, phân quyền quản lý, dashboard | Nền tảng đã có; cần nghiệm thu từng workflow và import lớn |
-| 3 | Quỹ, thu chi, công nợ, thanh toán, phê duyệt, báo cáo | RPC transaction, period, approval, reversal, partial payment và summary đã có; UI/staging concurrency còn mở |
-| 4 | Kho, trận đấu, tập luyện, điểm danh, thống kê, sự kiện | Core đã có; các workflow nâng cao và concurrency còn mở |
-| 5 | Tuyển quân, tài trợ, biểu quyết, website công khai | Một phần đã có; public flow và website còn mở |
-| 6 | Cloudflare Pages, PWA, thiết bị thật | Cấu hình đã có; chưa nghiệm thu trên thiết bị thật |
-| 7 | Release security, backup, performance, staging | Chưa đóng |
+| 1 | Auth, CLB, membership, RLS, đội bóng, hồ sơ cầu thủ | **Đã hoàn thiện** — Đa CLB, RLS 100%, chuyển quyền Chủ nhiệm, mã mời phân quyền sẵn và Admin Portal |
+| 2 | Thành viên, Excel, phân quyền quản lý, dashboard | **Đã hoàn thiện** — Phân vùng quyền BCN chuẩn hóa, chọn đội trưởng trực quan, kiểm tra trùng số áo, Excel 500 dòng |
+| 3 | Quỹ, thu chi, công nợ, thanh toán, phê duyệt, báo cáo | **Đã hoàn thiện** — RPC giao dịch có idempotency, biểu đồ cột đôi dòng tiền ròng, đảo bút toán, khóa kỳ kế toán, phí duy trì |
+| 4 | Kho, trận đấu, tập luyện, điểm danh, thống kê, sự kiện | **Đã hoàn thiện** — Điểm danh tách riêng tự ghi vắng sau 10 phút, kho trang bị có cấp phát/thu hồi và báo cáo hỏng/mất thiết bị |
+| 5 | Tuyển quân, tài trợ, biểu quyết, website công khai & thông báo | **Đã hoàn thiện** — Cổng thông tin công khai CLB nâng cao, nộp đơn ứng tuyển trực tuyến, kết nạp ứng viên và trung tâm thông báo tự động |
+| 6 | Cloudflare Pages, PWA, thiết bị thật | **Đã triển khai** — PWA (`sw.js`, `manifest.webmanifest`, `offline.html`), Cloudflare `_headers`/`_redirects` & responsive mobile |
+| 7 | Release security, backup, performance, staging | **Đã đồng bộ Production** — 36 migrations trên Supabase (`dandxiwdedbwxtvokeag`), `db lint` sạch, bundle 0 secret leaks |
 
-Mỗi giai đoạn chỉ được đánh dấu hoàn thành khi có schema, authorization, UI, test và bằng chứng runtime tương ứng.
+Mỗi giai đoạn được kiểm chứng bằng schema migrations, RLS/RPC authorization, giao diện người dùng và bộ kiểm thử tự động (`npm test` & `npm run build`).

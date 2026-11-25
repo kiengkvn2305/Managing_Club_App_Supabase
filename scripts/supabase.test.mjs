@@ -13,6 +13,7 @@ const vite = readFileSync(join(root, 'frontend', 'vite.config.js'), 'utf8');
 const sw = readFileSync(join(root, 'frontend', 'public', 'sw.js'), 'utf8');
 const redirects = readFileSync(join(root, 'frontend', 'public', '_redirects'), 'utf8');
 const backendRpcs = readFileSync(join(root, 'supabase', 'migrations', '20261122000004_backend_business_logic_and_security_rpcs.sql'), 'utf8');
+const roadmapMigration = readFileSync(join(root, 'supabase', 'migrations', '20261125000004_complete_roadmap_features.sql'), 'utf8');
 
 test('Supabase migration contains the multi-club identity model and tenant helpers', () => {
   assert.match(sql, /create table public\.profiles/);
@@ -125,4 +126,18 @@ test('backend business logic and security RPCs compute permissions, dues and pro
   assert.match(frontend, /rpc\("save_player_profile"/);
   assert.match(frontend, /rpc\("save_board_member"/);
   assert.match(frontend, /rpc\("update_club_image"/);
+});
+
+test('roadmap completion migration secures inventory incidents, public club portal and notifications', () => {
+  assert.doesNotMatch(roadmapMigration, /v_player_id\s+bigint/);
+  assert.match(roadmapMigration, /create or replace function public\.report_inventory_assignment_incident/);
+  assert.match(roadmapMigration, /create or replace function public\.get_inventory_incidents_report/);
+  assert.match(roadmapMigration, /create or replace function public\.get_public_club_page/);
+  assert.match(roadmapMigration, /create or replace function public\.submit_public_recruitment_application/);
+  assert.match(roadmapMigration, /create or replace function public\.promote_recruitment_application/);
+  assert.match(roadmapMigration, /create or replace function public\.get_my_club_notifications/);
+  assert.match(roadmapMigration, /create or replace function public\.mark_club_notifications_read/);
+  assert.match(roadmapMigration, /grant execute on function public\.get_public_club_page\(text, bigint\) to anon, authenticated/);
+  assert.match(roadmapMigration, /grant execute on function public\.submit_public_recruitment_application\(bigint, bigint, text, text, text, date, text\) to anon, authenticated/);
+  assert.match(roadmapMigration, /revoke all on function public\.get_my_club_notifications\(bigint\) from public, anon/);
 });

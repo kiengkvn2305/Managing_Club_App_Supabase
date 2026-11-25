@@ -523,6 +523,30 @@ export function createClubService({ supabase, authService }) {
       return { data: updated };
     }
 
+    if (clean === '/public/clubs' && method === 'GET') {
+      const slug = params.get('slug') || null;
+      const targetId = params.get('id') ? Number(params.get('id')) : null;
+      const res = await supabase.rpc('get_public_club_page', {
+        p_slug: slug,
+        p_club_id: targetId,
+      });
+      return { data: check(res) };
+    }
+
+    const publicApplyMatch = clean.match(/^\/public\/clubs\/(\d+)\/apply$/);
+    if (publicApplyMatch && method === 'POST') {
+      const res = await supabase.rpc('submit_public_recruitment_application', {
+        p_club_id: Number(publicApplyMatch[1]),
+        p_post_id: Number(data.post_id),
+        p_full_name: data.full_name,
+        p_phone: data.phone || null,
+        p_email: data.email || null,
+        p_date_of_birth: data.date_of_birth || null,
+        p_notes: data.notes || null,
+      });
+      return { data: check(res) };
+    }
+
     if (clean === '/discover/clubs') {
       let b = supabase
         .from('clubs')
@@ -717,6 +741,32 @@ export function createClubService({ supabase, authService }) {
         })
       );
       return {};
+    }
+
+    if (clean === `/clubs/${clubId}/notifications` && method === 'GET') {
+      if (typeof supabase?.rpc === 'function') {
+        try {
+          const res = await supabase.rpc('get_my_club_notifications', {
+            p_club_id: clubId,
+          });
+          if (!res.error && res.data) {
+            return { data: res.data };
+          }
+        } catch {}
+      }
+      return { data: { items: [], unread_count: 0 } };
+    }
+
+    if (clean === `/clubs/${clubId}/notifications/read` && method === 'POST') {
+      if (typeof supabase?.rpc === 'function') {
+        check(
+          await supabase.rpc('mark_club_notifications_read', {
+            p_club_id: clubId,
+            p_keys: Array.isArray(data.keys) ? data.keys : [],
+          })
+        );
+      }
+      return { data: { ok: true } };
     }
 
     if (clean.endsWith('/public-settings') && method === 'GET') {

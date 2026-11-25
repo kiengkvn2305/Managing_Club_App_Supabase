@@ -3,6 +3,7 @@ import {
   openInventoryMovement,
   showInventoryHistory,
   showInventoryAssignments,
+  showInventoryIncidentsReport,
 } from '../inventory.js';
 
 export function createInventoryController(ctx) {
@@ -11,6 +12,13 @@ export function createInventoryController(ctx) {
       ctx.state.inventoryPage += a === 'inventory-next' ? 1 : -1;
       await ctx.loadView();
       return true;
+    }
+
+    if (a === 'inventory-incidents-report' && ctx.currentClub()?.can_view_inventory) {
+      return showInventoryIncidentsReport({
+        api: ctx.api,
+        base: ctx.base,
+      });
     }
 
     if (a === 'inventory-new' && ctx.currentClub()?.can_manage_inventory) {
@@ -25,6 +33,7 @@ export function createInventoryController(ctx) {
       [
         'inventory-edit',
         'inventory-move',
+        'inventory-incident',
         'inventory-history',
         'inventory-assignments',
         'inventory-archive',
@@ -68,6 +77,17 @@ export function createInventoryController(ctx) {
           api: ctx.api,
           base: ctx.base,
           reload: ctx.loadView,
+          initialType: 'in',
+        });
+      }
+
+      if (a === 'inventory-incident') {
+        return openInventoryMovement({
+          item,
+          api: ctx.api,
+          base: ctx.base,
+          reload: ctx.loadView,
+          initialType: 'damaged',
         });
       }
 
@@ -80,7 +100,7 @@ export function createInventoryController(ctx) {
 
       return ctx.dialog(
         'Lưu trữ vật tư?',
-        `${ctx.e(item.name)} sẽ được ẩn khỏi danh sách. Chỉ vật tư có tồn kho bằng 0 mới được lưu trữ; lịch sử được giữ lại.`,
+        `${ctx.e(item.name)} sẽ được ẩn khỏi danh sách. Chỉ vật tư có tồn kho bằng 0 và không còn ai mượn mới được lưu trữ; lịch sử được giữ lại.`,
         '',
         (form) =>
           ctx.submit(

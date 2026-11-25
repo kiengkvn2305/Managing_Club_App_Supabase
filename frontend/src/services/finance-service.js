@@ -83,6 +83,18 @@ export function createFinanceService({ supabase, authService }) {
       };
     }
 
+    if (clean === `/clubs/${clubId}/finance/periods` && method === 'GET') {
+      const rows =
+        check(
+          await supabase
+            .from('financial_periods')
+            .select('*')
+            .eq('club_id', clubId)
+            .order('starts_on', { ascending: false })
+        ) || [];
+      return { data: rows };
+    }
+
     if (clean === `/clubs/${clubId}/finance/periods` && method === 'POST') {
       return {
         data: check(

@@ -247,6 +247,7 @@ export function financePage() {
         <p>Theo dõi dòng tiền và số dư của câu lạc bộ.</p>
       </div>
       <div class="page-actions">
+        ${button('manage-finance-periods', 'Kỳ kế toán / Khóa sổ', 'shield', 'secondary')}
         ${button('export-finance', 'Xuất Excel', 'arrow', 'secondary')}
         ${currentClub()?.can_manage_finance ? button('new-finance', 'Ghi thu chi') : ''}
       </div>
@@ -320,21 +321,36 @@ export function financePage() {
                 <th class="text-center">Loại</th>
                 <th class="text-right">Số tiền</th>
                 <th class="text-center">Ảnh xác nhận</th>
+                <th class="text-center">Đối soát</th>
               </tr>
             </thead>
             <tbody>
               ${ledger.data
                 .map(
                   (item) => `
-                <tr>
+                <tr class="${item.status === 'reversed' ? 'muted-row' : ''}">
                   <td class="tabular-nums">${e(formatDate(item.occurred_on))}</td>
-                  <td><strong>${e(item.description)}</strong></td>
+                  <td>
+                    <strong>${e(item.description)}</strong>
+                    ${item.status === 'reversed' ? ' <span class="badge muted">Đã đảo</span>' : ''}
+                  </td>
                   <td>${e(item.category || '—')}</td>
                   <td>${e(item.paid_by || '—')}</td>
                   <td class="truncate" style="max-width:180px;" title="${e(item.notes || '')}">${e(item.notes || '—')}</td>
                   <td class="text-center"><span class="badge ${item.type === 'income' ? 'active' : 'injured'}">${item.type === 'income' ? 'Thu' : 'Chi'}</span></td>
                   <td class="text-right tabular-nums font-bold">${e(money(item.amount))}</td>
                   <td class="text-center">${item.receipt_url ? `<a class="text-link" href="${e(item.receipt_url)}" target="_blank" rel="noopener noreferrer">Xem ảnh</a>` : '—'}</td>
+                  <td class="text-center">
+                    ${
+                      item.status === 'reversed'
+                        ? '<span class="muted">Đã hủy</span>'
+                        : item.reversal_of_id
+                          ? '<span class="badge">Bút toán đảo</span>'
+                          : currentClub()?.can_manage_finance
+                            ? `<button type="button" class="text-button danger" data-action="reverse-finance" data-id="${item.id}" data-desc="${e(item.description)}">Đảo bút toán</button>`
+                            : '—'
+                    }
+                  </td>
                 </tr>`
                 )
                 .join('')}

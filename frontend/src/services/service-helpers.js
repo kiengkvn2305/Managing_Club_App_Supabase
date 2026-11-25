@@ -104,6 +104,25 @@ export function check(result) {
       msg = 'Bạn không phải là thành viên của câu lạc bộ này.';
     } else if (msg.includes('not_authenticated')) {
       msg = 'Vui lòng đăng nhập để thực hiện thao tác này.';
+    } else if (msg.includes('financial_period_closed')) {
+      msg = 'Kỳ kế toán chứa ngày giao dịch này đã khóa sổ, không thể ghi thêm hoặc đảo giao dịch.';
+    } else if (msg.includes('invalid_reversal_state')) {
+      msg = 'Giao dịch này đã được đảo hoặc không thể đảo bút toán thêm lần nữa.';
+    } else if (msg.includes('public_club_not_found') || msg.includes('public_club_not_published')) {
+      msg = 'Trang công khai của câu lạc bộ chưa được xuất bản hoặc không tồn tại.';
+      status = 404;
+    } else if (msg.includes('public_recruitment_closed') || msg.includes('recruitment_post_closed')) {
+      msg = 'Đợt tuyển thành viên này đã đóng hoặc hết hạn nhận hồ sơ.';
+    } else if (msg.includes('invalid_application_contact')) {
+      msg = 'Vui lòng cung cấp số điện thoại hoặc địa chỉ email để CLB liên hệ.';
+    } else if (msg.includes('duplicate_application')) {
+      msg = 'Hồ sơ với email hoặc số điện thoại này đã được gửi cho đợt tuyển quân này.';
+    } else if (msg.includes('invalid_incident_report') || msg.includes('invalid_incident_quantity')) {
+      msg = 'Số lượng báo hỏng/mất không hợp lệ hoặc vượt quá số lượng đang mượn.';
+    } else if (msg.includes('insufficient_inventory')) {
+      msg = 'Số lượng tồn kho hiện tại không đủ để thực hiện thao tác này.';
+    } else if (msg.includes('inventory_not_empty')) {
+      msg = 'Chỉ có thể lưu trữ vật tư khi số lượng tồn bằng 0 và không còn thành viên nào đang mượn.';
     } else if (
       result.error.code === '23505' &&
       (msg.includes('jersey') || msg.includes('team_players_team_id_jersey_number_key'))
