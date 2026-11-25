@@ -228,6 +228,7 @@ export function createDuesService({ supabase }) {
             p_months: Number(data.months || 1),
             p_status: data.status,
             p_idempotency_key: data.idempotency_key || null,
+            p_team_id: data.team_id ? Number(data.team_id) : null,
           })
         ),
       };

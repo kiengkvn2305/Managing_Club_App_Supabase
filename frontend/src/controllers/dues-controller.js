@@ -7,11 +7,14 @@ export function createDuesController(ctx) {
       const person = ctx.state.dues.find(
         (x) => String(x.player_id) === el.dataset.id
       );
-      if (!person) return true;
+      const team = person?.teams.find(
+        (x) => String(x.team_id) === el.dataset.team
+      );
+      if (!person || !team) return true;
 
       return ctx.dialog(
         'Ghi quỹ tháng',
-        `${ctx.e(person.name)} · Tháng ${ctx.e(formatMonth(ctx.state.duesMonth))}. Áp dụng cho các đội đủ điều kiện; các khoản đã ghi được giữ nguyên.`,
+        `${ctx.e(person.name)} · Đội ${ctx.e(team.name)} · Tháng ${ctx.e(formatMonth(ctx.state.duesMonth))} · ${ctx.e(ctx.number(team.amount))} đ. Chỉ ghi nhận riêng cho đội này, không ảnh hưởng các đội khác.`,
         ctx.select('status', 'Hình thức', [
           ['paid', 'Đã đóng'],
           ['exempt', 'Miễn đóng'],
@@ -29,6 +32,7 @@ export function createDuesController(ctx) {
           ctx.submit(form, 'dues', async (data) => {
             await ctx.api.post(ctx.base('/dues'), {
               player_id: person.player_id,
+              team_id: team.team_id,
               month: ctx.state.duesMonth,
               months: data.months,
               status: data.status,
@@ -36,7 +40,7 @@ export function createDuesController(ctx) {
                 form.dataset.idempotencyKey || (form.dataset.idempotencyKey = crypto.randomUUID()),
             });
             await ctx.loadView();
-            ctx.toast('Đã ghi quỹ.');
+            ctx.toast(`Đã ghi quỹ cho đội ${team.name}.`);
           })
       );
     }
@@ -94,9 +98,12 @@ export function createDuesController(ctx) {
       const date = ctx.vietnamCalendarDate();
       const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
+      const activeTeamId = el.dataset.team || ctx.state.teamRosterId || null;
+      const activeTeam = ctx.state.teams.find((t) => String(t.id) === String(activeTeamId));
+
       return ctx.dialog(
         'Ghi quỹ thành viên',
-        `${ctx.e(person.full_name)} · Khoản ghi áp dụng cho các đội đủ điều kiện và giữ nguyên các khoản đã ghi.`,
+        `${ctx.e(person.full_name)}${activeTeam ? ` · Đội ${ctx.e(activeTeam.name)}` : ''}. Chỉ ghi nhận riêng cho đội đã chọn.`,
         ctx.field('month', 'Tháng bắt đầu', month, 'month', true) +
           ctx.select('status', 'Hình thức', [
             ['paid', 'Đã đóng'],
@@ -109,6 +116,7 @@ export function createDuesController(ctx) {
           ctx.submit(form, 'dues', async (data) => {
             await ctx.api.post(ctx.base('/dues'), {
               player_id: person.id,
+              team_id: activeTeamId ? Number(activeTeamId) : null,
               month: data.month,
               months: data.months,
               status: data.status,

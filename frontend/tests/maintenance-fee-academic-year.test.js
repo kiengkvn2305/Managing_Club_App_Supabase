@@ -69,6 +69,39 @@ test('duesPage displays maintenance fee settings, amount, and suspended badges',
   assert.match(html, /Trần Bình/);
   assert.match(html, />Tạm ngưng<\/span>/);
   assert.match(html, />\(Phí duy trì\)<\/div>/);
+  assert.doesNotMatch(html, /Tổng các đội trong tháng/);
+  assert.match(html, /data-action="record-dues" data-id="101" data-team="10"/);
+});
+
+test('duesService passes p_team_id when recording dues for a specific team', async () => {
+  let captured = null;
+  const duesService = createDuesService({
+    supabase: {
+      async rpc(fn, args) {
+        captured = { fn, args };
+        return { data: { player_id: args.p_player_id, team_id: args.p_team_id, amount: 150000 }, error: null };
+      },
+    },
+  });
+
+  const res = await duesService.handleDuesRequest(
+    '/clubs/1/dues',
+    'POST',
+    {
+      player_id: 55,
+      team_id: 12,
+      month: '2026-11',
+      months: 1,
+      status: 'paid',
+      idempotency_key: '11111111-1111-4111-8111-111111111111',
+    },
+    new URLSearchParams(),
+    1
+  );
+
+  assert.equal(captured.fn, 'record_player_dues');
+  assert.equal(captured.args.p_team_id, 12);
+  assert.equal(res.data.team_id, 12);
 });
 
 test('parseMembers supports 8-column format and buildMembersWorkbook exports club activity_start_date', async () => {

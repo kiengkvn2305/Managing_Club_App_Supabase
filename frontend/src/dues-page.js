@@ -111,7 +111,6 @@ export function duesPage() {
                     <th>Email</th>
                     <th>Đội</th>
                     <th class="text-right">Quỹ đội</th>
-                    <th class="text-right">Tổng các đội trong tháng</th>
                     <th class="text-center">Trạng thái</th>
                     <th class="text-right">Nợ lũy kế đến nay</th>
                     <th>Thao tác</th>
@@ -140,8 +139,7 @@ export function duesPage() {
                             : ''
                         }
                       </td>
-                      <td class="text-right tabular-nums">${number(team.amount)} đ</td>
-                      <td class="text-right tabular-nums font-bold">${number(person.total)} đ</td>
+                      <td class="text-right tabular-nums font-bold">${number(team.amount)} đ</td>
                       <td class="text-center">
                         <span class="dues-status ${['debt', 'unpaid'].includes(team.status) ? 'owing' : ['paid', 'exempt'].includes(team.status) ? 'settled' : ''}">
                           ${e(labels[team.status] || team.status)}
@@ -157,7 +155,7 @@ export function duesPage() {
                       <td>
                         ${
                           currentClub()?.can_manage_finance && team.amount > 0
-                            ? `<div class="team-actions"><button class="text-button" data-action="correct-dues" data-id="${person.player_id}" data-team="${team.team_id}">Sửa trạng thái</button><button class="text-button" data-action="record-dues" data-id="${person.player_id}">Ghi đóng / miễn</button></div>`
+                            ? `<div class="team-actions"><button class="text-button" data-action="correct-dues" data-id="${person.player_id}" data-team="${team.team_id}">Sửa trạng thái</button><button class="text-button" data-action="record-dues" data-id="${person.player_id}" data-team="${team.team_id}">Ghi đóng / miễn</button></div>`
                             : '—'
                         }
                       </td>
