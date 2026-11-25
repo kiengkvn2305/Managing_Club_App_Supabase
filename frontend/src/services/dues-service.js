@@ -1,4 +1,24 @@
-import { check } from './service-helpers.js';
+import { check, SupabaseApiError } from './service-helpers.js';
+import { vietnamToday, formatMonth } from '../utils.js';
+
+function assertValidDuesEffectiveMonth(rawMonth) {
+  const monthStr = String(rawMonth || '').slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(monthStr)) {
+    throw new SupabaseApiError('Tháng áp dụng mức quỹ không hợp lệ.', 422);
+  }
+  const todayStr = vietnamToday(); // YYYY-MM-DD (UTC+7)
+  const [curYear, curMonth, curDay] = todayStr.split('-').map(Number);
+  const minYear = curDay < 3 ? curYear : curMonth === 12 ? curYear + 1 : curYear;
+  const minMonth = curDay < 3 ? curMonth : curMonth === 12 ? 1 : curMonth + 1;
+  const earliest = `${minYear}-${String(minMonth).padStart(2, '0')}`;
+  if (monthStr < earliest) {
+    throw new SupabaseApiError(
+      `Tháng áp dụng không hợp lệ. Theo quy định trước ngày 3, mức quỹ mới chỉ có hiệu lực sớm nhất từ tháng ${formatMonth(earliest)}.`,
+      422
+    );
+  }
+  return `${monthStr}-01`;
+}
 
 export function createDuesService({ supabase }) {
   async function getDues(clubId, params) {
@@ -251,8 +271,16 @@ export function createDuesService({ supabase }) {
     }
 
     const duesRate = clean.match(/\/teams\/(\d+)\/dues-rate$/);
-    if (duesRate && method === 'PATCH') {
-      const effective = `${data.dues_month}-01`;
+    if (duesRate && (method === 'PATCH' || method === 'POST')) {
+      const effective = assertValidDuesEffectiveMonth(
+        data.dues_month || data.effective_month
+      );
+      const amount = Number(
+        data.dues_amount !== undefined ? data.dues_amount : data.amount
+      );
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new SupabaseApiError('Mức quỹ đội phải là số không âm.', 422);
+      }
       return {
         data: check(
           await supabase
@@ -262,7 +290,7 @@ export function createDuesService({ supabase }) {
                 club_id: clubId,
                 team_id: Number(duesRate[1]),
                 effective_month: effective,
-                amount: Number(data.dues_amount),
+                amount,
               },
               { onConflict: 'team_id,effective_month' }
             )

@@ -169,6 +169,8 @@ export function createClubController(ctx) {
     }
 
     if (a === 'transfer-ownership') {
+      // Nếu bấm trực tiếp từ dòng thành viên ở trang Thành viên BCN (có data-id), nhường cho roster-controller xử lý xác nhận đúng thành viên đó
+      if (el?.dataset?.id) return false;
       const isOwner = ctx.currentRole() === 'owner' || ctx.currentClub()?.is_system_admin;
       if (!ctx.requirePermission(isOwner, 'Chuyển giao quyền Chủ nhiệm')) return true;
       const candidates = ctx.unpackList(
@@ -282,7 +284,12 @@ export function createClubController(ctx) {
       );
     }
 
-    if (a === 'delete-club' && ctx.currentRole() === 'owner') {
+    if (
+      a === 'delete-club' &&
+      (ctx.currentRole() === 'owner' ||
+        ctx.currentClub()?.is_system_admin ||
+        ctx.state.user?.is_system_admin)
+    ) {
       const club = ctx.currentClub();
       return ctx.dialog(
         'Xóa câu lạc bộ?',

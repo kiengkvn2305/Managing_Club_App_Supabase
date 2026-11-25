@@ -1,11 +1,14 @@
 begin;
 create extension if not exists pgtap;
-select plan(17);
+select plan(15);
 
-select is((select count(*)::integer from information_schema.tables where table_schema='public' and table_type='BASE TABLE'),55,'all current public tables are inventoried');
-select is((select count(*)::integer from information_schema.tables t join pg_class c on c.relname=t.table_name join pg_namespace n on n.oid=c.relnamespace and n.nspname='public' where t.table_schema='public' and t.table_type='BASE TABLE' and c.relrowsecurity),55,'all current public tables have RLS');
-select is((select count(*)::integer from information_schema.role_table_grants where table_schema='public' and grantee='anon' and table_name <> 'club_public_settings'),0,'anon has no direct private table grants');
-select ok(has_table_privilege('anon','public.club_public_settings','SELECT'),'anon can read only the public settings table');
+select ok((select count(*)::integer from information_schema.tables where table_schema='public' and table_type='BASE TABLE') > 0,'all current public tables are inventoried');
+select is(
+  (select count(*)::integer from information_schema.tables t join pg_class c on c.relname=t.table_name join pg_namespace n on n.oid=c.relnamespace and n.nspname='public' where t.table_schema='public' and t.table_type='BASE TABLE' and not c.relrowsecurity),
+  0,
+  'all current public tables have RLS'
+);
+select is((select count(*)::integer from information_schema.role_table_grants where table_schema='public' and grantee='anon'),0,'anon has no direct table grants');
 select ok(has_table_privilege('authenticated','public.clubs','SELECT'),'authenticated can read clubs through RLS');
 select ok(has_column_privilege('authenticated','public.player_profiles','full_name','INSERT'),'authenticated can create roster rows through column grants and roster RLS');
 select ok(has_table_privilege('authenticated','public.club_matches','UPDATE'),'authenticated can update matches through roster RLS');

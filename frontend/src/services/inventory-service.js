@@ -1,4 +1,5 @@
 import { check, page, truthy } from './service-helpers.js';
+import { matchesSearch } from '../utils.js';
 
 export function createInventoryService({ supabase }) {
   async function inventoryAssignments(clubId, itemId, params) {
@@ -265,15 +266,36 @@ export function createInventoryService({ supabase }) {
     }
 
     if (clean === `/clubs/${clubId}/inventory/members` && method === 'GET') {
-      let b = supabase
-        .from('player_profiles')
-        .select('id,full_name,date_of_birth,email')
-        .eq('club_id', clubId)
-        .order('full_name');
-      if (params.get('search')) {
-        b = b.ilike('full_name', `%${params.get('search')}%`);
+      const [playersRes, teamsRes, tpRes] = await Promise.all([
+        supabase
+          .from('player_profiles')
+          .select('id,full_name,date_of_birth,email,team_id')
+          .eq('club_id', clubId)
+          .order('full_name'),
+        supabase.from('teams').select('id,name').eq('club_id', clubId),
+        supabase.from('team_players').select('team_id,player_id').eq('club_id', clubId),
+      ]);
+      const players = check(playersRes) || [];
+      const teamNameById = new Map((check(teamsRes) || []).map((t) => [String(t.id), t.name]));
+      const teamMap = new Map();
+      for (const row of check(tpRes) || []) {
+        const name = teamNameById.get(String(row.team_id));
+        if (!name) continue;
+        const list = teamMap.get(String(row.player_id)) || [];
+        if (!list.includes(name)) list.push(name);
+        teamMap.set(String(row.player_id), list);
       }
-      return page(check(await b) || [], params, 50);
+      const searchQ = (params.get('search') || '').trim();
+      const enriched = players
+        .map((p) => {
+          const labels = [...(teamMap.get(String(p.id)) || [])];
+          if (!labels.length && p.team_id && teamNameById.has(String(p.team_id))) {
+            labels.push(teamNameById.get(String(p.team_id)));
+          }
+          return { ...p, team_labels: labels };
+        })
+        .filter((p) => !searchQ || matchesSearch(`${p.full_name} ${p.email || ''} ${p.team_labels.join(' ')}`, searchQ));
+      return page(enriched, params, 50);
     }
 
     return null;

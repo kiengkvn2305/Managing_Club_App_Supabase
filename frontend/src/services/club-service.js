@@ -523,27 +523,6 @@ export function createClubService({ supabase, authService }) {
       return { data: updated };
     }
 
-    if (clean === '/discover/clubs') {
-      let b = supabase
-        .from('clubs')
-        .select('*')
-        .eq('status', 'active')
-        .eq('is_discoverable', true)
-        .order('name');
-      if (params.get('q')) {
-        b = b.or(`name.ilike.%${params.get('q')}%,city.ilike.%${params.get('q')}%`);
-      }
-      const rows = check(await b) || [];
-      return page(
-        rows.map((row) => ({
-          ...row,
-          avatar_version: row.avatar_path || null,
-        })),
-        params,
-        12
-      );
-    }
-
     if (!clubId) return null;
 
     if (clean.endsWith('/dashboard') && method === 'GET') {
@@ -672,53 +651,6 @@ export function createClubService({ supabase, authService }) {
       };
     }
 
-    if (clean === `/clubs/${clubId}/friendlies` && method === 'GET') {
-      const rows =
-        check(
-          await supabase
-            .from('friendly_invitations')
-            .select(
-              '*,source:clubs!friendly_invitations_source_club_id_fkey(name),target:clubs!friendly_invitations_target_club_id_fkey(name)'
-            )
-            .or(`source_club_id.eq.${clubId},target_club_id.eq.${clubId}`)
-            .order('created_at', { ascending: false })
-        ) || [];
-      return {
-        data: rows.map((row) => ({
-          ...row,
-          source_name: row.source?.name,
-          target_name: row.target?.name,
-        })),
-      };
-    }
-
-    if (clean === `/clubs/${clubId}/friendlies` && method === 'POST') {
-      return {
-        data: check(
-          await supabase.rpc('create_friendly_invitation', {
-            p_source_club_id: clubId,
-            p_target_club_id: Number(data.target_club_id),
-            p_match_date: data.match_date,
-            p_match_time: data.match_time || null,
-            p_location: data.location || null,
-            p_message: data.message || null,
-          })
-        ),
-      };
-    }
-
-    const friendly = clean.match(/\/friendlies\/(\d+)$/);
-    if (friendly && method === 'PATCH') {
-      check(
-        await supabase.rpc('respond_friendly_invitation', {
-          p_club_id: clubId,
-          p_invitation_id: Number(friendly[1]),
-          p_status: data.status,
-        })
-      );
-      return {};
-    }
-
     if (clean === `/clubs/${clubId}/notifications` && method === 'GET') {
       if (typeof supabase?.rpc === 'function') {
         try {
@@ -743,51 +675,6 @@ export function createClubService({ supabase, authService }) {
         );
       }
       return { data: { ok: true } };
-    }
-
-    if (clean.endsWith('/public-settings') && method === 'GET') {
-      const row = check(
-        await supabase
-          .from('club_public_settings')
-          .select('*')
-          .eq('club_id', clubId)
-          .maybeSingle()
-      );
-      return {
-        data: row || {
-          club_id: clubId,
-          public_slug: null,
-          is_published: false,
-          headline: null,
-          content: {},
-        },
-      };
-    }
-
-    if (
-      clean.endsWith('/public-settings') &&
-      (method === 'POST' || method === 'PATCH')
-    ) {
-      const current = await authService.user(false);
-      const row = check(
-        await supabase
-          .from('club_public_settings')
-          .upsert(
-            {
-              club_id: clubId,
-              public_slug: data.public_slug || null,
-              is_published: Boolean(data.is_published),
-              headline: data.headline || null,
-              content: data.content || {},
-              updated_by: current?.id || null,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'club_id' }
-          )
-          .select()
-          .single()
-      );
-      return { data: row };
     }
 
     return null;

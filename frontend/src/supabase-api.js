@@ -17,9 +17,6 @@ import { createMatchService } from './services/match-service.js';
 import { createInventoryService } from './services/inventory-service.js';
 import { createActivityService } from './services/activity-service.js';
 import { createRecruitmentService } from './services/recruitment-service.js';
-import { createSponsorshipService } from './services/sponsorship-service.js';
-import { createPollService } from './services/poll-service.js';
-import { createDisciplineService } from './services/discipline-service.js';
 
 // Client profiles query: from("profiles").select("id,name,email,avatar_path,created_at,updated_at")
 // Database RPC operations with row-level locks and replay protection:
@@ -71,9 +68,6 @@ export function createSupabaseApiClient({
   const inventoryService = createInventoryService({ supabase });
   const activityService = createActivityService({ supabase });
   const recruitmentService = createRecruitmentService({ supabase });
-  const sponsorshipService = createSponsorshipService({ supabase });
-  const pollService = createPollService({ supabase });
-  const disciplineService = createDisciplineService({ supabase });
 
   async function request(
     path,
@@ -207,35 +201,6 @@ export function createSupabaseApiClient({
       clubId
     );
     if (recruitmentResult !== null) return recruitmentResult;
-
-    const sponsorshipResult = await sponsorshipService.handleSponsorshipRequest(
-      clean,
-      method,
-      data,
-      params,
-      clubId,
-      current
-    );
-    if (sponsorshipResult !== null) return sponsorshipResult;
-
-    const pollResult = await pollService.handlePollRequest(
-      clean,
-      method,
-      data,
-      params,
-      clubId,
-      current
-    );
-    if (pollResult !== null) return pollResult;
-
-    const disciplineResult = await disciplineService.handleDisciplineRequest(
-      clean,
-      method,
-      data,
-      params,
-      clubId
-    );
-    if (disciplineResult !== null) return disciplineResult;
 
     throw new SupabaseApiError(
       `Supabase adapter chưa ánh xạ nghiệp vụ: ${method} ${clean}`,

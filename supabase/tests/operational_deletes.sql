@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap;
-select plan(12);
+select plan(9);
 
 -- 1. Check RPC privileges
 select ok(has_function_privilege('authenticated','public.delete_team(bigint,bigint)','EXECUTE'),'authenticated can execute delete_team');
@@ -13,10 +13,7 @@ select ok(has_table_privilege('authenticated','public.board_tasks','DELETE'),'au
 select ok(has_table_privilege('authenticated','public.club_celebrations','DELETE'),'authenticated has DELETE on club_celebrations');
 select ok(has_table_privilege('authenticated','public.team_trainings','DELETE'),'authenticated has DELETE on team_trainings');
 select ok(has_table_privilege('authenticated','public.club_awards','DELETE'),'authenticated has DELETE on club_awards');
-select ok(has_table_privilege('authenticated','public.sponsors','DELETE'),'authenticated has DELETE on sponsors');
 select ok(has_table_privilege('authenticated','public.club_matches','DELETE'),'authenticated has DELETE on club_matches');
-select ok(has_table_privilege('authenticated','public.club_public_settings','INSERT'),'authenticated has INSERT on club_public_settings');
-select ok(has_table_privilege('authenticated','public.club_public_settings','UPDATE'),'authenticated has UPDATE on club_public_settings');
 
 -- 3. Functional test for delete_team and remove_team_player
 do $$

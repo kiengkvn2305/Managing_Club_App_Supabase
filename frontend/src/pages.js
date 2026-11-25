@@ -11,10 +11,8 @@ import { icon, button, empty } from './components/ui.js';
 import { clubDirectoryPage, teamRosterPage } from './roster-pages.js';
 import { duesPage } from './dues-page.js';
 import { financePage } from './finance-page.js';
-import { discoveryPage } from './discovery-page.js';
 import { matchesPage } from './matches-page.js';
 import { inventoryPage } from './inventory-page.js';
-import { pollsPage } from './polls-page.js';
 import { recruitmentPage } from './recruitment-page.js';
 import { dashboardPage } from './views/dashboard-page.js';
 import { boardPage } from './views/board-page.js';
@@ -39,9 +37,7 @@ export const titles = {
   inventory: 'Kho trang bị',
   'club-members': 'Thành viên BCN',
   club: 'Câu lạc bộ',
-  discover: 'Khám phá & Giao hữu',
   recruitment: 'Tuyển thành viên',
-  polls: 'Biểu quyết CLB',
   matches: 'Trận đấu',
   lineups: 'Đội hình trận đấu',
   profile: 'Tài khoản',
@@ -246,7 +242,6 @@ export function page() {
   if (s.route === 'profile') return profilePage();
   if (s.route === 'accept') return acceptPage();
   if (s.route === 'roadmap') return roadmap();
-  if (s.route === 'discover') return discoveryPage();
   if (s.route === 'admin') return adminPage();
 
   if (!currentClub()) {
@@ -280,14 +275,6 @@ export function page() {
           })
         : heading('Kho trang bị', 'Thông tin được bảo vệ theo quyền truy cập.') +
           `<section class="panel">${empty('Quyền truy cập được bảo vệ', 'Bạn không có quyền xem kho trang bị.')}</section>`,
-    polls: () =>
-      pollsPage({
-        polls: s.polls,
-        canCreate:
-          canManageClub(currentClub()) &&
-          currentClub()?.status === 'active',
-        canVote: currentClub()?.status === 'active',
-      }),
     recruitment: () =>
       canManageRoster(currentClub())
         ? recruitmentPage({

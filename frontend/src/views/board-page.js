@@ -330,6 +330,41 @@ export function boardPage() {
     <section class="panel">
       <div class="panel-head">
         <div>
+          <h2>Công việc Ban chủ nhiệm (${(s.boardTasks || []).length})</h2>
+          <p>Phân công và theo dõi tiến độ các đầu việc điều hành câu lạc bộ.</p>
+        </div>
+        ${button('board-task-new', 'Giao việc BCN')}
+      </div>
+      ${
+        (s.boardTasks || []).length
+          ? `<div class="roster-list">${(s.boardTasks || [])
+              .map(
+                (t) => `
+        <div class="roster-item">
+          <div class="roster-item-left">
+            <div class="roster-item-main">
+              <strong>${e(t.title)}</strong>
+              <div class="roster-item-meta">
+                <span class="badge ${Number(t.progress) >= 100 ? 'active' : ''}">${number(t.progress || 0)}%</span>
+                <small class="roster-meta-text">${e(t.assignee_name || 'BCN')}${t.assignee_title ? ` (${e(t.assignee_title)})` : ''}${t.due_date ? ` · Hạn: ${e(formatDate(t.due_date))}` : ''}</small>
+              </div>
+              ${t.description ? `<small class="muted" style="display:block;margin-top:4px;">${e(t.description)}</small>` : ''}
+            </div>
+          </div>
+          <div class="action-chips">
+            <button type="button" class="chip-button" data-action="board-task-edit" data-id="${t.id}">Cập nhật</button>
+            <button type="button" class="chip-button danger" data-action="board-task-delete" data-id="${t.id}">Xóa</button>
+          </div>
+        </div>`
+              )
+              .join('')}</div>`
+          : empty('Chưa có công việc BCN', 'Tạo đầu việc và phân công cho thành viên Ban chủ nhiệm.')
+      }
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
           <h2>Ưu đãi quỹ chung cho BCN</h2>
           <p>Mỗi đội có một mức áp dụng cho toàn bộ thành viên BCN.</p>
         </div>

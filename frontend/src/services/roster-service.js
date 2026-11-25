@@ -6,7 +6,26 @@ import {
   latestTeamDuesRate,
   SupabaseApiError,
 } from './service-helpers.js';
-import { compareVietnameseNames } from '../utils.js';
+import { compareVietnameseNames, matchesSearch, vietnamToday, formatMonth } from '../utils.js';
+
+function assertValidDuesEffectiveMonth(rawMonth) {
+  const monthStr = String(rawMonth || '').slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(monthStr)) {
+    throw new SupabaseApiError('Tháng áp dụng mức quỹ không hợp lệ.', 422);
+  }
+  const todayStr = vietnamToday();
+  const [curYear, curMonth, curDay] = todayStr.split('-').map(Number);
+  const minYear = curDay < 3 ? curYear : curMonth === 12 ? curYear + 1 : curYear;
+  const minMonth = curDay < 3 ? curMonth : curMonth === 12 ? 1 : curMonth + 1;
+  const earliest = `${minYear}-${String(minMonth).padStart(2, '0')}`;
+  if (monthStr < earliest) {
+    throw new SupabaseApiError(
+      `Tháng áp dụng không hợp lệ. Theo quy định trước ngày 3, mức quỹ mới chỉ có hiệu lực sớm nhất từ tháng ${formatMonth(earliest)}.`,
+      422
+    );
+  }
+  return `${monthStr}-01`;
+}
 
 export function createRosterService({ supabase, authService }) {
   const financeRoles = ['owner', 'co_owner', 'general_manager', 'treasurer'];
@@ -105,7 +124,7 @@ export function createRosterService({ supabase, authService }) {
     };
   }
 
-  async function members(clubId, params) {
+  async function members(clubId, params, current = null) {
     let rows =
       check(
         await supabase
@@ -117,15 +136,27 @@ export function createRosterService({ supabase, authService }) {
           .order('full_name')
       ) || [];
 
-    // Auto-sync active club_members into player_profiles if missing
+    // Chỉ tự động đồng bộ club_members -> player_profiles khi người xem có quyền quản lý nhân sự (tránh lỗi 403 RLS với thành viên thường)
     try {
       const { data: cMembers } = await supabase
         .from('club_members')
-        .select('id,user_id,role,title,profile:profiles(name,email)')
+        .select('id,user_id,role,title,permissions,profile:profiles(name,email)')
         .eq('club_id', clubId)
         .eq('status', 'active');
 
-      if (cMembers && cMembers.length > 0) {
+      const viewerMembership = current?.id
+        ? (cMembers || []).find((m) => m.user_id === current.id)
+        : null;
+      const canAutoSync = Boolean(
+        current?.is_system_admin ||
+          (viewerMembership &&
+            (['owner', 'co_owner', 'general_manager', 'hr_manager', 'sporting_manager'].includes(
+              viewerMembership.role
+            ) ||
+              viewerMembership.permissions?.can_manage_roster === true))
+      );
+
+      if (canAutoSync && cMembers && cMembers.length > 0) {
         const existingUserIds = new Set(rows.map((r) => r.user_id).filter(Boolean));
         const existingEmails = new Set(rows.map((r) => r.email?.toLowerCase()).filter(Boolean));
         const missingMembers = cMembers.filter(
@@ -157,7 +188,7 @@ export function createRosterService({ supabase, authService }) {
       }
     } catch {}
 
-    const q = (params.get('q') || '').toLowerCase();
+    const q = (params.get('q') || '').trim();
     const teamId = params.get('team_id');
     const status = params.get('status');
 
@@ -165,7 +196,7 @@ export function createRosterService({ supabase, authService }) {
       (x) =>
         (!q ||
           [x.full_name, x.email, x.phone, x.notes].some((v) =>
-            String(v || '').toLowerCase().includes(q)
+            matchesSearch(v, q)
           )) &&
         (!status || x.status === status) &&
         (!teamId ||
@@ -189,11 +220,17 @@ export function createRosterService({ supabase, authService }) {
     }));
 
     const sortField = params.get('sort') || 'full_name';
-    const direction = params.get('direction') === 'desc' ? -1 : 1;
+    const rawDirection = params.get('direction');
+    const direction =
+      rawDirection === 'desc' || (!rawDirection && sortField === 'created_at')
+        ? -1
+        : 1;
 
     rows.sort((a, b) => {
       let diff = 0;
-      if (sortField === 'full_name') {
+      if (sortField === 'created_at') {
+        diff = String(a.created_at || '').localeCompare(String(b.created_at || '')) || (Number(a.id || 0) - Number(b.id || 0));
+      } else if (sortField === 'full_name') {
         diff = compareVietnameseNames(a.full_name || '', b.full_name || '');
       } else if (sortField === 'date_of_birth') {
         diff = (a.date_of_birth || '').localeCompare(b.date_of_birth || '');
@@ -428,12 +465,13 @@ export function createRosterService({ supabase, authService }) {
         );
       }
       if (data.dues_amount !== undefined) {
+        const effectiveMonth = assertValidDuesEffectiveMonth(data.dues_month);
         check(
           await supabase.from('team_dues_rates').upsert(
             {
               club_id: clubId,
               team_id: teamId,
-              effective_month: `${data.dues_month}-01`,
+              effective_month: effectiveMonth,
               amount: Number(data.dues_amount),
             },
             { onConflict: 'team_id,effective_month' }
@@ -626,8 +664,8 @@ export function createRosterService({ supabase, authService }) {
       };
     }
 
-    if (clean.match(/\/members$/) && method === 'GET') {
-      return members(clubId, params);
+    if (clean === `/clubs/${clubId}/members` && method === 'GET') {
+      return members(clubId, params, current);
     }
 
     if (clean === `/clubs/${clubId}/members` && method === 'POST') {

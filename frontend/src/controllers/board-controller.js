@@ -63,9 +63,9 @@ export function createBoardController(ctx) {
       c?.is_system_admin ||
         role === 'owner' ||
         c?.membership_role === 'owner' ||
-        ctx.canManageClub(c || role) ||
-        c?.can_manage_finance ||
-        c?.can_manage_roster
+        c?.membership_role === 'co_owner' ||
+        c?.is_co_owner ||
+        ctx.canManageClub(c || role)
     );
   }
 

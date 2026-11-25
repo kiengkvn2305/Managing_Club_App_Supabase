@@ -1,6 +1,6 @@
 import { formatDate } from './utils.js';
 import { state as s, currentClub } from './state.js';
-import { escapeHtml as e, number, compareVietnameseNames } from './utils.js';
+import { escapeHtml as e, number, compareVietnameseNames, matchesSearch } from './utils.js';
 import { empty, button } from './components/ui.js';
 
 export function duesPage() {
@@ -28,14 +28,14 @@ export function duesPage() {
     none: 'Không thu',
   };
 
-  const search = (s.duesSearch || '').trim().toLocaleLowerCase('vi');
+  const search = (s.duesSearch || '').trim();
   const rows = s.dues
     .flatMap((person) => person.teams.map((team) => ({ person, team })))
     .filter(({ person, team }) => {
       const matchSearch =
         !search ||
-        [person.name, person.notes, person.email, person.date_of_birth].some((x) =>
-          String(x || '').toLocaleLowerCase('vi').includes(search)
+        [person.name, person.notes, person.email, person.date_of_birth, formatDate(person.date_of_birth)].some((x) =>
+          matchesSearch(x, search)
         );
       const matchTeam = !s.duesTeam || String(team.team_id) === s.duesTeam;
       const matchStatus =

@@ -171,6 +171,31 @@ export function createBoardService({ supabase }) {
       return {};
     }
 
+    if (clean === `/clubs/${clubId}/board-tasks` && method === 'GET') {
+      const tasks =
+        check(
+          await supabase
+            .from('board_tasks')
+            .select(
+              'id,board_member_id,title,description,due_date,progress,created_at,board_member:club_board_members(id,title,player:player_profiles(full_name))'
+            )
+            .eq('club_id', clubId)
+            .order('due_date', { ascending: true })
+        ) || [];
+      return {
+        data: tasks.map((t) => ({
+          id: t.id,
+          board_member_id: t.board_member_id,
+          title: t.title,
+          description: t.description,
+          due_date: t.due_date,
+          progress: Number(t.progress || 0),
+          assignee_name: t.board_member?.player?.full_name || 'Thành viên BCN',
+          assignee_title: t.board_member?.title || '',
+        })),
+      };
+    }
+
     if (clean === `/clubs/${clubId}/board-tasks` && method === 'POST') {
       return {
         data: check(

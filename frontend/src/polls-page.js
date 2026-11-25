@@ -1,9 +1,0 @@
-import { escapeHtml as e, number, formatVietnamDateTime } from './utils.js';
-import { button, empty } from './components/ui.js';
-
-export function pollsPage({ polls = {}, canCreate = false, canVote = true } = {}) {
-  const { data = [], current_page = 1, last_page = 1 } = polls;
-  return `<div class="page-top"><div><div class="eyebrow">CÂU LẠC BỘ</div><h1>Biểu quyết</h1><p>Mỗi thành viên đủ điều kiện bỏ một phiếu. Kết quả được tổng hợp, không hiển thị lựa chọn của từng người.</p></div><div class="page-actions">${canCreate ? button('poll-new', 'Tạo biểu quyết') : ''}</div></div>
-    ${data.length ? data.map((poll) => `<section class="panel poll-card"><h2>${e(poll.title)}</h2><p>${e(poll.description || '')}</p><p>Hạn: ${e(formatVietnamDateTime(poll.deadline))} · ${poll.closed ? 'Đã kết thúc' : 'Đang mở'} · ${number(poll.eligible_count)} cử tri</p><div>${poll.options.map((option) => `<div class="poll-option"><strong>${e(option.label)}</strong> — ${number(option.votes)} phiếu ${canVote && !poll.closed && poll.eligible && !poll.voted ? `<button type="button" class="button secondary" data-action="poll-vote" data-id="${poll.id}" data-option="${option.id}">Chọn</button>` : ''}</div>`).join('')}</div><p>${poll.voted ? 'Bạn đã bỏ phiếu.' : !canVote ? 'CLB đang lưu trữ; không thể bỏ phiếu.' : poll.eligible ? (poll.closed ? 'Cuộc biểu quyết đã kết thúc.' : 'Bạn có thể bỏ một phiếu.') : 'Bạn không có trong danh sách cử tri khi tạo biểu quyết.'}</p></section>`).join('') : empty('Chưa có biểu quyết', 'Các cuộc biểu quyết và kết quả sẽ được lưu tại đây.')}
-    <div class="table-footer"><button class="icon-button" data-action="poll-prev" aria-label="Trang trước" ${current_page <= 1 ? 'disabled' : ''}>←</button> ${current_page} / ${last_page} <button class="icon-button" data-action="poll-next" aria-label="Trang sau" ${current_page >= last_page ? 'disabled' : ''}>→</button></div>`;
-}

@@ -288,7 +288,7 @@ export function createRosterController(ctx) {
           <label><input type="checkbox" name="can_manage_inventory"> <strong>Quản lý kho trang bị</strong><br><small class="muted">Nhập/xuất, bàn giao thiết bị</small></label>
           <label><input type="checkbox" name="can_manage_activities"> <strong>Quản lý hoạt động CLB</strong><br><small class="muted">Dịp lễ, sinh nhật, khen thưởng</small></label>
           <label><input type="checkbox" name="can_manage_attendance"> <strong>Quản lý điểm danh</strong><br><small class="muted">Tạo lịch tập, bấm điểm danh</small></label>
-          <label><input type="checkbox" name="can_manage_club"> <strong>Quản trị thông tin CLB</strong><br><small class="muted">Đổi thông tin, ảnh, cài đặt công khai</small></label>
+          <label><input type="checkbox" name="can_manage_club"> <strong>Quản trị thông tin CLB</strong><br><small class="muted">Đổi thông tin CLB, ảnh đại diện và ảnh nền</small></label>
         </div>
       </fieldset>`;
 
@@ -313,14 +313,10 @@ export function createRosterController(ctx) {
             can_manage_club: Boolean(form.elements.can_manage_club?.checked),
           };
           let role = 'member';
-          if (titleChoice === 'Phó chủ nhiệm CLB' || permissions.can_manage_club) role = 'co_owner';
+          if (titleChoice === 'Phó chủ nhiệm CLB') role = 'co_owner';
           else if (titleChoice === 'Thủ quỹ') role = 'treasurer';
-          else if (
-            permissions.can_manage_finance ||
-            permissions.can_manage_roster ||
-            permissions.can_manage_inventory
-          )
-            role = 'general_manager';
+          else if (titleChoice === 'Trưởng ban chuyên môn / HLV') role = 'sporting_manager';
+          else if (titleChoice === 'Phụ trách hậu cần / Trang thiết bị') role = 'equipment_manager';
 
           created = (
             await ctx.api.post(ctx.base('/invitations'), {
@@ -682,7 +678,7 @@ export function createRosterController(ctx) {
             </label>
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
               <input type="checkbox" name="can_manage_club" ${perms.can_manage_club ? 'checked' : ''}>
-              <span><strong>Quản lý thông tin CLB & cài đặt</strong> <small style="display:block;color:var(--muted);">Sửa thông tin CLB, cài đặt trang công khai và bài tuyển quân</small></span>
+              <span><strong>Quản lý thông tin CLB & cài đặt</strong> <small style="display:block;color:var(--muted);">Sửa thông tin CLB, ảnh đại diện/ảnh nền và bài tuyển quân</small></span>
             </label>
           </div>
         </fieldset>

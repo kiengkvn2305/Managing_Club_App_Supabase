@@ -1,6 +1,6 @@
 import { formatDate } from './utils.js';
 import { dialog, field, select, showErrors, toast } from './components/ui.js';
-import { escapeHtml as e, unpackList, compareVietnameseNames } from './utils.js';
+import { escapeHtml as e, unpackList, compareVietnameseNames, matchesSearch } from './utils.js';
 import { avatar, imageUrl } from './images.js';
 
 async function allPlayers(api, base, teamId = '') {
@@ -54,8 +54,7 @@ export function openAwardDialog({
       p.phone,
     ]
       .filter(Boolean)
-      .join(' ')
-      .toLocaleLowerCase('vi');
+      .join(' ');
 
   const renderRow = (p) => {
     const isChecked = String(p.id) === selectedPlayerId;
@@ -198,13 +197,13 @@ export function openAwardDialog({
   });
 
   const applyFilterAndSort = (shouldSort = false) => {
-    const query = (searchInput.value || '').trim().toLocaleLowerCase('vi');
+    const query = (searchInput.value || '').trim();
     const sortVal = sortSelect.value;
     const rows = [...listEl.querySelectorAll('[data-award-player-row]')];
 
     let visibleCount = 0;
     rows.forEach((row) => {
-      const match = !query || row.dataset.search.includes(query);
+      const match = !query || matchesSearch(row.dataset.search, query);
       row.hidden = !match;
       if (match) visibleCount++;
     });
@@ -394,7 +393,7 @@ export async function activityAction(action, id, { state: s, api, base, reload }
                 .join(' · ');
               const curStatus = previous.get(String(p.id)) || '';
               return `
-                <label data-attendance-row data-name="${e(p.full_name.toLocaleLowerCase('vi'))}" data-notes="${e(p.notes || '')}" data-year="${e((p.date_of_birth || '').slice(0, 4))}" data-foot="${e(p.preferred_foot || '')}" data-position="${e(position(p))}" class="att-row ${curStatus ? `att-row-${curStatus}` : ''}">
+                <label data-attendance-row data-name="${e(p.full_name)}" data-notes="${e(p.notes || '')}" data-year="${e((p.date_of_birth || '').slice(0, 4))}" data-foot="${e(p.preferred_foot || '')}" data-position="${e(position(p))}" class="att-row ${curStatus ? `att-row-${curStatus}` : ''}">
                   <span class="attendance-person">
                     ${avatar(p.full_name, imageUrl('player', p.id, p.avatar_version, s.clubId))}
                     <span>
@@ -423,9 +422,9 @@ export async function activityAction(action, id, { state: s, api, base, reload }
       await api.patch(base(`/activities/trainings/${training.id}/attendance`), { players: selected, expected_updated_at: training.updated_at }); await reload(); toast('Đã lưu điểm danh.');
     });
     modal.classList.add('member-picker-dialog');
-    modal.querySelectorAll('[data-attendance-row]').forEach((row) => { const player = players.find((p) => String(p.id) === row.querySelector('[data-player]').dataset.player); row.dataset.fullName = player.full_name; row.dataset.name = `${player.full_name} ${player.notes || ''}`.toLocaleLowerCase('vi'); });
+    modal.querySelectorAll('[data-attendance-row]').forEach((row) => { const player = players.find((p) => String(p.id) === row.querySelector('[data-player]').dataset.player); row.dataset.fullName = player.full_name; row.dataset.name = `${player.full_name} ${player.notes || ''}`; });
     const filter = () => {
-      const name = modal.querySelector('[data-att-name]').value.trim().toLocaleLowerCase('vi');
+      const name = modal.querySelector('[data-att-name]').value.trim();
       const year = modal.querySelector('[data-att-year]').value;
       const foot = modal.querySelector('[data-att-foot]').value;
       const pos = modal.querySelector('[data-att-position]').value;
@@ -433,7 +432,7 @@ export async function activityAction(action, id, { state: s, api, base, reload }
       const list = modal.querySelector('.attendance-list');
       const items = [...list.querySelectorAll('[data-attendance-row]')];
       items.forEach((row) => {
-        row.hidden = !row.dataset.name.includes(name) || (year && row.dataset.year !== year) || (foot && row.dataset.foot !== foot) || (pos && row.dataset.position !== pos);
+        row.hidden = (name && !matchesSearch(row.dataset.name, name)) || (year && row.dataset.year !== year) || (foot && row.dataset.foot !== foot) || (pos && row.dataset.position !== pos);
       });
       items.sort((a, b) => {
         if (sortVal === 'asc') return compareVietnameseNames(a.dataset.fullName, b.dataset.fullName);

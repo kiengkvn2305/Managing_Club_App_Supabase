@@ -54,8 +54,6 @@ import { createMatchController } from './controllers/match-controller.js';
 import { createInventoryController } from './controllers/inventory-controller.js';
 import { createActivityController } from './controllers/activity-controller.js';
 import { createRecruitmentController } from './controllers/recruitment-controller.js';
-import { createPollController } from './controllers/poll-controller.js';
-import { createDiscoveryController } from './controllers/discovery-controller.js';
 
 const root = document.querySelector('#app');
 let sequence = 0;
@@ -192,8 +190,6 @@ const matchController = createMatchController(ctx);
 const inventoryController = createInventoryController(ctx);
 const activityController = createActivityController(ctx);
 const recruitmentController = createRecruitmentController(ctx);
-const pollController = createPollController(ctx);
-const discoveryController = createDiscoveryController(ctx);
 
 ctx.clubController = clubController;
 ctx.rosterController = rosterController;
@@ -208,8 +204,6 @@ const controllers = [
   inventoryController,
   activityController,
   recruitmentController,
-  pollController,
-  discoveryController,
 ];
 
 const navItems = [
@@ -497,7 +491,6 @@ function clearData() {
   s.matches = { data: [], meta: {} };
   s.matchCalendar = [];
   s.inventory = { data: [], current_page: 1, last_page: 1, total: 0 };
-  s.polls = { data: [], current_page: 1, last_page: 1 };
   s.recruitment = { data: [], current_page: 1, last_page: 1, total: 0 };
   s.clubMemberships = [];
   s.boardMembers = [];
@@ -512,8 +505,6 @@ function clearData() {
   };
   s.finance = { data: [], summary: {}, meta: {} };
   s.plannedExpenses = [];
-  s.discovery = { data: [], meta: {} };
-  s.friendlies = { data: [], meta: {} };
   s.meta = {};
   s.dashboard = {};
   s.error = '';
@@ -643,29 +634,6 @@ async function loadView() {
         .catch(() => {});
     }
 
-    if (route === 'discover') {
-      const tasks = [
-        api.get(
-          `/discover/clubs?${new URLSearchParams({ q: s.discoveryQuery, page: s.discoveryPage })}`,
-          { signal }
-        ),
-      ];
-      if (tenant && canManageClub(currentClub())) {
-        tasks.push(
-          api.get(
-            base(`/friendlies?${new URLSearchParams({ page: s.friendlyPage })}`),
-            { signal }
-          )
-        );
-      }
-      const results = await Promise.all(tasks);
-      if (signal.aborted || !s.user || tenant !== s.clubId || route !== s.route) {
-        return;
-      }
-      s.discovery = results[0];
-      s.friendlies = results[1] || { data: [], meta: {} };
-    }
-
     if (route === 'admin') {
       if (!s.user?.is_system_admin) {
         toast('Bạn không có quyền truy cập trang quản trị.', true);
@@ -719,7 +687,6 @@ async function loadView() {
         'lineups',
         'matches',
         'inventory',
-        'polls',
         'recruitment',
         'club-members',
         'finance',
@@ -759,14 +726,6 @@ async function loadView() {
         });
         tasks.push(api.get(base(`/inventory?${query}`), { signal }));
       }
-      if (route === 'polls') {
-        tasks.push(
-          api.get(
-            base(`/polls?${new URLSearchParams({ page: s.pollsPage })}`),
-            { signal }
-          )
-        );
-      }
       if (route === 'recruitment' && canManageRoster(currentClub())) {
         tasks.push(
           api.get(
@@ -779,14 +738,12 @@ async function loadView() {
       }
       if (
         route === 'club-members' &&
-        (currentRole() === 'owner' ||
-          canManageClub(currentClub()) ||
-          currentClub()?.can_manage_finance ||
-          currentClub()?.can_manage_roster)
+        (isCoOwnerOrOwner(currentClub()) || canManageClub(currentClub()))
       ) {
         tasks.push(api.get(base('/board-members'), { signal }));
         tasks.push(api.get(base('/club-memberships'), { signal }));
         tasks.push(api.get(base('/invitations'), { signal }).catch(() => ({ data: [] })));
+        tasks.push(api.get(base('/board-tasks'), { signal }).catch(() => ({ data: [] })));
       }
       if (route === 'finance' && currentClub()?.can_view_finance) {
         if (!s.financeMonth) {
@@ -844,7 +801,7 @@ async function loadView() {
       ) {
         const q =
           route === 'dashboard'
-            ? new URLSearchParams({ per_page: '5', sort: 'created_at' })
+            ? new URLSearchParams({ per_page: '5', sort: 'created_at', direction: 'desc' })
             : route === 'team-roster'
               ? new URLSearchParams({
                   team_id: s.teamRosterId,
@@ -874,13 +831,13 @@ async function loadView() {
         else s.matchCalendar = results[1].data;
       }
       if (route === 'inventory' && results[1]) s.inventory = results[1];
-      if (route === 'polls' && results[1]) s.polls = results[1];
       if (route === 'recruitment' && results[1]) s.recruitment = results[1];
       if (route === 'club-members' && results[1]) {
         s.boardMembers = unpackList(results[1]).rows;
         s.boardSharedRates = results[1].shared_rates || [];
         s.clubMemberships = results[2] ? unpackList(results[2]).rows : [];
         s.clubInvitations = results[3]?.data || [];
+        s.boardTasks = results[4]?.data || [];
       }
       if (route === 'finance' && results[1]) s.finance = results[1];
       if (route === 'finance' && results[2]) {
@@ -906,7 +863,6 @@ async function loadView() {
         'lineups',
         'matches',
         'inventory',
-        'polls',
         'recruitment',
         'club-members',
         'finance',
@@ -923,15 +879,22 @@ async function loadView() {
         const { rows, meta } = unpackList(list);
         s.members =
           route === 'dashboard'
-            ? rows.map((m) => ({
-                ...m,
-                team: {
-                  name:
-                    (m.teams || []).map((t) => t.name).join(', ') ||
-                    'Chưa xếp đội',
-                },
-                jersey_number: null,
-              }))
+            ? rows.map((m) => {
+                const primaryTeam =
+                  (m.teams || []).find((t) => String(t.id) === String(m.team_id)) ||
+                  (m.teams || [])[0] ||
+                  null;
+                return {
+                  ...m,
+                  team: {
+                    name:
+                      (m.teams || []).map((t) => t.name).join(', ') ||
+                      'Chưa xếp đội',
+                  },
+                  jersey_number:
+                    primaryTeam?.jersey_number ?? m.jersey_number ?? null,
+                };
+              })
             : rows;
         s.meta = meta;
       }
@@ -1403,7 +1366,6 @@ root.addEventListener('change', (event) => {
     s.clubId = Number(event.target.value);
     s.birthdayPage = 1;
     s.birthdayMonth = '';
-    s.friendlyPage = 1;
     s.matchesPage = 1;
     s.financePage = 1;
     s.financeAdjustmentPage = 1;
@@ -1414,7 +1376,6 @@ root.addEventListener('change', (event) => {
     s.inventorySearch = '';
     s.inventoryLowStock = false;
     s.inventoryArchived = false;
-    s.pollsPage = 1;
     s.recruitmentPage = 1;
     s.recruitmentStatus = '';
     s.trainingFilterDate = '';
@@ -1510,13 +1471,6 @@ root.addEventListener('submit', (event) => {
     s.duesDirection = data.direction || 'asc';
     s.duesTeam = data.team_id || '';
     s.duesStatus = data.status || '';
-    loadView();
-    return;
-  }
-
-  if (kind === 'discover-filter') {
-    s.discoveryQuery = values(form).q || '';
-    s.discoveryPage = 1;
     loadView();
     return;
   }
