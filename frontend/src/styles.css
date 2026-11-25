@@ -450,8 +450,17 @@ textarea {
 .sidebar > * {
   flex-shrink: 0;
 }
-.sidebar > .brand {
+.sidebar-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 0 10px;
+}
+.mobile-drawer-close,
+.mobile-sidebar-backdrop,
+.mobile-topbar-start {
+  display: none;
 }
 .sidebar-clock {
   display: block;
@@ -1655,8 +1664,8 @@ dialog::backdrop {
   .auth-content {
     padding: 50px 30px;
   }
-  .page-actions .button.secondary {
-    display: none;
+  .page-actions {
+    flex-wrap: wrap;
   }
 }
 @media (max-width: 760px) {
@@ -1724,30 +1733,36 @@ dialog::backdrop {
     padding: 23px 20px 110px;
   }
   .page-top {
-    align-items: flex-start;
-    margin-bottom: 23px;
-    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 20px;
+    gap: 12px;
   }
   .page-top h1 {
-    font-size: 25px;
+    font-size: 24px;
   }
   .page-top p {
-    font-size: 11px;
-    line-height: 1.8;
+    font-size: 12px;
+    line-height: 1.65;
   }
   .eyebrow {
     font-size: 9px;
     letter-spacing: 1.2px;
   }
   .page-actions {
-    padding-top: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 0;
+    width: 100%;
   }
   .page-actions .button {
-    padding: 10px;
-    min-width: 42px;
+    padding: 9px 13px;
+    min-height: 42px;
+    font-size: 12px;
   }
   .page-actions .button > span {
-    display: none;
+    display: inline;
   }
   .hero {
     padding: 25px;
@@ -3254,4 +3269,425 @@ input[type="radio"],
 }
 .inventory-kpi-grid {
   margin-bottom: 18px;
+}
+
+
+/* ==========================================================================
+   Mobile-First Touch & Ergonomics Polish (<= 760px & <= 430px)
+   ========================================================================== */
+.roster-item-meta .badge {
+  white-space: normal;
+  line-height: 1.4;
+}
+.lineup-pitch {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (max-width: 760px) {
+  html,
+  body {
+    overflow-x: clip;
+  }
+  .workspace {
+    overflow-x: clip;
+  }
+  /* Mobile Topbar & Slide-Out Navigation Drawer */
+  .topbar {
+    height: 62px;
+    padding: 0 14px;
+    gap: 8px;
+  }
+  .mobile-topbar-start {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .mobile-menu-trigger {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+  .mobile-brand {
+    font-size: 17px;
+    gap: 7px;
+  }
+  .mobile-brand img {
+    width: 28px;
+    height: 28px;
+  }
+  .mobile-clock {
+    font-size: 9.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 118px;
+  }
+  .sidebar {
+    display: flex !important;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(290px, 84vw);
+    max-width: 84vw;
+    z-index: 60;
+    padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
+    transform: translateX(-105%);
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    box-shadow: 16px 0 42px rgba(0, 0, 0, 0.5);
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .shell.mobile-menu-open .sidebar {
+    transform: translateX(0);
+  }
+  .mobile-drawer-close {
+    display: inline-grid;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+  }
+  .mobile-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(5, 14, 25, 0.65);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .shell.mobile-menu-open .mobile-sidebar-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sidebar .nav-link {
+    min-height: 46px;
+    font-size: 13.5px;
+    padding: 12px 14px;
+  }
+  .sidebar .club-selector {
+    margin: 16px 0 18px;
+  }
+  .sidebar .club-selector select {
+    width: 100%;
+    font-size: 15px;
+  }
+
+  /* Clear & Tap-Friendly Mobile Club Switcher Bar */
+  .mobile-club {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 12px 16px 0;
+    padding: 6px 12px;
+    border-radius: 11px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+  .mobile-club-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    white-space: nowrap;
+  }
+  .mobile-club-label svg {
+    width: 15px;
+    height: 15px;
+  }
+  .mobile-club select {
+    flex: 1;
+    min-width: 0;
+    min-height: 36px;
+    font-size: 16px;
+    font-weight: 650;
+    color: var(--ink);
+    background: transparent;
+    border: 0;
+    padding: 4px 0;
+  }
+
+  /* Bottom Navigation Bar Thumb Ergonomics */
+  .page {
+    padding: 18px 16px calc(98px + env(safe-area-inset-bottom));
+  }
+  .bottom-nav {
+    gap: 4px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: var(--surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .bottom-nav .nav-link {
+    min-width: 70px;
+    min-height: 50px;
+    padding: 6px 9px;
+    border-radius: 10px;
+    border-left: 0;
+    font-size: 10.5px;
+    font-weight: 600;
+    gap: 4px;
+  }
+
+  /* Prevent iOS Auto-Zoom & Stack Filters Cleanly */
+  input,
+  select,
+  textarea,
+  .filters input,
+  .filters select,
+  .date-input-wrap .date-display,
+  .training-filter-item select,
+  .training-filter-item input {
+    font-size: 16px !important;
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+  .filters > input[type="search"],
+  .filters > input[type="text"] {
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 44px;
+  }
+  .filters > select {
+    flex: 1 1 calc(50% - 6px);
+    min-height: 44px;
+  }
+  .filters label {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    flex: 1 1 calc(50% - 6px);
+    min-width: 135px;
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .filters label:has(input[type="checkbox"]) {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-height: 40px;
+  }
+  .filters label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    flex: none;
+  }
+  .filters label input:not([type="checkbox"]),
+  .filters label select {
+    width: 100%;
+    max-width: none;
+    min-height: 44px;
+  }
+  .filters > .button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+
+  /* Training Filter Toolbar on Mobile */
+  .training-filter-bar {
+    padding: 14px 16px;
+  }
+  .training-filter-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .training-filter-item,
+  .training-filter-item select,
+  .training-filter-item .date-input-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+  .training-filter-item select,
+  .training-filter-item .date-display {
+    height: 44px;
+    min-height: 44px;
+  }
+  .training-quick-buttons {
+    width: 100%;
+    height: auto;
+  }
+  .training-quick-buttons .button {
+    flex: 1;
+    height: 42px;
+  }
+
+  /* Flexible Panel Headers, Member Rows & Action Chips */
+  .panel-head {
+    flex-wrap: wrap;
+    padding: 16px;
+    gap: 10px;
+  }
+  .panel-body {
+    padding: 16px;
+  }
+  .member-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+  .member-row > div:first-child {
+    flex: 1 1 100%;
+  }
+  .member-row strong {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .member-row small {
+    font-size: 11.5px;
+    line-height: 1.5;
+  }
+  .member-row .action-chips,
+  .member-row .team-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .chip-button {
+    min-height: 36px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .text-button {
+    min-height: 38px;
+    padding: 4px 6px;
+    font-size: 12.5px;
+  }
+
+  /* Smooth Horizontal Tables without Broken Vertical Text */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  th {
+    padding: 11px 12px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  td {
+    padding: 12px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+  td.truncate {
+    white-space: nowrap;
+    max-width: 160px;
+  }
+  .row-actions .icon-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  /* Mobile Bottom-Sheet Dialogs & 1-Column Forms */
+  dialog {
+    margin: auto 0 0 0;
+    width: 100%;
+    max-width: 100vw;
+    max-height: 92dvh;
+    border-radius: 20px 20px 0 0;
+    border-bottom: 0;
+  }
+  .dialog-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--surface);
+    padding: 16px 18px;
+    gap: 12px;
+  }
+  .dialog-head h2 {
+    font-size: 17px;
+  }
+  .dialog-body {
+    padding: 16px 18px calc(20px + env(safe-area-inset-bottom));
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .form-actions {
+    flex-wrap: wrap;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .form-actions .button {
+    flex: 1 1 140px;
+    min-height: 46px;
+    font-size: 13.5px;
+  }
+
+  /* Attendance, Captain Picker & Lineup Pitch on Mobile */
+  .attendance-list label {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  .att-select {
+    width: 100%;
+    min-height: 42px;
+  }
+  .captain-status-banner,
+  .picker-status-bar,
+  .picker-meta-line {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .lineup-pitch {
+    height: 290px;
+    margin: 12px 4px;
+  }
+  .lineup-marker span {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+  .lineup-marker button {
+    min-width: 24px;
+    min-height: 24px;
+  }
+  .lineup-roster label {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .lineup-roster select {
+    max-width: none;
+    width: 100%;
+  }
+  .details > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .stat strong {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 390px) {
+  .mobile-clock {
+    display: none;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .page-actions .button {
+    flex: 1 1 calc(50% - 6px);
+  }
 }

@@ -356,9 +356,12 @@ function render() {
   root.innerHTML = `
     <div class="shell ${collapsed ? 'sidebar-collapsed' : ''}">
       <aside class="sidebar">
-        <a class="brand" href="${isSysAdmin ? '#admin' : '#dashboard'}">
-          <img src="/icons/crest.svg" alt="">FCMS <small>${isSysAdmin ? 'ADMIN' : 'PRO'}</small>
-        </a>
+        <div class="sidebar-top-row">
+          <a class="brand" href="${isSysAdmin ? '#admin' : '#dashboard'}">
+            <img src="/icons/crest.svg" alt="">FCMS <small>${isSysAdmin ? 'ADMIN' : 'PRO'}</small>
+          </a>
+          <button type="button" class="icon-button mobile-drawer-close" data-action="close-mobile-menu" aria-label="Đóng menu">${icon('close')}</button>
+        </div>
         <time class="sidebar-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
         ${
           isSysAdmin
@@ -410,6 +413,8 @@ function render() {
         </div>
       </aside>
 
+      <div class="mobile-sidebar-backdrop" data-action="close-mobile-menu" aria-hidden="true"></div>
+
       <div class="workspace ${background ? 'has-club-background' : ''}" ${background ? `style="--club-background: url('${e(background)}')"` : ''}>
         <header class="topbar">
           <div class="topbar-left">
@@ -420,9 +425,14 @@ function render() {
               ${topbarContextHtml}
             </div>
           </div>
-          <a class="brand mobile-brand" href="${isSysAdmin ? '#admin' : '#dashboard'}">
-            <img src="/icons/crest.svg" alt="">FCMS <small>${isSysAdmin ? 'ADMIN' : 'PRO'}</small>
-          </a>
+          <div class="mobile-topbar-start">
+            <button type="button" class="icon-button mobile-menu-trigger" data-action="toggle-mobile-menu" aria-label="Mở danh mục chức năng" title="Danh mục chức năng">
+              ${icon('menu')}
+            </button>
+            <a class="brand mobile-brand" href="${isSysAdmin ? '#admin' : '#dashboard'}">
+              <img src="/icons/crest.svg" alt="">FCMS <small>${isSysAdmin ? 'ADMIN' : 'PRO'}</small>
+            </a>
+          </div>
           <time class="mobile-clock" data-vietnam-clock aria-label="Thời gian hiện tại UTC+7">Đang tải thời gian…</time>
           <div class="header-actions">
             ${
@@ -453,7 +463,7 @@ function render() {
         <div id="connection-banner" class="connection-banner" ${navigator.onLine ? 'hidden' : ''} role="status">
           Bạn đang ngoại tuyến. Kết nối lại để cập nhật dữ liệu.
         </div>
-        ${!isSysAdmin ? `<div class="mobile-club">${clubSelect()}</div>` : ''}
+        ${!isSysAdmin ? `<div class="mobile-club"><span class="mobile-club-label">${icon('shield')} CLB:</span>${clubSelect()}</div>` : ''}
         <main id="main-content" tabindex="-1" class="page">
           ${page()}
           <footer>© ${new Date().getFullYear()} FCMS PRO. Cùng câu lạc bộ vươn xa.</footer>
@@ -463,6 +473,8 @@ function render() {
     </div>
   `;
   startVietnamClock();
+  const activeMobileTab = root.querySelector('.bottom-nav .nav-link.active');
+  activeMobileTab?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
 }
 
 function clearSession() {
@@ -975,6 +987,17 @@ async function loadView() {
 async function action(el) {
   const a = el.dataset.action;
 
+  if (a === 'toggle-mobile-menu') {
+    const shell = document.querySelector('.shell');
+    if (shell) shell.classList.toggle('mobile-menu-open');
+    return;
+  }
+
+  if (a === 'close-mobile-menu') {
+    document.querySelector('.shell')?.classList.remove('mobile-menu-open');
+    return;
+  }
+
   if (a === 'toggle-sidebar') {
     const shell = document.querySelector('.shell');
     const collapsed = shell ? !shell.classList.contains('sidebar-collapsed') : !isSidebarCollapsed();
@@ -1241,6 +1264,9 @@ async function action(el) {
 }
 
 root.addEventListener('click', (event) => {
+  if (event.target.closest('.sidebar a.nav-link, .sidebar a.brand')) {
+    document.querySelector('.shell')?.classList.remove('mobile-menu-open');
+  }
   const el = event.target.closest('[data-action]');
   if (el && !el.disabled) {
     action(el).catch((error) => toast(error.message, true));
@@ -1372,6 +1398,7 @@ root.addEventListener('change', (event) => {
   }
 
   if (event.target.matches('[data-club-switch]')) {
+    document.querySelector('.shell')?.classList.remove('mobile-menu-open');
     clearTimeout(searchTimer);
     s.clubId = Number(event.target.value);
     s.birthdayPage = 1;

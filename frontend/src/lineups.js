@@ -324,6 +324,37 @@ export function openLineup({ teams, players, lineup, linkedMatch, api, base, rel
     entry.y = Math.max(0, Math.min(100, Number(entry.y) + delta[1]));
     drawPitch();
   });
+  let activeTouchPlayerId = null;
+  editor.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("[data-move]")) return;
+    const marker = event.target.closest("[data-player]");
+    if (!marker) return;
+    activeTouchPlayerId = marker.dataset.player;
+    marker.setPointerCapture?.(event.pointerId);
+  });
+  editor.addEventListener("pointermove", (event) => {
+    if (!activeTouchPlayerId) return;
+    const pitch = editor.querySelector("[data-pitch]");
+    const entry = saved.get(activeTouchPlayerId);
+    if (!pitch || !entry) return;
+    event.preventDefault();
+    const rect = pitch.getBoundingClientRect();
+    entry.x = Math.max(0, Math.min(100, Math.round(((event.clientX - rect.left) / rect.width) * 100)));
+    entry.y = Math.max(0, Math.min(100, Math.round(((event.clientY - rect.top) / rect.height) * 100)));
+    const markerEl = pitch.querySelector(`[data-player="${CSS.escape(activeTouchPlayerId)}"]`);
+    if (markerEl) {
+      markerEl.style.left = `${entry.x}%`;
+      markerEl.style.top = `${entry.y}%`;
+    }
+  });
+  const finishPointerDrag = () => {
+    if (!activeTouchPlayerId) return;
+    activeTouchPlayerId = null;
+    drawPitch();
+  };
+  editor.addEventListener("pointerup", finishPointerDrag);
+  editor.addEventListener("pointercancel", finishPointerDrag);
+
   editor.addEventListener("dragstart", (event) => { const marker = event.target.closest("[data-player]"); if (marker) event.dataTransfer.setData("text/plain", marker.dataset.player); });
   editor.addEventListener("dragover", (event) => { if (event.target.closest("[data-pitch]")) event.preventDefault(); });
   editor.addEventListener("drop", (event) => {
